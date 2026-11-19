@@ -23,6 +23,7 @@ show_cheatsheet() {
     Super + Shift + T            Open Process Monitor (Btop - Transparent)
     Super + Shift + C            Open Matrix Screensaver (CMatrix - Transparent)
     Super + Shift + S            Wi-Fi Network Manager (Rofi)
+    Super + Shift + B            Bluetooth Manager (Rofi)
 
   [ WINDOW MANAGEMENT ]
     Super + W                    Close Focused Window

@@ -20,6 +20,7 @@ generate_list() {
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + T           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Process Monitor (Btop - Transparent)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + C           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Matrix Screensaver (CMatrix - Transparent)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + S           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Wi-Fi Network Manager (Rofi)</span>
+<span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + B           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Bluetooth Manager (Rofi)</span>
 <span color="#888888">[Window   ]</span>  <span weight="bold" color="#AAAAAA">Super + W                   </span> <span color="#333333">│</span>  <span color="#D5D5D5">Close Focused Window</span>
 <span color="#888888">[Window   ]</span>  <span weight="bold" color="#AAAAAA">Super + Q                   </span> <span color="#333333">│</span>  <span color="#D5D5D5">Close Focused Window (Alt)</span>
 <span color="#888888">[Window   ]</span>  <span weight="bold" color="#AAAAAA">Super + T                   </span> <span color="#333333">│</span>  <span color="#D5D5D5">Toggle Tiling / Floating Window</span>
@@ -104,6 +105,9 @@ case "${CHOSEN}" in
         ;;
     *"Super + Shift + S"*)
         "${HOME}/.config/hypr/scripts/wifi-menu.sh" &
+        ;;
+    *"Super + Shift + B"*)
+        "${HOME}/.config/hypr/scripts/bluetooth-menu.sh" &
         ;;
     *"Super + W"*|*"Super + Q"*)
         hyprctl dispatch killactive

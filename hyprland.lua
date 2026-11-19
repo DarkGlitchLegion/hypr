@@ -52,6 +52,9 @@ hl.on("hyprland.start", function ()
     -- Clipboard history persistence daemon
     hl.exec_cmd(homeDir .. "/.config/hypr/scripts/clipboard-daemon.sh")
 
+    -- Bluetooth pairing & authentication agent (D-Bus)
+    hl.exec_cmd(homeDir .. "/.config/hypr/scripts/bluetooth-agent.py")
+
     -- Synchronize GTK dark theme & icons for Thunar and GTK apps
     hl.exec_cmd(homeDir .. "/.config/hypr/scripts/apply-gtk-theme.sh")
 end)
@@ -197,6 +200,7 @@ hl.bind(mainMod .. " + SHIFT + E",      hl.dsp.exec_cmd("code || kitty --config 
 hl.bind(mainMod .. " + SHIFT + T",      hl.dsp.exec_cmd("kitty --class btop --title btop --config " .. homeDir .. "/.config/hypr/kitty/kitty.conf -e btop"))
 hl.bind(mainMod .. " + SHIFT + C",      hl.dsp.exec_cmd(scripts .. "/cmatrix.sh"))
 hl.bind(mainMod .. " + SHIFT + S",      hl.dsp.exec_cmd(scripts .. "/wifi-menu.sh"))
+hl.bind(mainMod .. " + SHIFT + B",      hl.dsp.exec_cmd(scripts .. "/bluetooth-menu.sh"))
 
 -- 2. Window Management
 hl.bind(mainMod .. " + W",       hl.dsp.window.close())

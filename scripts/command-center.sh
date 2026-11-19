@@ -15,6 +15,7 @@ generate_commands() {
 <span color="#AAAAAA"><b>󰉋  File Manager (Thunar)      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Browse local files and storage</span>
 <span color="#AAAAAA"><b>󰈹  Web Browser (Firefox)      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Launch default web browser</span>
 <span color="#AAAAAA"><b>󰤨  Wi-Fi Network Manager      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Connect, scan, and manage wireless networks</span>
+<span color="#AAAAAA"><b>󰂯  Bluetooth Manager          </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Pair, connect, and manage Bluetooth devices</span>
 <span color="#AAAAAA"><b>  Process Monitor (Btop)     </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Open transparent resource monitor</span>
 <span color="#AAAAAA"><b>󱤤  Matrix Screensaver         </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Open transparent cmatrix terminal</span>
 <span color="#AAAAAA"><b>󰸉  Wallpaper Selector         </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Choose wallpaper with live thumbnails</span>
@@ -51,6 +52,9 @@ case "${CHOSEN}" in
         ;;
     *"Wi-Fi Network Manager"*)
         "${SCRIPTS}/wifi-menu.sh" &
+        ;;
+    *"Bluetooth Manager"*)
+        "${SCRIPTS}/bluetooth-menu.sh" &
         ;;
     *"Process Monitor"*)
         kitty --class btop --title btop --config "${HOME}/.config/hypr/kitty/kitty.conf" -e btop &
