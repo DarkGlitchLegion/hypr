@@ -1,0 +1,117 @@
+/**
+ * Rofi Custom Keybindings Window Theme
+ * Minimal Dark Palette (#0C0D10, #17191F, #202126, #AAAAAA)
+ * Font: JetBrainsMono Nerd Font
+ */
+
+configuration {
+    modi: "dmenu";
+    font: "JetBrainsMono Nerd Font 10.5";
+    show-icons: false;
+    terminal: "kitty";
+    case-sensitive: false;
+    cycle: true;
+}
+
+@theme "/dev/null"
+
+* {
+    bg:          #0C0D10;
+    bg-alt:      #17191F;
+    surface:     #202126;
+    fg:          #D5D5D5;
+    fg-dim:      #888888;
+    accent:      #AAAAAA;
+    border-col:  #333333;
+
+    background-color: transparent;
+    text-color:       @fg;
+    margin:           0;
+    padding:          0;
+    spacing:          0;
+}
+
+window {
+    width:            820px;
+    height:           560px;
+    background-color: @bg;
+    border:           1px solid;
+    border-color:     @border-col;
+    border-radius:    10px;
+    padding:          20px;
+    location:         center;
+    anchor:           center;
+}
+
+mainbox {
+    children: [ inputbar, listview, footer ];
+    spacing:  14px;
+}
+
+inputbar {
+    background-color: @bg-alt;
+    border:           1px solid;
+    border-color:     @surface;
+    border-radius:    8px;
+    padding:          10px 14px;
+    children:         [ prompt, entry ];
+    spacing:          12px;
+}
+
+prompt {
+    text-color: @accent;
+    font:       "JetBrainsMono Nerd Font Bold 11.5";
+}
+
+entry {
+    text-color:        @fg;
+    font:              "JetBrainsMono Nerd Font 10.5";
+    placeholder:       "Search keybinding or function (e.g. terminal, workspace, screenshot)...";
+    placeholder-color: @fg-dim;
+}
+
+listview {
+    lines:        12;
+    columns:      1;
+    spacing:      5px;
+    scrollbar:    true;
+    dynamic:      true;
+}
+
+scrollbar {
+    width:        4px;
+    handle-width: 4px;
+    handle-color: @surface;
+    border-radius: 4px;
+    margin:       0 0 0 6px;
+}
+
+element {
+    padding:       7px 12px;
+    border-radius: 6px;
+    children:      [ element-text ];
+    spacing:       10px;
+}
+
+element selected {
+    background-color: @surface;
+    text-color:       #FFFFFF;
+    border:           1px solid;
+    border-color:     @accent;
+}
+
+element-text {
+    text-color: inherit;
+    markup:     true;
+}
+
+footer {
+    expand:   false;
+    children: [ footer-text ];
+}
+
+footer-text {
+    font:       "JetBrainsMono Nerd Font 9";
+    text-color: @fg-dim;
+    horizontal-align: 0.5;
+}

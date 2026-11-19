@@ -1,0 +1,72 @@
+# =====================================================
+# Dunst Notification Configuration — Minimal Dark Design
+# Palette: Charcoal #0C0D10 | Surface #17191F | Accent #AAAAAA
+# Font: JetBrainsMono Nerd Font
+# =====================================================
+
+[global]
+    monitor = 0
+    follow = mouse
+    width = (280, 420)
+    height = (60, 200)
+    origin = top-right
+    offset = (16, 48)
+    scale = 0
+    notification_limit = 5
+    progress_bar = true
+    progress_bar_height = 4
+    progress_bar_frame_width = 1
+    progress_bar_min_width = 150
+    progress_bar_max_width = 300
+    progress_bar_corner_radius = 2
+    icon_corner_radius = 4
+    indicate_hidden = yes
+    transparency = 10
+    separator_height = 2
+    padding = 12
+    horizontal_padding = 14
+    text_icon_padding = 12
+    frame_width = 1
+    frame_color = "#333333"
+    separator_color = frame
+    sort = yes
+    font = JetBrainsMono Nerd Font 10
+    line_height = 3
+    markup = full
+    format = "<b>%s</b>\n%b"
+    alignment = left
+    vertical_alignment = center
+    show_age_threshold = 60
+    ellipsize = middle
+    ignore_newline = no
+    stack_duplicates = true
+    hide_duplicate_count = false
+    show_indicators = yes
+    enable_recursive_icon_lookup = true
+    icon_theme = Papirus-Dark
+    icon_position = left
+    min_icon_size = 24
+    max_icon_size = 40
+    corner_radius = 8
+    highlight = "#AAAAAA"
+    mouse_left_click = close_current
+    mouse_middle_click = do_action, close_current
+    mouse_right_click = close_all
+
+[urgency_low]
+    background = "#17191F"
+    foreground = "#888888"
+    frame_color = "#202126"
+    timeout = 4
+
+[urgency_normal]
+    background = "#17191F"
+    foreground = "#D5D5D5"
+    frame_color = "#333333"
+    timeout = 6
+
+[urgency_critical]
+    background = "#17191F"
+    foreground = "#FFFFFF"
+    frame_color = "#AAAAAA"
+    timeout = 0
