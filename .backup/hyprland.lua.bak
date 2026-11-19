@@ -1,0 +1,235 @@
+-- =====================================================
+-- Arch Linux Hyprland Rice — Minimal Dark Configuration
+-- Engine: Hyprland Lua Configuration (v0.57.2+)
+-- Palette: Charcoal #0C0D10 | Slate #17191F | Accent #AAAAAA
+-- =====================================================
+
+------------------
+---- MONITORS ----
+------------------
+-- Dynamic preferred auto-detection (does not assume fixed resolution or rate)
+hl.monitor({
+    output   = "",
+    mode     = "preferred",
+    position = "auto",
+    scale    = "auto",
+})
+
+---------------------
+---- MY PROGRAMS ----
+---------------------
+local homeDir     = os.getenv("HOME")
+local terminal    = "kitty --config " .. homeDir .. "/.config/hypr/kitty/kitty.conf"
+local fileManager = "thunar"
+local menu        = "rofi -show drun -config " .. homeDir .. "/.config/hypr/rofi/config.rasi"
+local lockscreen  = "hyprlock -c " .. homeDir .. "/.config/hypr/hyprlock.conf"
+
+-------------------
+---- AUTOSTART ----
+-------------------
+hl.on("hyprland.start", function ()
+    -- Polkit authentication agent
+    hl.exec_cmd("/usr/lib/hyprpolkitagent/hyprpolkitagent")
+
+    -- Waybar status bar
+    hl.exec_cmd("waybar -c " .. homeDir .. "/.config/hypr/waybar/config.jsonc -s " .. homeDir .. "/.config/hypr/waybar/style.css")
+
+    -- Dunst notification daemon
+    hl.exec_cmd("dunst -config " .. homeDir .. "/.config/hypr/dunst/dunstrc")
+
+    -- Hyprpaper wallpaper daemon
+    hl.exec_cmd("hyprpaper -c " .. homeDir .. "/.config/hypr/hyprpaper.conf")
+
+    -- Hypridle power/lock daemon
+    hl.exec_cmd("hypridle -c " .. homeDir .. "/.config/hypr/hypridle.conf")
+
+    -- Clipboard history persistence (optional cliphist)
+    hl.exec_cmd("which cliphist >/dev/null 2>&1 && wl-paste --type text --watch cliphist store")
+    hl.exec_cmd("which cliphist >/dev/null 2>&1 && wl-paste --type image --watch cliphist store")
+end)
+
+-------------------------------
+---- ENVIRONMENT VARIABLES ----
+-------------------------------
+hl.env("XDG_CURRENT_DESKTOP", "Hyprland")
+hl.env("XDG_SESSION_TYPE", "wayland")
+hl.env("XDG_SESSION_DESKTOP", "Hyprland")
+hl.env("QT_QPA_PLATFORM", "wayland;xcb")
+hl.env("QT_WAYLAND_DISABLE_WINDOWDECORATION", "1")
+hl.env("QT_AUTO_SCREEN_SCALE_FACTOR", "1")
+hl.env("GDK_BACKEND", "wayland,x11,*")
+hl.env("CLUTTER_BACKEND", "wayland")
+hl.env("XCURSOR_SIZE", "24")
+hl.env("HYPRCURSOR_SIZE", "24")
+
+-----------------------
+---- LOOK AND FEEL ----
+-----------------------
+hl.config({
+    general = {
+        gaps_in  = 4,
+        gaps_out = 8,
+        border_size = 1,
+
+        col = {
+            active_border   = "rgba(aaaaaaff)",
+            inactive_border = "rgba(333333aa)",
+        },
+
+        layout = "dwindle",
+        resize_on_border = true,
+        allow_tearing = false,
+    },
+
+    decoration = {
+        rounding       = 8,
+        active_opacity   = 0.98,
+        inactive_opacity = 0.92,
+
+        shadow = {
+            enabled      = true,
+            range        = 15,
+            render_power = 2,
+            color        = 0xaa0c0d10,
+        },
+
+        blur = {
+            enabled   = true,
+            size      = 5,
+            passes    = 2,
+            vibrancy  = 0.1696,
+        },
+    },
+
+    animations = {
+        enabled = true,
+    },
+
+    dwindle = {
+        preserve_split = true,
+        smart_split = false,
+    },
+
+    master = {
+        new_status = "master",
+    },
+
+    misc = {
+        force_default_wallpaper = 0,
+        disable_hyprland_logo = true,
+        disable_splash_rendering = true,
+    },
+
+    input = {
+        kb_layout = "us",
+        follow_mouse = 1,
+        sensitivity = 0,
+
+        touchpad = {
+            natural_scroll = true,
+        },
+    },
+})
+
+--------------------
+---- ANIMATIONS ----
+--------------------
+hl.curve("easeOutQuint",   { type = "bezier", points = { {0.23, 1},    {0.32, 1} } })
+hl.curve("easeInOutCubic", { type = "bezier", points = { {0.65, 0.05}, {0.36, 1} } })
+hl.curve("linear",         { type = "bezier", points = { {0, 0},       {1, 1}    } })
+hl.curve("almostLinear",   { type = "bezier", points = { {0.5, 0.5},   {0.75, 1} } })
+
+hl.animation({ leaf = "windows",     enabled = true, speed = 3.5, bezier = "easeOutQuint" })
+hl.animation({ leaf = "windowsIn",   enabled = true, speed = 3.5, bezier = "easeOutQuint" })
+hl.animation({ leaf = "windowsOut",  enabled = true, speed = 3.0, bezier = "easeInOutCubic" })
+hl.animation({ leaf = "windowsMove", enabled = true, speed = 3.5, bezier = "easeOutQuint" })
+hl.animation({ leaf = "fadeIn",      enabled = true, speed = 2.5, bezier = "almostLinear" })
+hl.animation({ leaf = "fadeOut",     enabled = true, speed = 2.5, bezier = "almostLinear" })
+hl.animation({ leaf = "border",      enabled = true, speed = 4.0, bezier = "easeOutQuint" })
+hl.animation({ leaf = "workspaces",  enabled = true, speed = 3.5, bezier = "easeOutQuint" })
+
+---------------------
+---- KEYBINDINGS ----
+---------------------
+local mainMod = "SUPER"
+
+-- Core Launchers
+hl.bind(mainMod .. " + RETURN", hl.dsp.exec_cmd(terminal))
+hl.bind(mainMod .. " + D",      hl.dsp.exec_cmd(menu))
+hl.bind(mainMod .. " + E",      hl.dsp.exec_cmd(fileManager))
+
+-- Window Management
+hl.bind(mainMod .. " + Q",      hl.dsp.window.close())
+hl.bind(mainMod .. " + F",      hl.dsp.window.fullscreen(0))
+hl.bind(mainMod .. " + V",      hl.dsp.window.float({ action = "toggle" }))
+hl.bind(mainMod .. " + P",      hl.dsp.window.pseudo())
+hl.bind(mainMod .. " + J",      hl.dsp.layout("togglesplit"))
+
+-- Session & System
+hl.bind(mainMod .. " + L",         hl.dsp.exec_cmd(lockscreen))
+hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("hyprctl reload && killall -SIGUSR2 waybar"))
+
+-- Directional Focus (Arrow Keys)
+hl.bind(mainMod .. " + left",  hl.dsp.focus({ direction = "left" }))
+hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "right" }))
+hl.bind(mainMod .. " + up",    hl.dsp.focus({ direction = "up" }))
+hl.bind(mainMod .. " + down",  hl.dsp.focus({ direction = "down" }))
+
+-- Move Windows (Shift + Arrow Keys)
+hl.bind(mainMod .. " + SHIFT + left",  hl.dsp.window.move({ direction = "left" }))
+hl.bind(mainMod .. " + SHIFT + right", hl.dsp.window.move({ direction = "right" }))
+hl.bind(mainMod .. " + SHIFT + up",    hl.dsp.window.move({ direction = "up" }))
+hl.bind(mainMod .. " + SHIFT + down",  hl.dsp.window.move({ direction = "down" }))
+
+-- Workspaces 1-5 Switch & Move
+for i = 1, 5 do
+    hl.bind(mainMod .. " + " .. i,         hl.dsp.focus({ workspace = i }))
+    hl.bind(mainMod .. " + SHIFT + " .. i, hl.dsp.window.move({ workspace = i }))
+end
+
+-- Mouse Bindings
+hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })
+hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })
+hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
+hl.bind(mainMod .. " + mouse_up",   hl.dsp.focus({ workspace = "e-1" }))
+
+-- Screenshots (Grim + Slurp + Wl-copy)
+hl.bind("Print", hl.dsp.exec_cmd('grim -g "$(slurp)" - | wl-copy && dunstify -a "Screenshot" "Selection copied to clipboard"'))
+hl.bind(mainMod .. " + Print", hl.dsp.exec_cmd('grim - | wl-copy && dunstify -a "Screenshot" "Full display copied to clipboard"'))
+
+-- Media & Volume Keys (Pipewire / Wireplumber)
+hl.bind("XF86AudioRaiseVolume", hl.dsp.exec_cmd("wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ 5%+"), { locked = true, repeating = true })
+hl.bind("XF86AudioLowerVolume", hl.dsp.exec_cmd("wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"),      { locked = true, repeating = true })
+hl.bind("XF86AudioMute",        hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"),     { locked = true, repeating = true })
+hl.bind("XF86AudioMicMute",     hl.dsp.exec_cmd("wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"),   { locked = true, repeating = true })
+
+-- Display Brightness (Brightnessctl)
+hl.bind("XF86MonBrightnessUp",  hl.dsp.exec_cmd("brightnessctl s 5%+"), { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessDown",hl.dsp.exec_cmd("brightnessctl s 5%-"), { locked = true, repeating = true })
+
+----------------------
+---- WINDOW RULES ----
+----------------------
+hl.window_rule({
+    name = "suppress-maximize-events",
+    match = { class = ".*" },
+    suppress_event = "maximize",
+})
+
+hl.window_rule({
+    name = "float-pavucontrol",
+    match = { class = "pavucontrol" },
+    float = true,
+})
+
+hl.window_rule({
+    name = "float-nm-connection-editor",
+    match = { class = "nm-connection-editor" },
+    float = true,
+})
+
+hl.window_rule({
+    name = "float-dialogs",
+    match = { title = "Open File" },
+    float = true,
+})
