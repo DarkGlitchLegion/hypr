@@ -39,6 +39,9 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 ├── scripts/                  # Shell & Python automation utilities
 │   ├── control-center.sh     # Rice Control Center super-hub
 │   ├── rice-health.py        # Hyprland, display, workspace, and tool diagnostics
+│   ├── rice                  # CLI entry point: doctor, validate, snapshot, logs, test
+│   ├── rice_maintenance.py   # Diagnostics, safe snapshots, validation, and tests
+│   ├── rice_events.py        # Bounded, secret-filtering JSONL activity log
 │   ├── session-presets.py    # Save/apply/restore reversible desktop session bundles
 │   ├── audio-menu.sh         # Rofi entry point for the PipeWire audio manager
 │   ├── audio-manager.py      # Live sink/source selector and optional HDMI hotplug handling
@@ -83,7 +86,18 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
     * `󰐥 Session & Power`: Lock screen (Hyprlock), suspend, reboot, poweroff, logout.
   * **Direct Fuzzy Search**: You don't need to navigate submenus—simply type keywords like `wifi`, `audio`, `btop`, `lock`, or `screenshot` to trigger actions immediately from the first screen.
 
----
+  ### Maintenance Center
+  * **Open**: Control Center → **Maintenance Center**. The Rice Diagnostics view is also reachable from System & Performance.
+  * **CLI**: Run `~/.config/hypr/scripts/rice doctor`, `doctor --full`, `doctor --module audio`, `validate`, `dependencies --full`, `reload`, or `test`.
+  * **Reports**: `rice doctor --report` writes a timestamped report under `~/.local/state/hypr-rice/reports/`; `rice doctor --report PATH` chooses a destination.
+  * **Safe repairs**: `rice doctor --fix` offers only a confirmed Waybar status refresh. It does not edit configs, install packages, or restart services.
+  * **Snapshots**: `rice snapshot create`, `list`, `diff ID`, `compare ID OTHER`, `restore ID`, `delete ID`, and `retention N`. Restore previews affected paths, requires confirmation, snapshots the current config first, validates the restored config, and rolls back on validation failure. It can recover from an already-invalid config. Restore is additive: it does not delete files absent from a snapshot. Backups are stored under `~/.local/share/hypr-rice/snapshots/`, with default retention of 10. Display, audio, session-preset, and snapshot-setting changes automatically snapshot their previous saved preferences.
+  * **Safe reload**: `rice reload` validates Hyprland and Lua syntax before reloading, then checks Hyprland's reported config errors. Waybar is not restarted; use the separate Restart Waybar action when needed.
+  * **Activity**: `rice logs` supports `--module`, `--severity`, `--search`, `--since YYYY-MM-DD`, `--export PATH`, and confirmed `--clear`. JSONL logs rotate at 2 MiB with three retained generations in `~/.local/state/hypr-rice/`.
+  * Snapshots exclude `.git`, `.backup`, caches, wallpaper image assets, log files, and common private key/credential filenames. Snapshot restore and manual snapshot deletion always require explicit confirmation. Before manually editing config files, use `rice snapshot create --label pre-manual-edit`.
+  * Tests use Python's built-in `unittest`; no new packages are required. The repeatable hardware checklist is in [docs/maintenance-testing.md](./docs/maintenance-testing.md).
+
+  ---
 
 ### 2. PipeWire Audio Control Center
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>A</kbd>

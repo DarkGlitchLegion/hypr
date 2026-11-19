@@ -28,6 +28,14 @@ refresh_waybar_bluetooth() {
     pkill -RTMIN+9 waybar 2>/dev/null || true
 }
 
+log_event() {
+    local severity="$1"
+    local description="$2"
+    python3 "${HOME}/.config/hypr/scripts/rice_maintenance.py" event bluetooth "${severity}" "${description}" \
+        --category bluetooth >/dev/null 2>&1 || \
+        printf 'Bluetooth Manager: could not record activity event: %s\n' "${description}" >&2
+}
+
 ensure_agent() {
     if ! pgrep -fa bluetooth-agent.py >/dev/null 2>&1; then
         if command -v hyprctl >/dev/null 2>&1; then
@@ -48,6 +56,7 @@ toggle_power() {
     if is_powered; then
         bluetoothctl power off >/dev/null 2>&1
         refresh_waybar_bluetooth
+        log_event "info" "Bluetooth radio powered off"
         notify "low" "Bluetooth Disabled" "Bluetooth adapter powered off."
     else
         # 1. Unblock hardware/software RF kill switches
@@ -66,8 +75,10 @@ toggle_power() {
         refresh_waybar_bluetooth
 
         if is_powered; then
+            log_event "info" "Bluetooth radio powered on"
             notify "low" "Bluetooth Enabled" "Bluetooth adapter powered on."
         else
+            log_event "error" "Bluetooth radio failed to power on"
             notify "critical" "Bluetooth Error" "Failed to power on Bluetooth. Check rfkill or hardware switch."
         fi
     fi
@@ -121,19 +132,23 @@ device_actions() {
             notify "low" "Connecting..." "Connecting to ${name}..."
             if timeout 10 bluetoothctl connect "${mac}" >/dev/null 2>&1; then
                 refresh_waybar_bluetooth
+                log_event "info" "Bluetooth device connected"
                 notify "low" "Connected" "Connected to ${name}."
             else
+                log_event "warning" "Bluetooth connection attempt failed"
                 notify "critical" "Connection Failed" "Could not connect to ${name}."
             fi
             ;;
         *"Disconnect"*)
             bluetoothctl disconnect "${mac}" >/dev/null 2>&1
             refresh_waybar_bluetooth
+            log_event "info" "Bluetooth device disconnected"
             notify "low" "Disconnected" "Disconnected from ${name}."
             ;;
         *"Unpair"*|*"Remove"*)
             bluetoothctl remove "${mac}" >/dev/null 2>&1
             refresh_waybar_bluetooth
+            log_event "info" "Bluetooth paired device removed"
             notify "low" "Device Removed" "Unpaired and removed ${name}."
             ;;
         *)

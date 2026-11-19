@@ -176,6 +176,7 @@ def save_current_preset(name: str | None = None) -> None:
     preset = capture_session()
     preset["saved_at"] = int(time.time())
     presets[name] = preset
+    display_function("snapshot_before_config_change")("session-presets", PRESETS_FILE)
     atomic_write(PRESETS_FILE, {"version": 1, "presets": presets})
     display_function("notify")(
         "Session preset saved",
@@ -375,6 +376,7 @@ def delete_preset(name: str) -> None:
     if not choice or choice == "Cancel":
         return
     del presets[name]
+    display_function("snapshot_before_config_change")("session-presets", PRESETS_FILE)
     atomic_write(PRESETS_FILE, {"version": 1, "presets": presets})
     display_function("notify")("Session preset deleted", name)
 

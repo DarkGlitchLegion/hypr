@@ -30,6 +30,20 @@ class AudioError(RuntimeError):
     """An audio device query or operation failed."""
 
 
+def log_event(description: str, *, severity: str = "info", result: str = "success") -> None:
+    try:
+        from rice_events import log_event as write_event
+        write_event(
+            "audio",
+            description,
+            category="audio",
+            severity=severity,
+            result=result,
+        )
+    except (ImportError, OSError) as exc:
+        print(f"Audio Manager: could not write activity log: {exc}", file=sys.stderr)
+
+
 def notify(title: str, message: str, urgency: str = "low") -> None:
     try:
         subprocess.run(
@@ -67,6 +81,13 @@ def load_preferences() -> dict[str, Any]:
 
 
 def save_preferences(preferences: dict[str, Any]) -> None:
+    if PREFERENCES.exists():
+        try:
+            from rice_maintenance import snapshot_before_config_change
+
+            snapshot_before_config_change("audio-preferences", PREFERENCES)
+        except (ImportError, OSError, RuntimeError) as exc:
+            raise AudioError(f"Could not create a safety snapshot before saving preferences: {exc}") from exc
     PREFERENCES.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(prefix=".audio-preferences-", dir=PREFERENCES.parent)
     try:
@@ -325,6 +346,10 @@ def toggle_auto_switch() -> None:
         preferences.pop("auto_fallback_sink_id", None)
     save_preferences(preferences)
     notify("Audio automation", message)
+    log_event(
+        "Automatic HDMI audio switching " + ("enabled" if enabled else "disabled"),
+        result="success",
+    )
 
 
 def open_menu(mode: str = "all") -> None:
@@ -378,6 +403,7 @@ def open_menu(mode: str = "all") -> None:
         preferences.pop("auto_fallback_sink_id", None)
         save_preferences(preferences)
         notify("Audio output switched", f"Default output: {value['description']}")
+        log_event(f"Audio output changed to {value['description']}")
     elif selected_type == "source":
         set_source(value)
         preferences["preferred_source"] = value["name"]
@@ -454,6 +480,7 @@ def watch() -> None:
                             set_sink(fallback)
                             current = fallback["name"]
                             notify("Audio output restored", f"Using {fallback['description']} after HDMI disconnected.")
+                            log_event(f"Audio fallback selected after HDMI disconnect: {fallback['description']}")
                     preferences.pop("auto_selected_sink", None)
                     preferences.pop("auto_selected_sink_id", None)
                     preferences.pop("auto_fallback_sink", None)
@@ -497,6 +524,7 @@ def watch() -> None:
                             preferences["auto_fallback_sink_id"] = device_identity(previous)
                         set_sink(hdmi)
                         notify("HDMI audio connected", f"Audio is now routed to {hdmi['description']}.")
+                        log_event(f"Automatic HDMI audio selected: {hdmi['description']}")
                     preferences["auto_selected_sink"] = hdmi["name"]
                     preferences["auto_selected_sink_id"] = device_identity(hdmi)
                 elif (
@@ -527,6 +555,7 @@ def watch() -> None:
                 if message != last_error:
                     logging.exception("Audio hotplug watcher could not refresh device state")
                     notify("Audio device refresh failed", message, "normal")
+                    log_event(f"Audio hotplug refresh failed: {message}", severity="error", result="failure")
                     last_error = message
             time.sleep(POLL_INTERVAL)
     except KeyboardInterrupt:

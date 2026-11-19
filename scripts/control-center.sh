@@ -16,6 +16,11 @@ notify() {
     dunstify -a "Control Center" -u low -i "preferences-system" "$1" "$2" 2>/dev/null || true
 }
 
+run_rice_terminal() {
+    local arguments="$1"
+    kitty --config "${KITTY_CONF}" -e bash -lc "\"${SCRIPTS}/rice\" ${arguments}; status=\$?; echo; printf 'Exit status: %s\\n' \"\$status\"; read -r -p 'Press Enter to close...'" &
+}
+
 # ---------------------------------------------------------------------
 # Top-Level Hub
 # ---------------------------------------------------------------------
@@ -27,11 +32,13 @@ show_main_hub() {
 <span color="#AAAAAA"><b>󰲋  [Category] Developer &amp; Workstation    </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Code editors, git, pentest suites, terminals</span>
 <span color="#AAAAAA"><b>󰅇  [Category] Productivity &amp; Capture     </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Clipboard manager, screenshot suite, shortcuts</span>
 <span color="#AAAAAA"><b>󰐥  [Category] Session &amp; Power            </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Lock screen, suspend, reboot, shutdown</span>
+<span color="#AAAAAA"><b>󰒓  [Category] Maintenance                </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Diagnostics, snapshots, tests, logs, validation</span>
 <span color="#888888">── Quick Actions ─────────────────────────────────────────────────────────────</span>
 <span color="#AAAAAA"><b>󰄲  Application Launcher                  </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Search and launch desktop applications</span>
 <span color="#AAAAAA"><b>󰞷  Terminal (Kitty)                      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Open Kitty terminal emulator</span>
 <span color="#AAAAAA"><b>󰍹  Display Manager                       </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Manage connected displays and layouts</span>
 <span color="#AAAAAA"><b>󰐥  Session Presets                       </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Save or restore display, workspace, DND, and idle settings</span>
+<span color="#AAAAAA"><b>󰒓  Maintenance Center                    </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Inspect, validate, back up, and test the rice</span>
 <span color="#AAAAAA"><b>󰉋  File Manager (Thunar)                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Browse local files and storage</span>
 <span color="#AAAAAA"><b>󰈹  Web Browser (Firefox)                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Launch default web browser</span>
 <span color="#AAAAAA"><b>󰤨  Wi-Fi Network Manager                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Scan, connect, and manage Wi-Fi</span>
@@ -42,7 +49,7 @@ show_main_hub() {
 <span color="#AAAAAA"><b>󰅇  Clipboard History Manager             </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Search and paste clipboard history</span>
 <span color="#AAAAAA"><b>󰹑  Take Screenshot (Region)              </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Select area to capture to clipboard/file</span>
 <span color="#AAAAAA"><b>󰌌  Keybindings Reference                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Search keyboard shortcuts</span>
-<span color="#AAAAAA"><b>󰑓  Reload Hyprland Desktop               </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Refresh Hyprland &amp; Waybar</span>
+<span color="#AAAAAA"><b>󰑓  Reload Hyprland Desktop               </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Validate and reload; leave Waybar running</span>
 <span color="#AAAAAA"><b>󰌾  Lock Screen Immediately               </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Lock screen via Hyprlock</span>
 EOF
 }
@@ -57,9 +64,25 @@ show_system_menu() {
 <span color="#AAAAAA"><b>󰓅  Power Profiles &amp; Battery Center       </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Switch performance, balanced, power-saver</span>
 <span color="#AAAAAA"><b>󰋊  Disk Usage &amp; Storage Overview         </b></span> <span color="#333333">│</span> <span color="#D5D5D5">View local filesystem storage in terminal</span>
 <span color="#AAAAAA"><b>󰑓  Restart Waybar                        </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Reload top status bar</span>
-<span color="#AAAAAA"><b>󰑓  Reload Hyprland Desktop               </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Refresh Hyprland configuration</span>
-<span color="#AAAAAA"><b>󰒓  Rice Health &amp; Diagnostics            </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Check config, displays, workspaces, tools</span>
+<span color="#AAAAAA"><b>󰑓  Reload Hyprland Desktop               </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Validate and reload; leave Waybar running</span>
+<span color="#AAAAAA"><b>󰒓  Maintenance Center                    </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Diagnostics, snapshots, tests, logs</span>
 <span color="#AAAAAA"><b>󰒓  Hyprland Config Directory             </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Open ~/.config/hypr in Kitty</span>
+EOF
+}
+
+# ---------------------------------------------------------------------
+# Submenu: Maintenance
+# ---------------------------------------------------------------------
+show_maintenance_menu() {
+    cat << 'EOF'
+<span color="#EBCB8B"><b>󰌍  [Back to Control Center]              </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Return to top-level menu</span>
+<span color="#AAAAAA"><b>󰒓  Rice Diagnostics                      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">System, modules, dependencies, and health</span>
+<span color="#AAAAAA"><b>󰗼  Configuration Snapshots               </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Create, compare, and safely restore backups</span>
+<span color="#AAAAAA"><b>󰑓  Regression Tests                      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Run repeatable unit tests</span>
+<span color="#AAAAAA"><b>󰂚  Logs &amp; Activity                      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Search, filter, export, or clear events</span>
+<span color="#AAAAAA"><b>󰒓  Dependency Checker                    </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Show required and optional tools</span>
+<span color="#AAAAAA"><b>󰑓  Validate Configuration                </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Check Hyprland, Lua, shell, Python, and Waybar syntax</span>
+<span color="#AAAAAA"><b>󰑓  Safe Recovery &amp; Repair               </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Offer explicitly confirmed safe refreshes</span>
 EOF
 }
 
@@ -169,6 +192,9 @@ handle_action() {
         *"[Category] Session"*)
             run_menu "session"
             ;;
+        *"[Category] Maintenance"*|*"Maintenance Center"*)
+            run_menu "maintenance"
+            ;;
         *"[Back to Control Center]"*)
             run_menu "main"
             ;;
@@ -181,11 +207,32 @@ handle_action() {
         *"Display Manager"*)
             "${SCRIPTS}/display-manager.py" &
             ;;
+        *"Rice Diagnostics"*|*"Rice Health &amp; Diagnostics"*)
+            "${SCRIPTS}/rice" doctor --ui &
+            ;;
+        *"Configuration Snapshots"*)
+            "${SCRIPTS}/rice" snapshot ui &
+            ;;
+        *"Regression Tests"*)
+            run_rice_terminal "test"
+            ;;
+        *"Logs &amp; Activity"*|*"Logs & Activity"*)
+            "${SCRIPTS}/rice" logs --ui &
+            ;;
+        *"Dependency Checker"*)
+            run_rice_terminal "dependencies --full"
+            ;;
+        *"Validate Configuration"*)
+            run_rice_terminal "validate"
+            ;;
+        *"Safe Recovery &amp; Repair"*|*"Safe Recovery & Repair"*)
+            run_rice_terminal "doctor --fix"
+            ;;
         *"Session Presets"*)
             "${SCRIPTS}/session-presets.py" &
             ;;
         *"Rice Health & Diagnostics"*|*"Rice Health &amp; Diagnostics"*)
-            "${SCRIPTS}/rice-health.py" &
+            "${SCRIPTS}/rice" doctor --ui &
             ;;
         *"File Manager"*)
             thunar &
@@ -286,7 +333,7 @@ handle_action() {
             "${SCRIPTS}/restart-waybar.sh" &
             ;;
         *"Reload Hyprland Desktop"*)
-            hyprctl reload && "${SCRIPTS}/restart-waybar.sh" &
+            run_rice_terminal "reload"
             ;;
         *"Hyprland Config Directory"*)
             kitty --config "${KITTY_CONF}" -e sh -c "cd ${HOME}/.config/hypr && ls -la && exec bash" &
@@ -321,6 +368,10 @@ run_menu() {
         system)
             prompt="󰒓  System"
             generator="show_system_menu"
+            ;;
+        maintenance)
+            prompt="󰒓  Maintenance"
+            generator="show_maintenance_menu"
             ;;
         hardware)
             prompt="󰤨  Hardware"

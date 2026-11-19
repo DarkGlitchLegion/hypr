@@ -96,6 +96,21 @@ def notify(title: str, message: str, urgency: str = "normal") -> None:
         stderr=subprocess.DEVNULL,
     )
 
+
+def log_event(description: str, *, severity: str = "info", result: str = "success") -> None:
+    try:
+        from rice_events import log_event as write_event
+        write_event(
+            "display",
+            description,
+            category="display",
+            severity=severity,
+            result=result,
+        )
+    except (ImportError, OSError) as exc:
+        print(f"Display Manager: could not write activity log: {exc}", file=sys.stderr)
+
+
 def rofi(options: list[str], prompt: str, timeout: int | None = None) -> str | None:
     if not options:
         return None
@@ -585,7 +600,17 @@ def load_profile(records: list[dict[str, Any]] | None = None) -> dict[str, Any] 
     return max(profiles, key=lambda profile: profile.get("savedAt", 0), default=None)
 
 
+def snapshot_before_config_change(label: str, *targets: Path) -> Path | None:
+    try:
+        from rice_maintenance import snapshot_before_config_change as snapshot
+
+        return snapshot(label, *targets)
+    except (ImportError, OSError, RuntimeError) as exc:
+        raise DisplayError(f"Could not create a safety snapshot before saving: {exc}") from exc
+
+
 def save_profile(layout: list[dict[str, Any]]) -> None:
+    snapshot_before_config_change("display-profile", STATE_FILE)
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     profile = {"savedAt": int(time.time()), "layout": layout}
     signature = {item["name"] for item in layout}
@@ -678,6 +703,7 @@ def transaction(
     with display_operation_lock(timeout=1) as acquired:
         if not acquired:
             notify("Display Manager busy", "Another display change is still in progress.")
+            log_event(f"Could not start layout change: {label}", severity="warning", result="busy")
             return False
         previous = runtime_layout()
         if presentation is not None:
@@ -694,8 +720,11 @@ def transaction(
                 restore_layout(previous)
             except DisplayError as rollback_error:
                 notify("Display change failed", f"{exc}; rollback also failed: {rollback_error}", "critical")
+                log_event(f"Display layout failed and rollback failed: {label}", severity="critical", result="failure")
                 return False
             notify("Display change failed", str(exc), "critical")
+            log_event(f"Display layout failed and previous layout was restored: {label}",
+                      severity="error", result="rolled-back")
             return False
 
         notify("Display configuration changed", f"{label}. Confirm within {CONFIRM_SECONDS} seconds or it will revert.")
@@ -756,6 +785,8 @@ def transaction(
                 notify("Display changed during confirmation", "The connected display state changed; a safe layout was restored.", "critical")
             except DisplayError as exc:
                 notify("Display recovery failed", str(exc), "critical")
+            log_event(f"Display layout cancelled after hotplug during confirmation: {label}",
+                      severity="warning", result="rolled-back")
             return False
         if choice not in (save_choice, session_choice):
             try:
@@ -763,6 +794,9 @@ def transaction(
                 notify("Display layout reverted", "The previous monitor layout has been restored.")
             except DisplayError as exc:
                 notify("Display rollback failed", str(exc), "critical")
+                log_event(f"Display layout rollback failed: {label}", severity="critical", result="failure")
+            else:
+                log_event(f"Display layout was not confirmed: {label}", severity="warning", result="rolled-back")
             return False
 
         if choice == save_choice:
@@ -772,8 +806,10 @@ def transaction(
                 notify("Layout active, but not saved", str(exc), "critical")
                 return True
             notify("Display layout saved", "It will be restored at startup and when its monitors reconnect.")
+            log_event(f"Saved display layout: {label}")
         else:
             notify("Display layout applied", f"{label} is active for this session.")
+            log_event(f"Applied display layout for this session: {label}")
         return True
 
 
@@ -835,6 +871,7 @@ def save_external_workspace_preference(workspace: str) -> None:
     if not isinstance(data, dict):
         raise DisplayError("Display preferences are malformed; they were not overwritten.")
     data["external_workspace"] = workspace
+    snapshot_before_config_change("display-workspace", DISPLAY_PREFERENCES)
     DISPLAY_PREFERENCES.parent.mkdir(parents=True, exist_ok=True)
     fd, temp_name = tempfile.mkstemp(prefix=".display-preferences-", dir=DISPLAY_PREFERENCES.parent)
     try:
@@ -1446,6 +1483,7 @@ def start_presentation_mode() -> None:
     if warnings:
         message += " " + " ".join(warnings)
     notify("Presentation Mode activated", message, "critical" if warnings else "normal")
+    log_event("Presentation Mode activated", severity="warning" if warnings else "info")
 
 
 def exit_presentation_mode(lock_held: bool = False) -> None:
@@ -1489,6 +1527,8 @@ def _exit_presentation_state(state: dict[str, Any]) -> None:
     if errors:
         message += " " + " ".join(errors)
     notify("Presentation Mode deactivated", message, "critical" if errors else "normal")
+    log_event("Presentation Mode deactivated", severity="error" if errors else "info",
+              result="recovered" if errors else "success")
 
 
 def select_mode(record: dict[str, Any], setting: dict[str, Any]) -> None:
