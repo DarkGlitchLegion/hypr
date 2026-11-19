@@ -7,11 +7,15 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
 import threading
 import time
+import fcntl
+import select
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -20,9 +24,10 @@ CONFIG = Path.home() / ".config" / "hypr"
 ROFI_THEME = CONFIG / "rofi" / "command-center.rasi"
 STATE_FILE = CONFIG / "display-profiles.json"
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
-WATCH_STATE = RUNTIME_DIR / "hypr-display-manager.json"
+WATCH_LOCK = RUNTIME_DIR / "hypr-display-manager.lock"
+APPLY_LOCK = RUNTIME_DIR / "hypr-display-manager-apply.lock"
 CONFIRM_SECONDS = 20
-POLL_SECONDS = 3
+EVENT_DEBOUNCE_SECONDS = 0.35
 
 TRANSFORMS = {
     0: "Landscape",
@@ -52,6 +57,28 @@ def command(args: list[str], timeout: float = 5) -> subprocess.CompletedProcess[
         detail = result.stderr.strip() or result.stdout.strip() or "command failed"
         raise DisplayError(detail)
     return result
+
+
+@contextmanager
+def display_operation_lock(timeout: float = 0):
+    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+    lock_file = APPLY_LOCK.open("a")
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            break
+        except BlockingIOError:
+            if time.monotonic() >= deadline:
+                lock_file.close()
+                yield False
+                return
+            time.sleep(0.1)
+    try:
+        yield True
+    finally:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        lock_file.close()
 
 
 def notify(title: str, message: str, urgency: str = "normal") -> None:
@@ -122,6 +149,7 @@ def drm_connectors() -> dict[str, bool]:
 
 
 def is_internal(name: str) -> bool:
+    # These are DRM connector types, not machine-specific connector numbers.
     return name.lower().startswith(("edp", "lvds", "dsi"))
 
 
@@ -138,6 +166,8 @@ def monitors() -> list[dict[str, Any]]:
         if not isinstance(record, dict) or not record.get("name"):
             continue
         name = str(record["name"])
+        if name == "FALLBACK":
+            continue
         record["connected"] = connectors.get(name, True)
         record["internal"] = is_internal(name)
         result[name] = record
@@ -149,6 +179,14 @@ def monitors() -> list[dict[str, Any]]:
                 "connected": connected,
                 "internal": is_internal(name),
                 "disabled": True,
+                "width": 0,
+                "height": 0,
+                "refreshRate": 0,
+                "scale": 1,
+                "transform": 0,
+                "x": 0,
+                "y": 0,
+                "mirrorOf": "none",
                 "availableModes": [],
             }
     return sorted(result.values(), key=lambda item: (not item["internal"], item["name"].lower()))
@@ -184,16 +222,25 @@ def current_setting(record: dict[str, Any]) -> dict[str, Any]:
         "y": int(record.get("y", 0)),
         "scale": float(record.get("scale", 1)),
         "transform": int(record.get("transform", 0)),
-        "mirror": record.get("mirrorOf") if record.get("mirrorOf") not in (None, "none") else None,
+        "mirror": None,
     }
 
 
 def runtime_layout(records: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
-    return [
-        current_setting(item)
-        for item in (records or monitors())
-        if item.get("connected") and item.get("name")
-    ]
+    records = records or monitors()
+    by_id = {str(item.get("id")): item for item in records if item.get("id") is not None}
+    layout = []
+    for item in records:
+        if not item.get("connected") or not item.get("name"):
+            continue
+        setting = current_setting(item)
+        mirror_id = item.get("mirrorOf")
+        if not item.get("disabled") and mirror_id not in (None, "none"):
+            source = by_id.get(str(mirror_id))
+            if source and source.get("name") != item["name"]:
+                setting["mirror"] = source["name"]
+        layout.append(setting)
+    return layout
 
 
 def validate_setting(setting: dict[str, Any], by_name: dict[str, dict[str, Any]]) -> None:
@@ -231,51 +278,139 @@ def validate_setting(setting: dict[str, Any], by_name: dict[str, dict[str, Any]]
 def monitor_lua(setting: dict[str, Any]) -> str:
     name = setting["name"]
     if setting.get("disabled"):
-        return f"hl.monitor({{ output = {json.dumps(name)}, disabled = true }})"
+        return (
+            "hl.monitor({ "
+            f"output = {json.dumps(name)}, disabled = true, mirror = \"\" "
+            "})"
+        )
     position = "0x0" if setting.get("mirror") else f"{setting['x']}x{setting['y']}"
     scale = f"{float(setting.get('scale', 1)):g}"
     fields = [
         f"output = {json.dumps(name)}",
+        "disabled = false",
         f"mode = {json.dumps(setting.get('mode', 'preferred'))}",
         f"position = {json.dumps(position)}",
         f"scale = {json.dumps(scale)}",
         f"transform = {int(setting.get('transform', 0))}",
     ]
-    if setting.get("mirror"):
-        fields.append(f"mirror = {json.dumps(setting['mirror'])}")
+    fields.append(f"mirror = {json.dumps(setting.get('mirror') or '')}")
     return "hl.monitor({ " + ", ".join(fields) + " })"
 
 
+def native_mirroring_is_safe() -> bool:
+    try:
+        version = command(["hyprctl", "version"]).stdout
+    except DisplayError:
+        return False
+    match = re.search(r"Hyprland\s+(\d+)\.(\d+)\.(\d+)", version)
+    if not match:
+        return False
+    return tuple(map(int, match.groups())) > (0, 57, 2)
+
+
 def apply_layout(layout: list[dict[str, Any]]) -> None:
-    records = monitors()
-    by_name = {item["name"]: item for item in records}
-    for setting in layout:
-        validate_setting(setting, by_name)
+    if not layout:
+        raise DisplayError("The requested display layout is empty.")
+    names = [setting.get("name") for setting in layout]
+    if len(names) != len(set(names)):
+        raise DisplayError("The requested layout contains duplicate monitor rules.")
+    if any(setting.get("mirror") for setting in layout) and not native_mirroring_is_safe():
+        raise DisplayError(
+            "Native mirroring is disabled on this Hyprland version. "
+            "Its renderer can abort when a mirror target disconnects."
+        )
     enabled = [item for item in layout if not item.get("disabled")]
     if not enabled:
         raise DisplayError("At least one display must remain enabled.")
-    ordered = enabled + [item for item in layout if item.get("disabled")]
+    ordered = sorted(enabled, key=lambda item: (item.get("x", 0) != 0 or item.get("y", 0) != 0)) + [
+        item for item in layout if item.get("disabled")
+    ]
     for setting in ordered:
+        records = monitors()
+        by_name = {item["name"]: item for item in records}
+        validate_setting(setting, by_name)
         command(["hyprctl", "eval", monitor_lua(setting)])
+
+    deadline = time.monotonic() + 5
+    while True:
+        records = monitors()
+        by_name = {item["name"]: item for item in records}
+        for setting in layout:
+            validate_setting(setting, by_name)
+        applied = all(
+            bool(by_name[setting["name"]].get("disabled", False)) == bool(setting.get("disabled"))
+            and (
+                str(by_name[setting["name"]].get("mirrorOf", "none")) in ("none", "")
+                if not setting.get("mirror")
+                else str(by_name[setting["name"]].get("mirrorOf"))
+                in (
+                    str(by_name[setting["mirror"]].get("id")),
+                    setting["mirror"],
+                )
+            )
+            for setting in layout
+        )
+        if applied:
+            break
+        if time.monotonic() >= deadline:
+            raise DisplayError("Hyprland did not apply the requested monitor state.")
+        time.sleep(0.1)
 
 
 def restore_layout(layout: list[dict[str, Any]]) -> None:
-    available = connected_names()
-    restore = [item for item in layout if item.get("name") in available]
-    if not any(not item.get("disabled") for item in restore):
-        internal = next((item for item in monitors() if item.get("connected") and item.get("internal")), None)
-        if internal:
-            restore.insert(0, {
-                "name": internal["name"],
-                "disabled": False,
-                "mode": "preferred",
-                "x": 0,
-                "y": 0,
-                "scale": 1,
-                "transform": 0,
-            })
-    if restore:
-        apply_layout(restore)
+    if any(item.get("mirror") for item in layout) and not native_mirroring_is_safe():
+        safe_fallback()
+        return
+    current = monitors()
+    available = {item["name"]: item for item in current if item.get("connected")}
+    restore = {
+        item["name"]: dict(item)
+        for item in layout
+        if item.get("name") in available
+    }
+    active = [item for item in restore.values() if not item.get("disabled")]
+    if not active:
+        internal = next((item for item in available.values() if item.get("internal")), None)
+        if not internal:
+            internal = next(iter(available.values()), None)
+        if not internal:
+            raise DisplayError("No connected display is available for rollback.")
+        restore[internal["name"]] = {
+            "name": internal["name"],
+            "disabled": False,
+            "mode": "preferred",
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "transform": 0,
+            "mirror": None,
+        }
+    apply_layout(list(restore.values()))
+
+
+def safe_fallback() -> None:
+    records = [item for item in monitors() if item.get("connected")]
+    target = next((item for item in records if item.get("internal")), None)
+    if target is None:
+        target = next((item for item in records if not item.get("disabled")), None)
+    if target is None and records:
+        target = records[0]
+    if target is None:
+        raise DisplayError("No connected display is available for recovery.")
+    layout = [
+        {
+            "name": item["name"],
+            "disabled": item["name"] != target["name"],
+            "mode": "preferred",
+            "x": 0,
+            "y": 0,
+            "scale": 1,
+            "transform": 0,
+            "mirror": None,
+        }
+        for item in records
+    ]
+    apply_layout(layout)
 
 
 def load_profiles() -> list[dict[str, Any]]:
@@ -320,10 +455,14 @@ def save_profile(layout: list[dict[str, Any]]) -> None:
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
     profile = {"savedAt": int(time.time()), "layout": layout}
     signature = {item["name"] for item in layout}
+    layout_key = json.dumps(layout, sort_keys=True, separators=(",", ":"))
     profiles = [
         item
         for item in load_profiles()
-        if {monitor["name"] for monitor in item["layout"]} != signature
+        if (
+            {monitor["name"] for monitor in item["layout"]} != signature
+            or json.dumps(item["layout"], sort_keys=True, separators=(",", ":")) != layout_key
+        )
     ]
     profiles.append(profile)
     payload = {"version": 2, "profiles": profiles}
@@ -392,49 +531,98 @@ def choose_output(records: list[dict[str, Any]], prompt: str) -> dict[str, Any] 
 
 
 def transaction(label: str, layout: list[dict[str, Any]]) -> bool:
-    previous = runtime_layout()
-    try:
-        apply_layout(layout)
-    except DisplayError as exc:
-        try:
-            restore_layout(previous)
-        except DisplayError as rollback_error:
-            notify("Display change failed", f"{exc}; rollback also failed: {rollback_error}", "critical")
+    with display_operation_lock(timeout=1) as acquired:
+        if not acquired:
+            notify("Display Manager busy", "Another display change is still in progress.")
             return False
-        notify("Display change failed", str(exc), "critical")
-        return False
+        previous = runtime_layout()
+        try:
+            apply_layout(layout)
+        except DisplayError as exc:
+            try:
+                restore_layout(previous)
+            except DisplayError as rollback_error:
+                notify("Display change failed", f"{exc}; rollback also failed: {rollback_error}", "critical")
+                return False
+            notify("Display change failed", str(exc), "critical")
+            return False
 
-    notify("Display configuration changed", f"{label}. Confirm within {CONFIRM_SECONDS} seconds or it will revert.")
-    choice = rofi(
-        [
-            f"Keep this layout — save for startup and reconnection",
+        notify("Display configuration changed", f"{label}. Confirm within {CONFIRM_SECONDS} seconds or it will revert.")
+        expected = connected_names()
+        options = [
+            "Keep this layout — save for startup and reconnection",
             "Keep this layout for this session only",
             "Revert to the previous layout",
-        ],
-        f"Confirm display layout ({CONFIRM_SECONDS}s)",
-        timeout=CONFIRM_SECONDS,
-    )
-    if choice not in (
-        "Keep this layout — save for startup and reconnection",
-        "Keep this layout for this session only",
-    ):
+        ]
+        process: subprocess.Popen[str] | None = None
         try:
-            restore_layout(previous)
-            notify("Display layout reverted", "The previous monitor layout has been restored.")
-        except DisplayError as exc:
-            notify("Display rollback failed", str(exc), "critical")
-        return False
-
-    if choice.startswith("Keep this layout —"):
-        try:
-            save_profile(runtime_layout())
+            process = subprocess.Popen(
+                ["rofi", "-dmenu", "-i", "-config", str(ROFI_THEME), "-p",
+                 f"Confirm display layout ({CONFIRM_SECONDS}s)"],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            stdout, stderr = process.communicate("\n".join(options) + "\n", timeout=0.2)
+        except subprocess.TimeoutExpired:
+            stdout = stderr = None
         except OSError as exc:
-            notify("Layout active, but not saved", str(exc), "critical")
-            return True
-        notify("Display layout saved", "It will be restored at startup and when its monitors reconnect.")
-    else:
-        notify("Display layout applied", f"{label} is active for this session.")
-    return True
+            stdout = stderr = None
+            notify("Display confirmation unavailable", str(exc), "critical")
+
+        choice: str | None = None
+        deadline = time.monotonic() + CONFIRM_SECONDS
+        disconnected = False
+        while process is not None and process.poll() is None and time.monotonic() < deadline:
+            try:
+                actual = connected_names()
+            except DisplayError:
+                actual = set()
+            if actual != expected:
+                disconnected = True
+                process.kill()
+                break
+            try:
+                stdout, stderr = process.communicate(timeout=0.3)
+            except subprocess.TimeoutExpired:
+                continue
+        if process is not None and process.poll() is None:
+            process.kill()
+        if process is not None:
+            try:
+                if stdout is None:
+                    stdout, stderr = process.communicate(timeout=1)
+                if process.returncode == 0 and stdout:
+                    choice = stdout.strip()
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+
+        if disconnected:
+            try:
+                safe_fallback()
+                notify("Display changed during confirmation", "The connected display state changed; a safe layout was restored.", "critical")
+            except DisplayError as exc:
+                notify("Display recovery failed", str(exc), "critical")
+            return False
+        if choice not in (options[0], options[1]):
+            try:
+                restore_layout(previous)
+                notify("Display layout reverted", "The previous monitor layout has been restored.")
+            except DisplayError as exc:
+                notify("Display rollback failed", str(exc), "critical")
+            return False
+
+        if choice == options[0]:
+            try:
+                save_profile(runtime_layout())
+            except OSError as exc:
+                notify("Layout active, but not saved", str(exc), "critical")
+                return True
+            notify("Display layout saved", "It will be restored at startup and when its monitors reconnect.")
+        else:
+            notify("Display layout applied", f"{label} is active for this session.")
+        return True
 
 
 def internal_output(records: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -477,9 +665,9 @@ def preset_layout(preset: str, external_name: str | None = None, side: str = "ri
     by_name = {item["name"]: item for item in records}
 
     if preset == "laptop":
-        target = internal or (active[0] if active else None)
+        target = internal
         if not target:
-            notify("Display Manager", "No connected display is available.", "critical")
+            notify("Display Manager", "No connected built-in display was detected.", "critical")
             return None
         settings = {item["name"]: item for item in layout}
         if target["name"] not in settings:
@@ -494,6 +682,14 @@ def preset_layout(preset: str, external_name: str | None = None, side: str = "ri
         return "Laptop only", list(settings.values())
 
     if preset in ("external", "extend", "mirror", "presentation"):
+        if preset == "mirror" and not native_mirroring_is_safe():
+            notify(
+                "Mirroring blocked for stability",
+                "This Hyprland version can abort when a mirror target disconnects. "
+                "Use Extend or External only, or upgrade to a version with the renderer fix.",
+                "critical",
+            )
+            return None
         external = by_name.get(external_name or "")
         if not external or not external.get("connected") or external.get("internal"):
             external = choose_output(externals, "󰍹  Choose external display")
@@ -779,24 +975,30 @@ def display_manager() -> None:
 def saved_layout_ready(profile: dict[str, Any], records: list[dict[str, Any]]) -> bool:
     present = {item["name"] for item in records if item.get("connected")}
     layout = profile.get("layout", [])
-    saved = {item.get("name") for item in layout if isinstance(item, dict)}
-    return bool(saved) and saved == present
+    names = [item.get("name") for item in layout if isinstance(item, dict)]
+    saved = set(names)
+    if not saved or len(names) != len(saved) or saved != present or "FALLBACK" in saved:
+        return False
+    return not any(item.get("mirror") for item in layout) or native_mirroring_is_safe()
 
 
 def restore_saved_layout(profile: dict[str, Any], label: str) -> bool:
-    previous = runtime_layout()
-    try:
-        apply_layout(profile["layout"])
-    except DisplayError as exc:
-        try:
-            restore_layout(previous)
-        except DisplayError as rollback_error:
-            notify("Saved display layout failed", f"{exc}; safe fallback also failed: {rollback_error}", "critical")
+    with display_operation_lock(timeout=5) as acquired:
+        if not acquired:
             return False
-        notify("Saved display layout unavailable", f"{exc}. The current safe layout was retained.", "critical")
-        return False
-    notify("Display layout restored", label)
-    return True
+        previous = runtime_layout()
+        try:
+            apply_layout(profile["layout"])
+        except DisplayError as exc:
+            try:
+                restore_layout(previous)
+            except DisplayError as rollback_error:
+                notify("Saved display layout failed", f"{exc}; safe fallback also failed: {rollback_error}", "critical")
+                return False
+            notify("Saved display layout unavailable", f"{exc}. The current safe layout was retained.", "critical")
+            return False
+        notify("Display layout restored", label)
+        return True
 
 
 def action_notification(output: str) -> None:
@@ -839,61 +1041,160 @@ def action_notification(output: str) -> None:
         )
 
 
-def write_watch_state(names: set[str]) -> None:
-    WATCH_STATE.parent.mkdir(parents=True, exist_ok=True)
-    WATCH_STATE.write_text(json.dumps(sorted(names)), encoding="utf-8")
+def monitor_event(line: str) -> bool:
+    event = line.partition(">>")[0]
+    return event.startswith(("monitoradded", "monitorremoved"))
 
 
-def read_watch_state() -> set[str] | None:
-    try:
-        names = json.loads(WATCH_STATE.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    return set(names) if isinstance(names, list) and all(isinstance(item, str) for item in names) else None
+def wait_for_monitor_event(ipc: socket.socket, buffered: str) -> str:
+    pending = buffered
+    while True:
+        ready, _, _ = select.select([ipc], [], [], 1)
+        if not ready:
+            continue
+        data = ipc.recv(8192)
+        if not data:
+            raise ConnectionError("Hyprland IPC event socket closed.")
+        pending += data.decode("utf-8", errors="replace")
+        lines = pending.splitlines(keepends=True)
+        pending = ""
+        for line in lines:
+            if not line.endswith(("\n", "\r")):
+                pending = line
+                continue
+            if monitor_event(line):
+                quiet_until = time.monotonic() + EVENT_DEBOUNCE_SECONDS
+                hard_deadline = time.monotonic() + 1.5
+                while time.monotonic() < quiet_until and time.monotonic() < hard_deadline:
+                    ready, _, _ = select.select(
+                        [ipc],
+                        [],
+                        [],
+                        max(0.0, min(quiet_until - time.monotonic(), hard_deadline - time.monotonic())),
+                    )
+                    if not ready:
+                        break
+                    more = ipc.recv(8192)
+                    if not more:
+                        raise ConnectionError("Hyprland IPC event socket closed.")
+                    more_lines = more.decode("utf-8", errors="replace").splitlines()
+                    if any(monitor_event(item) for item in more_lines):
+                        quiet_until = time.monotonic() + EVENT_DEBOUNCE_SECONDS
+                return pending
+
+
+def move_orphaned_workspaces(connected: set[str], target: str) -> None:
+    workspaces = hyprctl_json("workspaces")
+    if not isinstance(workspaces, list):
+        raise DisplayError("Hyprland did not return workspace state.")
+    for workspace in workspaces:
+        if not isinstance(workspace, dict):
+            continue
+        name, monitor = workspace.get("name"), workspace.get("monitor")
+        if not isinstance(name, (str, int)) or not isinstance(monitor, str):
+            continue
+        if monitor and monitor not in connected:
+            workspace_name = str(name)
+            expression = (
+                "hl.dsp.workspace.move({ "
+                f"workspace = {json.dumps(workspace_name)}, "
+                f"monitor = {json.dumps(target)} "
+                "})"
+            )
+            command(["hyprctl", "eval", expression])
+
+
+def recover_disconnected_displays() -> None:
+    with display_operation_lock(timeout=5) as acquired:
+        if not acquired:
+            return
+        records = monitors()
+        connected = connected_names(records)
+        active = active_records(records)
+        if not active:
+            safe_fallback()
+            records = monitors()
+            connected = connected_names(records)
+            active = active_records(records)
+        if not active:
+            raise DisplayError("No active display remains after fallback recovery.")
+        target = next((item for item in active if item.get("internal")), active[0])
+        move_orphaned_workspaces(connected, target["name"])
 
 
 def watch_displays() -> None:
-    time.sleep(3)
+    RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+    lock_file = WATCH_LOCK.open("a")
+    try:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        lock_file.close()
+        print("A display watcher is already running.", file=sys.stderr)
+        return
+    signature = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
+    if not signature:
+        raise DisplayError("HYPRLAND_INSTANCE_SIGNATURE is not set; cannot connect to Hyprland IPC.")
+    socket_path = RUNTIME_DIR / "hypr" / signature / ".socket2.sock"
+    time.sleep(2)
     try:
         records = monitors()
+        previous = connected_names(records)
     except DisplayError as exc:
         notify("Display watcher unavailable", str(exc), "critical")
-        return
-    current = {item["name"] for item in records if item.get("connected")}
-    try:
-        write_watch_state(current)
-    except OSError as exc:
-        notify("Display watcher unavailable", f"Could not save monitor state: {exc}", "critical")
         return
     profile = load_profile(records)
     if profile and saved_layout_ready(profile, records):
         restore_saved_layout(profile, "Your saved layout is active.")
+
+    notified_unavailable = False
     while True:
-        time.sleep(POLL_SECONDS)
+        ipc = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
-            records = monitors()
-        except DisplayError:
-            continue
-        current = {item["name"] for item in records if item.get("connected")}
-        previous = read_watch_state() or current
-        appeared = current - previous
-        disappeared = previous - current
-        try:
-            write_watch_state(current)
-        except OSError as exc:
-            notify("Display watcher error", f"Could not save monitor state: {exc}", "critical")
-            continue
-        for output in appeared:
-            record = next((item for item in records if item["name"] == output), {})
-            if not record.get("internal"):
-                threading.Thread(target=action_notification, args=(output,), daemon=True).start()
-        for output in disappeared:
-            record = next((item for item in records if item["name"] == output), {})
-            if not record.get("internal"):
-                notify("External display disconnected", f"{output} was removed. Hyprland moved its workspaces to the remaining displays.")
-        profile = load_profile(records)
-        if profile and appeared and saved_layout_ready(profile, records):
-            restore_saved_layout(profile, "Your remembered monitor layout was restored.")
+            ipc.settimeout(None)
+            ipc.connect(str(socket_path))
+            if notified_unavailable:
+                notify("Display watcher restored", "Hyprland monitor event monitoring is active again.")
+                notified_unavailable = False
+            buffered = ""
+            while True:
+                buffered = wait_for_monitor_event(ipc, buffered)
+                try:
+                    records = monitors()
+                except DisplayError as exc:
+                    notify("Display state unavailable", str(exc), "critical")
+                    continue
+                current = connected_names(records)
+                appeared, disappeared = current - previous, previous - current
+                previous = current
+                if disappeared:
+                    try:
+                        recover_disconnected_displays()
+                        for output in sorted(disappeared):
+                            notify(
+                                "External display disconnected",
+                                f"{output} was removed. Workspaces were reassigned when necessary.",
+                            )
+                    except DisplayError as exc:
+                        notify("Display recovery failed", str(exc), "critical")
+                profile = load_profile(records)
+                restored = bool(
+                    appeared
+                    and profile
+                    and saved_layout_ready(profile, records)
+                    and restore_saved_layout(profile, "Your remembered monitor layout was restored.")
+                )
+                if appeared and not restored:
+                    for output in sorted(appeared):
+                        record = next((item for item in records if item["name"] == output), {})
+                        if not record.get("internal"):
+                            threading.Thread(target=action_notification, args=(output,), daemon=True).start()
+        except (OSError, ConnectionError) as exc:
+            if not notified_unavailable:
+                notify("Display watcher reconnecting", f"Hyprland IPC event socket: {exc}", "critical")
+                notified_unavailable = True
+            time.sleep(2)
+        finally:
+            ipc.close()
 
 
 def main() -> int:
