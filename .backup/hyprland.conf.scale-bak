@@ -1,5 +1,0 @@
--- =====================================================
--- Arch Linux Hyprland Rice — Minimal Dark Configuration
--- Compatibility Bridge for Hyprland 0.57.2+ (Lua Engine)
--- =====================================================
-dofile(os.getenv("HOME") .. "/.config/hypr/hyprland.lua")
