@@ -39,6 +39,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 ├── scripts/                  # Shell & Python automation utilities
 │   ├── control-center.sh     # Rice Control Center super-hub
 │   ├── rice-health.py        # Hyprland, display, workspace, and tool diagnostics
+│   ├── session-presets.py    # Save/apply/restore reversible desktop session bundles
 │   ├── audio-menu.sh         # Rofi entry point for the PipeWire audio manager
 │   ├── audio-manager.py      # Live sink/source selector and optional HDMI hotplug handling
 │   ├── power-profile-menu.sh # AMD P-State power profile switcher & battery health
@@ -100,6 +101,13 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 * When HDMI is disconnected, that workspace remains usable on the laptop; the placement rule does not require the external monitor to be connected.
 * Change the external workspace in Display Manager, then reload Hyprland for new Firefox windows to use the updated preference. Existing windows are not moved.
 * Add or change app-class-to-workspace rules in [app-placement.lua](./lua/app-placement.lua). Rules use Hyprland's native window matching and workspace assignment; the example chat rule is intentionally commented out.
+
+### Session Presets
+* Open **Session Presets** from the Display Manager or Control Center's Display menu.
+* Choose **Save current session…** and save a `Work`, `Presentation`, or custom-named preset. A preset records the current connected-monitor layout, each active monitor's workspace, DND state when Dunst is available, and whether a rice-managed idle inhibitor is active.
+* Apply a saved preset to switch to that combination. Display changes use the Display Manager's existing confirmation and rollback flow; disconnected or changed monitor setups are rejected rather than partially applied.
+* **Restore previous session** returns to the layout, monitor workspaces, notification state, and idle behavior from before the active session preset. Preset definitions persist in `~/.config/hypr/session-presets.json`; the temporary restore snapshot lasts for the current login session.
+* Session presets and Presentation Mode are mutually exclusive because Presentation Mode already owns a separate reversible display/DND/idle state.
 
 ---
 

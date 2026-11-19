@@ -31,6 +31,7 @@ show_main_hub() {
 <span color="#AAAAAA"><b>󰄲  Application Launcher                  </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Search and launch desktop applications</span>
 <span color="#AAAAAA"><b>󰞷  Terminal (Kitty)                      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Open Kitty terminal emulator</span>
 <span color="#AAAAAA"><b>󰍹  Display Manager                       </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Manage connected displays and layouts</span>
+<span color="#AAAAAA"><b>󰐥  Session Presets                       </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Save or restore display, workspace, DND, and idle settings</span>
 <span color="#AAAAAA"><b>󰉋  File Manager (Thunar)                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Browse local files and storage</span>
 <span color="#AAAAAA"><b>󰈹  Web Browser (Firefox)                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Launch default web browser</span>
 <span color="#AAAAAA"><b>󰤨  Wi-Fi Network Manager                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Scan, connect, and manage Wi-Fi</span>
@@ -87,6 +88,7 @@ show_display_menu() {
 <span color="#AAAAAA"><b>󰸉  Wallpaper Selector                    </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Browse and switch desktop wallpapers</span>
 <span color="#AAAAAA"><b>󰔎  Synchronize GTK Dark Theme            </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Re-apply Adwaita-dark and icon tokens</span>
 <span color="#AAAAAA"><b>󰍹  Display Manager                       </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Manage layouts, resolution, scale, and orientation</span>
+<span color="#AAAAAA"><b>󰐥  Session Presets                       </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Save or restore display, workspace, DND, and idle settings</span>
 <span color="#AAAAAA"><b>󰃠  Set Brightness to 100% (Maximum)      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Maximize panel backlight</span>
 <span color="#AAAAAA"><b>󰃟  Set Brightness to 50%  (Balanced)     </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Set backlight to 50%</span>
 <span color="#AAAAAA"><b>󰃞  Set Brightness to 10%  (Minimum)      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Minimize backlight for dark environments</span>
@@ -178,6 +180,9 @@ handle_action() {
             ;;
         *"Display Manager"*)
             "${SCRIPTS}/display-manager.py" &
+            ;;
+        *"Session Presets"*)
+            "${SCRIPTS}/session-presets.py" &
             ;;
         *"Rice Health & Diagnostics"*|*"Rice Health &amp; Diagnostics"*)
             "${SCRIPTS}/rice-health.py" &

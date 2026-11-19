@@ -28,6 +28,7 @@ RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
 WATCH_LOCK = RUNTIME_DIR / "hypr-display-manager.lock"
 APPLY_LOCK = RUNTIME_DIR / "hypr-display-manager-apply.lock"
 PRESENTATION_STATE = RUNTIME_DIR / "hypr-display-presentation.json"
+SESSION_PRESET_STATE = RUNTIME_DIR / "hypr-session-preset.json"
 CONFIRM_SECONDS = 20
 EVENT_DEBOUNCE_SECONDS = 0.35
 
@@ -1193,6 +1194,17 @@ def presentation_state() -> dict[str, Any] | None:
     return None
 
 
+def session_preset_active() -> bool:
+    try:
+        state = json.loads(SESSION_PRESET_STATE.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return False
+    except (OSError, json.JSONDecodeError) as exc:
+        notify("Session Preset state", f"Could not read its state: {exc}", "critical")
+        return True
+    return isinstance(state, dict) and state.get("active") is True
+
+
 def recover_interrupted_presentation() -> None:
     try:
         state = json.loads(PRESENTATION_STATE.read_text(encoding="utf-8"))
@@ -1267,7 +1279,10 @@ def set_dnd(paused: bool) -> None:
         )
 
 
-def start_idle_inhibitor() -> int:
+def start_idle_inhibitor(
+    who: str = "hypr-rice-presentation",
+    reason: str = "Presentation mode",
+) -> int:
     if not shutil.which("systemd-inhibit"):
         raise DisplayError("systemd-inhibit is unavailable; idle blanking cannot be inhibited.")
     try:
@@ -1275,8 +1290,8 @@ def start_idle_inhibitor() -> int:
             [
                 "systemd-inhibit",
                 "--what=idle",
-                "--who=hypr-rice-presentation",
-                "--why=Presentation mode",
+                f"--who={who}",
+                f"--why={reason}",
                 "--mode=block",
                 "sleep",
                 "infinity",
@@ -1296,14 +1311,14 @@ def start_idle_inhibitor() -> int:
     return process.pid
 
 
-def stop_idle_inhibitor(pid: Any) -> None:
+def stop_idle_inhibitor(pid: Any, who: str = "hypr-rice-presentation") -> None:
     if not isinstance(pid, int) or pid <= 1:
         return
     try:
         args = Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
     except OSError:
         return
-    if not any(b"systemd-inhibit" in arg for arg in args) or b"--who=hypr-rice-presentation" not in args:
+    if not any(b"systemd-inhibit" in arg for arg in args) or f"--who={who}".encode() not in args:
         return
     try:
         os.kill(pid, 15)
@@ -1317,6 +1332,12 @@ def stop_idle_inhibitor(pid: Any) -> None:
 
 
 def start_presentation_mode() -> None:
+    if session_preset_active():
+        notify(
+            "Session Preset active",
+            "Restore the previous session before starting Presentation Mode.",
+        )
+        return
     if presentation_state():
         exit_presentation_mode()
         return
@@ -1632,6 +1653,7 @@ def display_manager() -> None:
         "Preset: Mirror displays",
         f"External workspace: {workspace_preference or 'choose on Extend'}{external_workspace_status}",
         "Presentation Mode: Exit" if presentation_running else "Presentation Mode: Start",
+        "Session Presets…",
     ])
     for item in records:
         if item.get("connected"):
@@ -1647,6 +1669,7 @@ def display_manager() -> None:
     for preset in ("laptop", "external", "extend", "mirror"):
         actions[f"Preset: {dict(laptop='Laptop only', external='External display only', extend='Extend displays', mirror='Mirror displays')[preset]}"] = ("preset", preset)
     actions["Presentation Mode: Exit" if presentation_running else "Presentation Mode: Start"] = ("presentation", "")
+    actions["Session Presets…"] = ("session-presets", "")
     actions[f"External workspace: {workspace_preference or 'choose on Extend'}{external_workspace_status}"] = ("external-workspace", "")
     actions["Save current layout for startup/reconnect"] = ("save", "")
     actions["Reapply saved layout (with rollback)"] = ("reapply", "")
@@ -1674,6 +1697,13 @@ def display_manager() -> None:
             exit_presentation_mode()
         else:
             start_presentation_mode()
+    elif action == "session-presets":
+        subprocess.Popen(
+            [sys.executable, str(CONFIG / "scripts" / "session-presets.py")],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
     elif action == "external-workspace":
         update_external_workspace_preference()
     elif action == "save":
