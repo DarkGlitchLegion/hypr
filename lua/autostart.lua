@@ -19,6 +19,9 @@ hl.on("hyprland.start", function ()
     -- Restore the saved wallpaper before starting hyprpaper.
     hl.exec_cmd(scripts .. "/restore-wallpaper.sh")
 
+    -- Battery notifier through SMS notifications
+    hl.exec_cmd(scripts .. "/battery-notifier.sh")
+
     -- Detect monitor hotplug events and restore explicitly saved display layouts.
     hl.exec_cmd(scripts .. "/display-manager.py --watch")
 
