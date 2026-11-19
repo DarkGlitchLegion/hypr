@@ -12,11 +12,12 @@ show_cheatsheet() {
   ARCH HYPRLAND RICE — KEYBOARD SHORTCUTS
  ─────────────────────────────────────────────────────────────────────────────
 
-  [ APPLICATION LAUNCHING ]
+  [ LAUNCHER & COMMAND CENTER ]
+    Super + Space                Application Launcher (Rofi)
+    Super + Alt + Space          Command Center (Quick Desktop Actions)
+    Super + C                    Command Center (Alternative)
     Super + Return               Open Terminal (Kitty)
     Super + Shift + Return       Open Web Browser (Firefox)
-    Super + Space                Application Launcher (Rofi)
-    Super + Alt + Space          Window Switcher / App Grid (Rofi)
     Super + Shift + F            Open File Manager (Thunar)
     Super + Shift + E            Open Text Editor (Code / Nano)
     Super + Shift + T            Open Process Monitor (Btop)
@@ -50,19 +51,23 @@ show_cheatsheet() {
     Super + Ctrl + Tab           Switch to Former / Recent Workspace
     Super + Mouse Scroll         Cycle Through Workspaces
 
-  [ SYSTEM CONTROLS & SESSION ]
+  [ SYSTEM & NOTIFICATIONS ]
     Super + Escape               Open System / Power Menu (Lock, Suspend, etc.)
     Super + Ctrl + L             Lock Screen Immediately (Hyprlock)
     Super + L                    Lock Screen (Fallback)
-    Super + Shift + R            Reload Hyprland & Waybar Live
-    Super + Ctrl + W             Open Wallpaper Selector
+    Super + Shift + R            Restart Waybar & Reload Hyprland
     Super + Ctrl + A             Open Audio Mixer Panel (Pavucontrol)
-    Super + Ctrl + V             Open Clipboard History
+    Super + Shift + D            Toggle Do Not Disturb (DND)
+    Super + Ctrl + N             Open Notification History Viewer
     Super + N                    Notification History (Pop Last)
     Super + Shift + N            Dismiss All Active Notifications
 
-  [ PRODUCTIVITY & SCREENSHOTS ]
+  [ CLIPBOARD & PRODUCTIVITY ]
+    Super + Ctrl + V             Open Clipboard History Manager (Rofi)
+    Super + Ctrl + Shift + V     Wipe All Clipboard History
+    Super + Ctrl + W             Open Wallpaper Selector (Thumbnail Grid)
     Super + K                    Interactive Keybindings Window (Rofi Modal)
+    Super + Shift + K            Terminal Cheatsheet Window
     Print                        Interactive Region Screenshot (Grim + Slurp)
     Super + Print                Fullscreen Screenshot to Clipboard & Disk
     Super + Ctrl + C             Open Screenshot Options Menu

@@ -18,11 +18,12 @@ hl.monitor({
 ---------------------
 ---- MY PROGRAMS ----
 ---------------------
-local homeDir     = os.getenv("HOME")
-local terminal    = "kitty --config " .. homeDir .. "/.config/hypr/kitty/kitty.conf"
-local fileManager = "thunar"
-local menu        = "rofi -show drun -config " .. homeDir .. "/.config/hypr/rofi/config.rasi"
-local lockscreen  = "hyprlock -c " .. homeDir .. "/.config/hypr/hyprlock.conf"
+local homeDir       = os.getenv("HOME")
+local terminal      = "kitty --config " .. homeDir .. "/.config/hypr/kitty/kitty.conf"
+local fileManager   = "thunar"
+local menu          = "rofi -show drun -config " .. homeDir .. "/.config/hypr/rofi/launcher.rasi"
+local commandCenter = homeDir .. "/.config/hypr/scripts/command-center.sh"
+local lockscreen    = "hyprlock -c " .. homeDir .. "/.config/hypr/hyprlock/hyprlock.conf"
 
 -------------------
 ---- AUTOSTART ----
@@ -48,9 +49,8 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("gsettings set org.gnome.desktop.interface cursor-theme 'Adwaita'")
     hl.exec_cmd("gsettings set org.gnome.desktop.interface cursor-size 20")
 
-    -- Clipboard history persistence (optional cliphist)
-    hl.exec_cmd("which cliphist >/dev/null 2>&1 && wl-paste --type text --watch cliphist store")
-    hl.exec_cmd("which cliphist >/dev/null 2>&1 && wl-paste --type image --watch cliphist store")
+    -- Clipboard history persistence daemon
+    hl.exec_cmd(homeDir .. "/.config/hypr/scripts/clipboard-daemon.sh")
 end)
 
 -------------------------------
@@ -180,11 +180,12 @@ hl.animation({ leaf = "workspaces",  enabled = true, speed = 3.5, bezier = "ease
 local mainMod = "SUPER"
 local scripts = homeDir .. "/.config/hypr/scripts"
 
--- 1. Application Launchers
+-- 1. Application Launchers & Command Center
 hl.bind(mainMod .. " + RETURN",         hl.dsp.exec_cmd(terminal))
 hl.bind(mainMod .. " + SHIFT + RETURN", hl.dsp.exec_cmd("firefox"))
 hl.bind(mainMod .. " + SPACE",          hl.dsp.exec_cmd(menu))
-hl.bind(mainMod .. " + ALT + SPACE",    hl.dsp.exec_cmd("rofi -show window -config " .. homeDir .. "/.config/hypr/rofi/config.rasi"))
+hl.bind(mainMod .. " + ALT + SPACE",    hl.dsp.exec_cmd(commandCenter))
+hl.bind(mainMod .. " + C",              hl.dsp.exec_cmd(commandCenter))
 hl.bind(mainMod .. " + SHIFT + F",      hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + SHIFT + E",      hl.dsp.exec_cmd("code || kitty --config " .. homeDir .. "/.config/hypr/kitty/kitty.conf -e nano"))
 hl.bind(mainMod .. " + SHIFT + T",      hl.dsp.exec_cmd("kitty --config " .. homeDir .. "/.config/hypr/kitty/kitty.conf -e btop"))
@@ -240,23 +241,26 @@ hl.bind(mainMod .. " + mouse_down",  hl.dsp.focus({ workspace = "e+1" }))
 hl.bind(mainMod .. " + mouse_up",    hl.dsp.focus({ workspace = "e-1" }))
 
 -- 4. System Controls & Session
-hl.bind(mainMod .. " + ESCAPE",    hl.dsp.exec_cmd(scripts .. "/power-menu.sh"))
-hl.bind(mainMod .. " + CTRL + L",  hl.dsp.exec_cmd(lockscreen))
-hl.bind(mainMod .. " + L",         hl.dsp.exec_cmd(lockscreen))
-hl.bind(mainMod .. " + SHIFT + R", hl.dsp.exec_cmd("hyprctl reload && killall -SIGUSR2 waybar"))
-hl.bind(mainMod .. " + CTRL + A",  hl.dsp.exec_cmd("pavucontrol"))
-hl.bind(mainMod .. " + N",         hl.dsp.exec_cmd("dunstctl history-pop"))
-hl.bind(mainMod .. " + SHIFT + N", hl.dsp.exec_cmd("dunstctl close-all"))
+hl.bind(mainMod .. " + ESCAPE",           hl.dsp.exec_cmd(scripts .. "/power-menu.sh"))
+hl.bind(mainMod .. " + CTRL + L",         hl.dsp.exec_cmd(lockscreen))
+hl.bind(mainMod .. " + L",                hl.dsp.exec_cmd(lockscreen))
+hl.bind(mainMod .. " + SHIFT + R",        hl.dsp.exec_cmd(scripts .. "/restart-waybar.sh && hyprctl reload"))
+hl.bind(mainMod .. " + CTRL + A",         hl.dsp.exec_cmd("pavucontrol"))
+hl.bind(mainMod .. " + SHIFT + D",        hl.dsp.exec_cmd(scripts .. "/notification-toggle.sh"))
+hl.bind(mainMod .. " + CTRL + N",         hl.dsp.exec_cmd(scripts .. "/notification-history.sh"))
+hl.bind(mainMod .. " + N",                hl.dsp.exec_cmd("dunstctl history-pop"))
+hl.bind(mainMod .. " + SHIFT + N",        hl.dsp.exec_cmd("dunstctl close-all"))
 
 -- 5. Productivity & Capture
-hl.bind(mainMod .. " + K",            hl.dsp.exec_cmd(scripts .. "/keybindings-menu.sh"))
-hl.bind(mainMod .. " + SHIFT + K",    hl.dsp.exec_cmd(scripts .. "/keybindings-window.sh"))
-hl.bind(mainMod .. " + CTRL + W",     hl.dsp.exec_cmd(scripts .. "/wallpaper-selector.sh"))
-hl.bind(mainMod .. " + CTRL + SPACE", hl.dsp.exec_cmd(scripts .. "/wallpaper-selector.sh"))
-hl.bind(mainMod .. " + CTRL + V",     hl.dsp.exec_cmd(scripts .. "/clipboard.sh"))
-hl.bind("Print",                      hl.dsp.exec_cmd(scripts .. "/screenshot.sh region"))
-hl.bind(mainMod .. " + Print",        hl.dsp.exec_cmd(scripts .. "/screenshot.sh full"))
-hl.bind(mainMod .. " + CTRL + C",     hl.dsp.exec_cmd(scripts .. "/screenshot.sh menu"))
+hl.bind(mainMod .. " + K",                  hl.dsp.exec_cmd(scripts .. "/keybindings-menu.sh"))
+hl.bind(mainMod .. " + SHIFT + K",          hl.dsp.exec_cmd(scripts .. "/keybindings-window.sh"))
+hl.bind(mainMod .. " + CTRL + W",           hl.dsp.exec_cmd(scripts .. "/wallpaper-selector.sh"))
+hl.bind(mainMod .. " + CTRL + SPACE",       hl.dsp.exec_cmd(scripts .. "/wallpaper-selector.sh"))
+hl.bind(mainMod .. " + CTRL + V",           hl.dsp.exec_cmd(scripts .. "/clipboard-menu.sh"))
+hl.bind(mainMod .. " + CTRL + SHIFT + V",   hl.dsp.exec_cmd(scripts .. "/clipboard-clear.sh"))
+hl.bind("Print",                            hl.dsp.exec_cmd(scripts .. "/screenshot.sh region"))
+hl.bind(mainMod .. " + Print",              hl.dsp.exec_cmd(scripts .. "/screenshot.sh full"))
+hl.bind(mainMod .. " + CTRL + C",           hl.dsp.exec_cmd(scripts .. "/screenshot.sh menu"))
 
 -- 6. Hardware & Multimedia Controls
 -- Volume (Normal 5% / Fine 1% on Alt)

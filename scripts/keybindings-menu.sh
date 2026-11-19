@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =====================================================================
-# Omarchy-Style Custom Keybindings Window (Super + K)
+# Hyprland Keybindings Reference Window (Super + K)
 # Renders a dedicated, styled modal window with fuzzy search
 # Shows Shortcut on the left and Function Description on the right
 # Pressing Enter on any item executes the corresponding action.
@@ -10,10 +10,11 @@ ROFI_THEME="${HOME}/.config/hypr/rofi/keybindings.rasi"
 
 generate_list() {
     cat << 'EOF'
+<span color="#888888">[Launcher ]</span>  <span weight="bold" color="#AAAAAA">Super + Space               </span> <span color="#333333">│</span>  <span color="#D5D5D5">Application Launcher (Rofi)</span>
+<span color="#888888">[Command  ]</span>  <span weight="bold" color="#AAAAAA">Super + Alt + Space         </span> <span color="#333333">│</span>  <span color="#D5D5D5">Command Center (Quick Actions)</span>
+<span color="#888888">[Command  ]</span>  <span weight="bold" color="#AAAAAA">Super + C                   </span> <span color="#333333">│</span>  <span color="#D5D5D5">Command Center (Alternative)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Return              </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Terminal (Kitty)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + Return      </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Web Browser (Firefox)</span>
-<span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Space               </span> <span color="#333333">│</span>  <span color="#D5D5D5">Application Launcher (Rofi)</span>
-<span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Alt + Space         </span> <span color="#333333">│</span>  <span color="#D5D5D5">Window Switcher / App Grid</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + F           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open File Manager (Thunar)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + E           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Text Editor (Code / Nano)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + T           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Process Monitor (Btop)</span>
@@ -41,12 +42,15 @@ generate_list() {
 <span color="#888888">[Workspace]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + Tab          </span> <span color="#333333">│</span>  <span color="#D5D5D5">Jump to Former / Recent Workspace</span>
 <span color="#888888">[System   ]</span>  <span weight="bold" color="#AAAAAA">Super + Escape              </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open System / Power Menu</span>
 <span color="#888888">[System   ]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + L            </span> <span color="#333333">│</span>  <span color="#D5D5D5">Lock Screen (Hyprlock)</span>
-<span color="#888888">[System   ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + R           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Reload Hyprland &amp; Waybar</span>
+<span color="#888888">[System   ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + R           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Restart Waybar &amp; Reload Desktop</span>
 <span color="#888888">[System   ]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + A            </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Audio Mixer (Pavucontrol)</span>
-<span color="#888888">[System   ]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + V            </span> <span color="#333333">│</span>  <span color="#D5D5D5">Clipboard History Manager</span>
-<span color="#888888">[Style    ]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + W            </span> <span color="#333333">│</span>  <span color="#D5D5D5">Wallpaper Selector</span>
-<span color="#888888">[System   ]</span>  <span weight="bold" color="#AAAAAA">Super + N                   </span> <span color="#333333">│</span>  <span color="#D5D5D5">Notification History (Pop Last)</span>
-<span color="#888888">[System   ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + N           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Dismiss All Active Notifications</span>
+<span color="#888888">[Clipboard]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + V            </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Clipboard History Manager</span>
+<span color="#888888">[Clipboard]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + Shift + V    </span> <span color="#333333">│</span>  <span color="#D5D5D5">Wipe All Clipboard History</span>
+<span color="#888888">[Style    ]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + W            </span> <span color="#333333">│</span>  <span color="#D5D5D5">Wallpaper Selector (Thumbnail Grid)</span>
+<span color="#888888">[Notif    ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + D           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Toggle Do Not Disturb (DND)</span>
+<span color="#888888">[Notif    ]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + N            </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Notification History Menu</span>
+<span color="#888888">[Notif    ]</span>  <span weight="bold" color="#AAAAAA">Super + N                   </span> <span color="#333333">│</span>  <span color="#D5D5D5">Pop Last Notification from History</span>
+<span color="#888888">[Notif    ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + N           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Dismiss All Active Notifications</span>
 <span color="#888888">[Capture  ]</span>  <span weight="bold" color="#AAAAAA">Print                       </span> <span color="#333333">│</span>  <span color="#D5D5D5">Interactive Area Screenshot (Grim+Slurp)</span>
 <span color="#888888">[Capture  ]</span>  <span weight="bold" color="#AAAAAA">Super + Print               </span> <span color="#333333">│</span>  <span color="#D5D5D5">Fullscreen Screenshot to Clipboard &amp; Disk</span>
 <span color="#888888">[Capture  ]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + C            </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Screenshot Options Menu</span>
@@ -73,17 +77,17 @@ fi
 
 # Execute corresponding function if activated
 case "${CHOSEN}" in
+    *"Super + Space"*)
+        rofi -show drun -config "${HOME}/.config/hypr/rofi/launcher.rasi" &
+        ;;
+    *"Super + Alt + Space"*|*"Super + C"*)
+        "${HOME}/.config/hypr/scripts/command-center.sh" &
+        ;;
     *"Super + Return"*)
         kitty --config "${HOME}/.config/hypr/kitty/kitty.conf" &
         ;;
     *"Super + Shift + Return"*)
         firefox &
-        ;;
-    *"Super + Space"*)
-        rofi -show drun -config "${HOME}/.config/hypr/rofi/config.rasi" &
-        ;;
-    *"Super + Alt + Space"*)
-        rofi -show window -config "${HOME}/.config/hypr/rofi/config.rasi" &
         ;;
     *"Super + Shift + F"*)
         thunar &
@@ -128,19 +132,28 @@ case "${CHOSEN}" in
         "${HOME}/.config/hypr/scripts/power-menu.sh" &
         ;;
     *"Super + Ctrl + L"*|*"Super + L"*)
-        hyprlock -c "${HOME}/.config/hypr/hyprlock.conf" &
+        hyprlock -c "${HOME}/.config/hypr/hyprlock/hyprlock.conf" &
         ;;
     *"Super + Shift + R"*)
-        hyprctl reload && killall -SIGUSR2 waybar
+        "${HOME}/.config/hypr/scripts/restart-waybar.sh" && hyprctl reload
         ;;
     *"Super + Ctrl + A"*)
         pavucontrol &
         ;;
+    *"Super + Ctrl + Shift + V"*)
+        "${HOME}/.config/hypr/scripts/clipboard-clear.sh" &
+        ;;
+    *"Super + Ctrl + V"*)
+        "${HOME}/.config/hypr/scripts/clipboard-menu.sh" &
+        ;;
     *"Super + Ctrl + W"*|*"Super + Ctrl + Space"*)
         "${HOME}/.config/hypr/scripts/wallpaper-selector.sh" &
         ;;
-    *"Super + Ctrl + V"*)
-        "${HOME}/.config/hypr/scripts/clipboard.sh" &
+    *"Super + Shift + D"*)
+        "${HOME}/.config/hypr/scripts/notification-toggle.sh" &
+        ;;
+    *"Super + Ctrl + N"*)
+        "${HOME}/.config/hypr/scripts/notification-history.sh" &
         ;;
     *"Super + N"*)
         dunstctl history-pop

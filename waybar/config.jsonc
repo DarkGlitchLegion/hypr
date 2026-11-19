@@ -17,8 +17,12 @@
         "memory",
         "network",
         "pulseaudio",
+        "pulseaudio#microphone",
+        "bluetooth",
         "battery",
-        "clock"
+        "custom/dnd",
+        "clock",
+        "custom/power"
     ],
     "hyprland/workspaces": {
         "disable-scroll": true,
@@ -29,24 +33,34 @@
     "hyprland/window": {
         "format": "{title}",
         "max-length": 45,
-        "separate-outputs": true
+        "separate-outputs": true,
+        "rewrite": {
+            "": "Arch Linux — Hyprland"
+        }
     },
     "cpu": {
         "format": " {usage}%",
         "interval": 2,
-        "tooltip": false
+        "tooltip": true,
+        "tooltip-format": "CPU Usage: {usage}%\nLoad: {load}",
+        "on-click": "kitty --config ~/.config/hypr/kitty/kitty.conf -e btop"
     },
     "memory": {
         "format": " {percentage}%",
         "interval": 2,
-        "tooltip-format": "{used:0.1f}GiB / {total:0.1f}GiB"
+        "tooltip": true,
+        "tooltip-format": "RAM: {used:0.1f}GiB / {total:0.1f}GiB ({percentage}%)\nSwap: {swapUsed:0.1f}GiB / {swapTotal:0.1f}GiB",
+        "on-click": "kitty --config ~/.config/hypr/kitty/kitty.conf -e btop"
     },
     "network": {
+        "interval": 2,
         "format-wifi": "󰤨 {essid}",
         "format-ethernet": "󰈀 Wired",
-        "format-linked": "󰈀 (No IP)",
-        "format-disconnected": "󰤭 Disconnected",
-        "tooltip-format": "{ifname}: {ipaddr}/{cidr}",
+        "format-linked": "󰈀 Link",
+        "format-disconnected": "󰤭 Offline",
+        "tooltip-format-wifi": "󰤨 {essid} ({signalStrength}%)\nIP: {ipaddr}/{cidr}\n󰇚 {bandwidthDownBytes}  󰕒 {bandwidthUpBytes}",
+        "tooltip-format-ethernet": "󰈀 {ifname}\nIP: {ipaddr}/{cidr}\n󰇚 {bandwidthDownBytes}  󰕒 {bandwidthUpBytes}",
+        "tooltip-format-disconnected": "󰤭 Disconnected",
         "on-click": "kitty --config ~/.config/hypr/kitty/kitty.conf -e nmtui"
     },
     "pulseaudio": {
@@ -61,10 +75,31 @@
             "car": "󰄋",
             "default": ["󰕿", "󰖀", "󰕾"]
         },
-        "on-click": "pavucontrol"
+        "scroll-step": 2,
+        "on-click": "pavucontrol",
+        "on-click-right": "~/.config/hypr/scripts/volume.sh mute"
+    },
+    "pulseaudio#microphone": {
+        "format": "{format_source}",
+        "format-source": "󰍬 {volume}%",
+        "format-source-muted": "󰍭 Muted",
+        "scroll-step": 2,
+        "on-click": "pavucontrol",
+        "on-click-right": "~/.config/hypr/scripts/volume.sh mic"
+    },
+    "bluetooth": {
+        "format": "󰂯",
+        "format-disabled": "󰂲",
+        "format-connected": "󰂱 {device_alias}",
+        "format-connected-battery": "󰂱 {device_alias} ({device_battery_percentage}%)",
+        "tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected",
+        "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
+        "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
+        "on-click": "kitty --config ~/.config/hypr/kitty/kitty.conf -e bluetoothctl"
     },
     "battery": {
         "states": {
+            "good": 95,
             "warning": 30,
             "critical": 15
         },
@@ -74,9 +109,19 @@
         "format-alt": "{time} {icon}",
         "format-icons": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
     },
+    "custom/dnd": {
+        "exec": "~/.config/hypr/scripts/dnd-status.sh",
+        "return-type": "json",
+        "interval": "once",
+        "signal": 8,
+        "format": "{}",
+        "on-click": "~/.config/hypr/scripts/notification-toggle.sh",
+        "tooltip": true
+    },
     "clock": {
         "interval": 1,
         "format": "󰸗 {:%a %b %d  󰥔 %H:%M}",
+        "format-alt": "󰥔 {:%H:%M:%S}",
         "tooltip-format": "<tt><small>{calendar}</small></tt>",
         "calendar": {
             "mode": "year",
@@ -91,5 +136,11 @@
                 "today": "<span color='#0c0d10' background='#aaaaaa'><b>{}</b></span>"
             }
         }
+    },
+    "custom/power": {
+        "format": "󰐥",
+        "tooltip": true,
+        "tooltip-format": "Power Menu (Super + Escape)",
+        "on-click": "~/.config/hypr/scripts/power-menu.sh"
     }
 }

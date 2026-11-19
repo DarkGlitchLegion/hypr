@@ -4,7 +4,7 @@
 # Integrates with Rofi, Hyprlock, and Systemd
 # =====================================================
 
-ROFI_CONFIG="${HOME}/.config/hypr/rofi/config.rasi"
+ROFI_CONFIG="${HOME}/.config/hypr/rofi/powermenu.rasi"
 
 OPTIONS="󰌾  Lock Screen\n󰤄  Suspend\n󰜉  Reboot\n󰐥  Shutdown\n󰍃  Logout\n󰑓  Reload Desktop"
 
@@ -12,7 +12,7 @@ CHOSEN=$(echo -e "${OPTIONS}" | rofi -dmenu -config "${ROFI_CONFIG}" -p "System"
 
 case "${CHOSEN}" in
     *"Lock Screen"*)
-        hyprlock -c "${HOME}/.config/hypr/hyprlock.conf"
+        hyprlock -c "${HOME}/.config/hypr/hyprlock/hyprlock.conf"
         ;;
     *"Suspend"*)
         systemctl suspend
@@ -27,7 +27,8 @@ case "${CHOSEN}" in
         hyprctl dispatch exit
         ;;
     *"Reload Desktop"*)
-        hyprctl reload && killall -SIGUSR2 waybar
-        dunstify -a "System" -u low "Desktop Reloaded" "Hyprland and Waybar have been refreshed."
+        "${HOME}/.config/hypr/scripts/restart-waybar.sh" >/dev/null 2>&1
+        hyprctl reload >/dev/null 2>&1
+        dunstify -a "System" -u low "Desktop Reloaded" "Hyprland and Waybar have been refreshed." 2>/dev/null || true
         ;;
 esac

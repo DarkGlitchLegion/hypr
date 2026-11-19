@@ -10,7 +10,7 @@
 }
 
 window#waybar {
-    background-color: rgba(12, 13, 16, 0.88);
+    background-color: rgba(12, 13, 16, 0.90);
     border: 1px solid #333333;
     border-radius: 8px;
     color: #D5D5D5;
@@ -60,38 +60,53 @@ window#waybar {
 #memory,
 #network,
 #pulseaudio,
+#pulseaudio.microphone,
+#bluetooth,
 #battery,
-#clock {
+#custom-dnd,
+#clock,
+#custom-power {
     background-color: #17191F;
     border: 1px solid #202126;
     border-radius: 6px;
-    padding: 2px 10px;
+    padding: 2px 9px;
     margin: 3px 2px;
     color: #D5D5D5;
+    transition: all 0.2s ease;
 }
 
-#cpu {
-    color: #D5D5D5;
-}
-
-#memory {
-    color: #D5D5D5;
-}
-
-#network {
-    color: #D5D5D5;
+#cpu:hover,
+#memory:hover,
+#network:hover,
+#pulseaudio:hover,
+#pulseaudio.microphone:hover,
+#bluetooth:hover,
+#battery:hover,
+#custom-dnd:hover,
+#clock:hover,
+#custom-power:hover {
+    background-color: #202126;
+    border-color: #333333;
 }
 
 #network.disconnected {
     color: #888888;
 }
 
-#pulseaudio {
-    color: #D5D5D5;
-}
-
 #pulseaudio.muted {
     color: #666666;
+}
+
+#pulseaudio.microphone.source-muted {
+    color: #666666;
+}
+
+#bluetooth.disabled {
+    color: #666666;
+}
+
+#bluetooth.connected {
+    color: #AAAAAA;
 }
 
 #battery {
@@ -112,9 +127,30 @@ window#waybar {
     border-color: #BF616A;
 }
 
+#custom-dnd.paused {
+    color: #EBCB8B;
+    border-color: rgba(235, 203, 139, 0.4);
+}
+
+#custom-dnd.active {
+    color: #888888;
+}
+
 #clock {
     color: #D5D5D5;
     font-weight: 600;
+}
+
+#custom-power {
+    color: #AAAAAA;
+    font-weight: 700;
+    padding: 2px 10px;
+}
+
+#custom-power:hover {
+    color: #FFFFFF;
+    background-color: #202126;
+    border-color: #AAAAAA;
 }
 
 tooltip {

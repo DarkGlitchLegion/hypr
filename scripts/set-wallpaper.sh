@@ -7,10 +7,11 @@ WALLPAPER="$1"
 HYPR_DIR="${HOME}/.config/hypr"
 HYPRPAPER_CONF="${HYPR_DIR}/hyprpaper.conf"
 HYPRLOCK_CONF="${HYPR_DIR}/hyprlock.conf"
+HYPRLOCK_DIR_CONF="${HYPR_DIR}/hyprlock/hyprlock.conf"
 CURRENT_FILE="${HYPR_DIR}/current_wallpaper"
 
 if [ -z "${WALLPAPER}" ] || [ ! -f "${WALLPAPER}" ]; then
-    dunstify -a "Wallpaper" -u critical "Wallpaper Error" "File not found: ${WALLPAPER}"
+    dunstify -a "Wallpaper" -u critical "Wallpaper Error" "File not found: ${WALLPAPER}" 2>/dev/null || true
     exit 1
 fi
 
@@ -25,9 +26,12 @@ splash = false
 ipc = on
 EOF
 
-# 3. Synchronize hyprlock.conf background
+# 3. Synchronize hyprlock configurations
 if [ -f "${HYPRLOCK_CONF}" ]; then
     sed -i "s|path = .*|path = ${WALLPAPER}|" "${HYPRLOCK_CONF}"
+fi
+if [ -f "${HYPRLOCK_DIR_CONF}" ]; then
+    sed -i "s|path = .*|path = ${WALLPAPER}|" "${HYPRLOCK_DIR_CONF}"
 fi
 
 # 4. Apply immediately to running hyprpaper instance without restart
