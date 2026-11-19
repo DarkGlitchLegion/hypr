@@ -25,8 +25,8 @@ hl.on("hyprland.start", function ()
     -- Watch PipeWire sink hotplug events when optional automatic HDMI routing is enabled.
     hl.exec_cmd(scripts .. "/audio-manager.py --watch")
 
-    -- Hypridle power/lock daemon
-    hl.exec_cmd("hypridle -c " .. config .. "/hypridle.conf")
+    -- One supervised Hypridle instance uses persistent Rice idle settings.
+    hl.exec_cmd(scripts .. "/idle-manager.py --supervise")
 
     -- Cursor synchronization across Wayland & XWayland
     hl.exec_cmd("hyprctl setcursor Adwaita 20")

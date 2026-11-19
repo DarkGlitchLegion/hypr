@@ -7,6 +7,8 @@ Use the CLI from a terminal:
 ~/.config/hypr/scripts/rice validate
 ~/.config/hypr/scripts/rice dependencies --full
 ~/.config/hypr/scripts/rice test
+~/.config/hypr/scripts/idle-manager.py --validate
+~/.config/hypr/scripts/idle-manager.py --status
 ```
 
 The automated suite only reports tests it actually ran. Hardware items below remain manual and are not included as passed tests.
@@ -35,6 +37,19 @@ The automated suite only reports tests it actually ran. Hardware items below rem
 - [ ] Connect and disconnect a paired headset; verify audio routing and Waybar status.
 - [ ] Verify `rice logs --module bluetooth` records actions without device credentials.
 
+## Screen timeout and idle management
+
+- [ ] Open Control Center → **Screen Timeout / Idle Management** and check the active profile and sequence.
+- [ ] Switch Balanced, Power Saving, Security Focused, Relaxed, Never, and a fixed-minute profile; confirm the profile persists after logging in again.
+- [ ] Edit each action, set a custom timeout, toggle the master switch, and run `idle-manager.py --validate`.
+- [ ] Confirm Hypridle restarts once after a change and `rice doctor --module idle` reports one managed daemon.
+- [ ] Manually lock with Super+L while idle management is disabled; manual locking should still work.
+- [ ] In a controlled session, wait through dim/lock/display-off actions; confirm activity restores brightness and displays.
+- [ ] With lock enabled, verify DPMS does not turn displays off until systemd reports the session locked.
+- [ ] Enable suspend explicitly, test suspend/wake, then return to a non-suspend profile.
+- [ ] Turn **Keep screen awake** on/off and verify the profile settings remain unchanged.
+- [ ] Start and exit Presentation Mode; verify idle inhibition releases and normal timers continue.
+
 ## Snapshots and recovery
 
 - [ ] Create a snapshot, modify a harmless test config, and run `rice snapshot diff ID`.
@@ -47,5 +62,6 @@ The automated suite only reports tests it actually ran. Hardware items below rem
 
 - Layout transitions require a live Hyprland session and connected displays.
 - HDMI audio and Bluetooth routing require their respective hardware.
+- Screen dimming, DPMS wake, suspend, and lock timing require a live Hyprland session and should be manually verified. `hypridle` supports a single DPMS off state, so screen blank and display power-off use the same underlying action.
 - `rice validate` checks the installed Hyprland parser, Lua syntax, shell/Python syntax, and Waybar JSONC. It does not reload Hyprland or restart Waybar.
 - Snapshot restoration applies files additively; it intentionally does not delete extra files in the live configuration.

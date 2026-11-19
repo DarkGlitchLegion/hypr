@@ -56,8 +56,8 @@ OPTIONAL_BINARIES = {
     "network": ["nmcli", "bluetoothctl"],
     "applications": ["kitty", "firefox", "thunar", "code", "btop", "fastfetch"],
 }
-MODULES = ("core", "display", "waybar", "audio", "bluetooth", "session", "scripts")
-VALIDATION_MODULES = ("core", "waybar", "scripts")
+MODULES = ("core", "display", "waybar", "audio", "bluetooth", "idle", "session", "scripts")
+VALIDATION_MODULES = ("core", "waybar", "idle", "scripts")
 
 
 @dataclass
@@ -317,6 +317,44 @@ def build_diagnostics(*, full: bool = False, module: str | None = None) -> list[
                 add("bluetooth", "Bluetooth radio", "Healthy" if powered else "Not Applicable",
                     "Powered on." if powered else "Powered off by choice; not treated as an error.")
 
+    if module in (None, "idle"):
+        idle_script = SCRIPTS / "idle-manager.py"
+        if not idle_script.is_file():
+            add("idle", "Idle manager", "Failed", "scripts/idle-manager.py is missing.")
+        else:
+            validation = run([sys.executable, str(idle_script), "--validate"])
+            add("idle", "Idle configuration",
+                "Healthy" if validation.returncode == 0 else "Failed",
+                validation.stdout.strip() if validation.returncode == 0
+                else validation.stderr.strip() or validation.stdout.strip(),
+                "" if validation.returncode == 0 else "Review the idle settings and required commands.")
+            status = run([sys.executable, str(idle_script), "--status"])
+            output = status.stdout.strip()
+            manager_running = "Hypridle manager: running" in output
+            child_running = "Hypridle process: running" in output
+            add("idle", "Hypridle manager",
+                "Healthy" if manager_running and child_running else "Warning",
+                output or status.stderr.strip() or "Idle manager status is unavailable.",
+                "" if manager_running and child_running else "Start idle-manager.py --supervise from Hyprland autostart.")
+        hypridle_processes = process_pids("hypridle")
+        status = "Healthy" if len(hypridle_processes) == 1 else "Failed" if len(hypridle_processes) > 1 else "Warning"
+        add("idle", "Idle daemon count", status,
+            f"{len(hypridle_processes)} Hypridle process(es): {', '.join(hypridle_processes) or 'none'}.",
+            "" if len(hypridle_processes) == 1 else "The rice should run exactly one supervised Hypridle instance.")
+        inhibitor = run(["systemd-inhibit", "--list", "--no-pager", "--no-legend"])
+        if inhibitor.returncode == 0:
+            active_rice_inhibitors = [
+                line.strip() for line in inhibitor.stdout.splitlines()
+                if any(tag in line for tag in ("hypr-rice-idle-manager", "hypr-rice-presentation", "hypr-rice-session-preset"))
+            ]
+            add("idle", "Idle inhibition",
+                "Not Applicable" if not active_rice_inhibitors else "Healthy",
+                "; ".join(active_rice_inhibitors) if active_rice_inhibitors
+                else "No Rice temporary idle inhibition is active.")
+        else:
+            add("idle", "Idle inhibition", "Warning",
+                inhibitor.stderr.strip() or "Could not query systemd idle inhibitors.")
+
     if module in (None, "scripts"):
         script_paths = sorted([*SCRIPTS.glob("*.sh"), *SCRIPTS.glob("*.py")])
         missing_exec = [
@@ -384,9 +422,12 @@ def process_pids(name: str) -> list[str]:
     pids: list[str] = []
     for path in Path("/proc").glob("[0-9]*/comm"):
         try:
+            process_stat = (path.parent / "stat").read_text(encoding="utf-8")
+            if process_stat.rsplit(")", 1)[1].split()[0] in {"Z", "X"}:
+                continue
             if path.read_text(encoding="utf-8").strip() == name:
                 pids.append(path.parent.name)
-        except OSError:
+        except (OSError, IndexError):
             continue
     return pids
 
@@ -500,6 +541,18 @@ def validate_configs() -> list[Check]:
             checks.append(Check("scripts", f"Python: {path.name}", "Healthy", "Syntax is valid."))
         except (OSError, SyntaxError) as exc:
             checks.append(Check("scripts", f"Python: {path.name}", "Failed", str(exc)))
+    idle_script = SCRIPTS / "idle-manager.py"
+    if not idle_script.is_file():
+        checks.append(Check("idle", "Idle settings", "Failed", "scripts/idle-manager.py is missing."))
+    else:
+        result = run([sys.executable, str(idle_script), "--validate"], timeout=10)
+        checks.append(Check(
+            "idle",
+            "Idle settings",
+            "Healthy" if result.returncode == 0 else "Failed",
+            result.stdout.strip() if result.returncode == 0 else result.stderr.strip() or result.stdout.strip(),
+            "" if result.returncode == 0 else "Review idle-settings.json and the Hypridle dependencies.",
+        ))
     refs = missing_config_references()
     checks.append(Check("scripts", "Config references", "Healthy" if not refs else "Warning",
                         "; ".join(refs) if refs else "Known modular references resolve."))

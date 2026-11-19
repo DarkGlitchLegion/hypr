@@ -42,6 +42,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │   ├── rice                  # CLI entry point: doctor, validate, snapshot, logs, test
 │   ├── rice_maintenance.py   # Diagnostics, safe snapshots, validation, and tests
 │   ├── rice_events.py        # Bounded, secret-filtering JSONL activity log
+│   ├── idle-manager.py       # Persistent timeout profiles and supervised Hypridle
 │   ├── session-presets.py    # Save/apply/restore reversible desktop session bundles
 │   ├── audio-menu.sh         # Rofi entry point for the PipeWire audio manager
 │   ├── audio-manager.py      # Live sink/source selector and optional HDMI hotplug handling
@@ -63,7 +64,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 ├── kitty/                    # Kitty terminal emulator configuration
 ├── dunst/                    # Dunst notification daemon configuration
 ├── hyprlock/                 # Hyprlock minimalist lockscreen
-├── hypridle.conf             # Power & idle timeout rules
+├── hypridle.conf             # Legacy static idle config; generated runtime config is active
 ├── current_wallpaper         # File storing active wallpaper path
 └── wallpapers/               # Curated wallpaper library
 ```
@@ -123,6 +124,17 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 * Apply a saved preset to switch to that combination. Display changes use the Display Manager's existing confirmation and rollback flow; disconnected or changed monitor setups are rejected rather than partially applied.
 * **Restore previous session** returns to the layout, monitor workspaces, notification state, and idle behavior from before the active session preset. Preset definitions persist in `~/.config/hypr/session-presets.json`; the temporary restore snapshot lasts for the current login session.
 * Session presets and Presentation Mode are mutually exclusive because Presentation Mode already owns a separate reversible display/DND/idle state.
+
+### Screen Timeout and Idle Management
+* **Open**: Control Center → **Screen Timeout / Idle Management**. One menu provides timeout presets, the idle toggle, Keep Awake, and detailed action settings.
+* **CLI**: `~/.config/hypr/scripts/idle-manager.py --menu` (`--quick` remains an alias), `--status`, `--validate`, `--preset "Power Saving"`, `--master off`, `--keep-awake`, or `--resume-idle`.
+* **Saved settings**: `~/.config/hypr/idle-settings.json`; the idle manager snapshots the previous rice config before changing an existing settings file. Runtime Hypridle config and manager state are generated under `$XDG_RUNTIME_DIR/hypr-rice-idle/`.
+* **Profiles**: Balanced (default), Power Saving, Security Focused, Relaxed, Never, and fixed 5–60 minute lock-time profiles. Individual actions can be toggled and set from 15 seconds to 24 hours.
+* **Defaults**: Balanced dims at 2 minutes, blanks at 5, locks at 10, powers displays off at 15, and leaves suspend disabled. Power Saving enables suspend at 15 minutes; no other preset enables suspend.
+* **Application**: Changes restart only the managed Hypridle process, not Hyprland. The supervisor ensures the rice has only one Hypridle instance and retries/logs daemon failures.
+* **Keep awake**: The Screen Timeout / Idle Management menu can temporarily inhibit idle actions. Presentation Mode continues using the existing systemd inhibitor and does not modify saved timeouts. Session Presets capture/restore the rice-managed idle inhibit state.
+* **Safety**: If automatic locking is enabled, display power-off is delayed until the session lock is confirmed; suspend runs after locking and display power-off. Manual lock remains independent.
+* **Hardware limitation**: Hyprland exposes one DPMS off state, so “Blank screen” and “Turn off display” share the same operation. The earlier enabled timeout is used, adjusted to follow the lock timeout if locking is enabled. Backlight dimming depends on `brightnessctl` and a supported backlight device; the display and action commands are checked before applying.
 
 ---
 
@@ -217,14 +229,12 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 
 ### 10. Lock Screen & Idle Power Management
 * **Instant Lock**: <kbd>Super</kbd> + <kbd>L</kbd> or <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>L</kbd>
-* **Daemons**: `hyprlock` & `hypridle`
+* **Daemons**: `hyprlock`, plus one supervised `hypridle` managed by `scripts/idle-manager.py`
 * **What it does**:
   * Uses a clean 2D charcoal layout with custom date/time fonts and smooth input dots animations.
-  * **Idle policy** (configured in [hypridle.conf](file:///home/darkglitch/.config/hypr/hypridle.conf)):
-    * **4.5 minutes**: Backlight dims to 20% via `brightnessctl`.
-    * **5 minutes**: Locks session with `hyprlock`.
-    * **6 minutes**: Turns off display backlight (DPMS off). Waking moves/keys turn display back on.
-    * **30 minutes**: Suspends laptop to RAM (`systemctl suspend`).
+  * Idle profiles, individual action timers, and temporary keep-awake controls are available from the Control Center. Balanced is the default; suspend is opt-in.
+  * Settings persist in `~/.config/hypr/idle-settings.json`. Hypridle is reconfigured without restarting Hyprland.
+  * The former `hypridle.conf` is no longer launched directly; the idle manager generates the active Hypridle config in the runtime directory.
 
 ---
 

@@ -6,6 +6,7 @@
 /audio-preferences.json
 /session-presets.json
 /snapshot-settings.json
+/idle-settings.json
 
 # Python-generated files
 __pycache__/

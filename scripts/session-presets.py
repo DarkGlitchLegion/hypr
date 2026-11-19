@@ -16,6 +16,7 @@ from typing import Any
 CONFIG = Path.home() / ".config" / "hypr"
 DISPLAY_MANAGER = CONFIG / "scripts" / "display-manager.py"
 PRESETS_FILE = CONFIG / "session-presets.json"
+IDLE_MANAGER = CONFIG / "scripts" / "idle-manager.py"
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
 RUNTIME_STATE = RUNTIME_DIR / "hypr-session-preset.json"
 DISPLAY = runpy.run_path(str(DISPLAY_MANAGER))
@@ -86,6 +87,10 @@ def idle_inhibitor_pid() -> int | None:
     return pid if isinstance(pid, int) and pid > 1 and is_idle_inhibitor(pid) else None
 
 
+def idle_manager_module() -> dict[str, Any]:
+    return runpy.run_path(str(IDLE_MANAGER))
+
+
 def is_idle_inhibitor(pid: int) -> bool:
     try:
         args = Path(f"/proc/{pid}/cmdline").read_bytes().split(b"\0")
@@ -116,7 +121,10 @@ def capture_session() -> dict[str, Any]:
         "layout": layout,
         "workspaces": workspaces,
         "dnd": display_function("dnd_status")(),
-        "idle_inhibited": idle_inhibitor_pid() is not None,
+        "idle_inhibited": (
+            idle_inhibitor_pid() is not None
+            or idle_manager_module()["owned_inhibitor_pid"]() is not None
+        ),
     }
 
 
@@ -220,15 +228,19 @@ def apply_workspaces(workspaces: Any) -> None:
 
 
 def set_idle_inhibition(enabled: bool, pid: int | None) -> int | None:
+    idle_manager = idle_manager_module()
     if enabled:
         if pid is not None and is_idle_inhibitor(pid):
+            idle_manager["stop_inhibitor"]()
             return pid
+        idle_manager["stop_inhibitor"]()
         return display_function("start_idle_inhibitor")(
             who="hypr-rice-session-preset",
             reason="Session preset idle protection",
         )
     if pid is not None:
         display_function("stop_idle_inhibitor")(pid, who="hypr-rice-session-preset")
+    idle_manager["stop_inhibitor"]()
     return None
 
 
