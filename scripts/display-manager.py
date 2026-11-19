@@ -138,6 +138,10 @@ def hyprctl_json(*args: str) -> Any:
         raise DisplayError(f"Hyprland returned invalid JSON for {' '.join(args)}.") from exc
 
 
+def hypr_dispatch(expression: str) -> subprocess.CompletedProcess[str]:
+    return command(["hyprctl", "dispatch", expression])
+
+
 def drm_connectors() -> dict[str, bool]:
     connectors: dict[str, bool] = {}
     for status_file in Path("/sys/class/drm").glob("card*-*/status"):
@@ -305,6 +309,80 @@ def native_mirroring_is_safe() -> bool:
     return False
 
 
+def setting_rectangle(
+    setting: dict[str, Any],
+    by_name: dict[str, dict[str, Any]],
+) -> tuple[int, int, int, int]:
+    record = dict(by_name[setting["name"]])
+    match = re.fullmatch(
+        r"([0-9]+)x([0-9]+)(?:@[0-9]+(?:\.[0-9]+)?Hz)?",
+        str(setting.get("mode", "preferred")),
+    )
+    if match:
+        record["width"], record["height"] = int(match.group(1)), int(match.group(2))
+    record["scale"] = setting.get("scale", record.get("scale", 1))
+    record["transform"] = setting.get("transform", record.get("transform", 0))
+    width, height = logical_size(record)
+    x, y = setting.get("x", 0), setting.get("y", 0)
+    return x, y, x + width, y + height
+
+
+def rectangles_overlap(
+    first: tuple[int, int, int, int],
+    second: tuple[int, int, int, int],
+) -> bool:
+    return (
+        first[0] < second[2]
+        and second[0] < first[2]
+        and first[1] < second[3]
+        and second[1] < first[3]
+    )
+
+
+def monitor_setting_applied(setting: dict[str, Any], by_name: dict[str, dict[str, Any]]) -> bool:
+    record = by_name.get(setting["name"])
+    if not record or bool(record.get("disabled", False)) != bool(setting.get("disabled")):
+        return False
+    if setting.get("disabled"):
+        return True
+    if record.get("x") != setting.get("x", 0) or record.get("y") != setting.get("y", 0):
+        return False
+    mirror_id = record.get("mirrorOf")
+    if not setting.get("mirror"):
+        return mirror_id in (None, "none", "")
+    source = by_name.get(setting["mirror"])
+    return bool(source) and str(mirror_id) in (str(source.get("id")), setting["mirror"])
+
+
+def apply_monitor_setting(setting: dict[str, Any], timeout: float = 5) -> None:
+    records = monitors()
+    by_name = {item["name"]: item for item in records}
+    validate_setting(setting, by_name)
+    command(["hyprctl", "eval", monitor_lua(setting)])
+
+    deadline = time.monotonic() + timeout
+    while True:
+        records = monitors()
+        by_name = {item["name"]: item for item in records}
+        if monitor_setting_applied(setting, by_name):
+            return
+        if time.monotonic() >= deadline:
+            raise DisplayError(f"Hyprland did not apply the monitor rule for {setting['name']}.")
+        time.sleep(0.1)
+
+
+def staging_position(output: str, records: list[dict[str, Any]]) -> int:
+    right_edges = [
+        item.get("x", 0) + logical_size(item)[0]
+        for item in records
+        if item.get("connected")
+        and not item.get("disabled", False)
+        and item.get("name") != output
+        and item.get("mirrorOf") in (None, "none")
+    ]
+    return max([0, *right_edges])
+
+
 def apply_layout(layout: list[dict[str, Any]]) -> None:
     if not layout:
         raise DisplayError("The requested display layout is empty.")
@@ -319,39 +397,97 @@ def apply_layout(layout: list[dict[str, Any]]) -> None:
     enabled = [item for item in layout if not item.get("disabled")]
     if not enabled:
         raise DisplayError("At least one display must remain enabled.")
-    ordered = sorted(enabled, key=lambda item: (item.get("x", 0) != 0 or item.get("y", 0) != 0)) + [
-        item for item in layout if item.get("disabled")
-    ]
-    for setting in ordered:
-        records = monitors()
-        by_name = {item["name"]: item for item in records}
+    by_name = {item["name"]: item for item in monitors()}
+    for setting in layout:
         validate_setting(setting, by_name)
-        command(["hyprctl", "eval", monitor_lua(setting)])
+    for first_index, first in enumerate(enabled):
+        if first.get("mirror"):
+            continue
+        first_rect = setting_rectangle(first, by_name)
+        for second in enabled[first_index + 1:]:
+            if not second.get("mirror") and rectangles_overlap(first_rect, setting_rectangle(second, by_name)):
+                raise DisplayError(
+                    f"The requested positions for {first['name']} and {second['name']} overlap."
+                )
 
-    deadline = time.monotonic() + 5
-    while True:
+    enabled_names = {item["name"] for item in enabled}
+    pending = {item["name"]: item for item in enabled}
+    while pending:
         records = monitors()
         by_name = {item["name"]: item for item in records}
-        for setting in layout:
-            validate_setting(setting, by_name)
-        applied = all(
-            bool(by_name[setting["name"]].get("disabled", False)) == bool(setting.get("disabled"))
-            and (
-                str(by_name[setting["name"]].get("mirrorOf", "none")) in ("none", "")
-                if not setting.get("mirror")
-                else str(by_name[setting["name"]].get("mirrorOf"))
-                in (
-                    str(by_name[setting["mirror"]].get("id")),
-                    setting["mirror"],
+        active = [
+            item for item in records
+            if item.get("connected") and not item.get("disabled", False)
+        ]
+
+        if any(item["name"] in enabled_names for item in active):
+            for setting in layout:
+                record = by_name.get(setting["name"])
+                if setting.get("disabled") and record and not record.get("disabled", False):
+                    apply_monitor_setting(setting)
+            records = monitors()
+            by_name = {item["name"]: item for item in records}
+            active = [
+                item for item in records
+                if item.get("connected") and not item.get("disabled", False)
+            ]
+
+        ready = None
+        for setting in pending.values():
+            target_rect = setting_rectangle(setting, by_name)
+            if not any(
+                item["name"] != setting["name"]
+                and item.get("mirrorOf") in (None, "none")
+                and rectangles_overlap(
+                    target_rect,
+                    (
+                        item.get("x", 0),
+                        item.get("y", 0),
+                        item.get("x", 0) + logical_size(item)[0],
+                        item.get("y", 0) + logical_size(item)[1],
+                    ),
                 )
-            )
-            for setting in layout
+                for item in active
+            ):
+                ready = setting
+                break
+
+        if ready:
+            apply_monitor_setting(ready)
+            pending.pop(ready["name"])
+            continue
+
+        if not active:
+            raise DisplayError("No active display is available to stage the requested layout.")
+
+        stage = next(
+            (
+                item for item in pending.values()
+                if by_name[item["name"]].get("disabled", False)
+                or by_name[item["name"]].get("x") != staging_position(item["name"], records)
+                or by_name[item["name"]].get("y") != 0
+            ),
+            None,
         )
-        if applied:
-            break
-        if time.monotonic() >= deadline:
-            raise DisplayError("Hyprland did not apply the requested monitor state.")
-        time.sleep(0.1)
+        if stage is None:
+            raise DisplayError("Could not find a non-overlapping temporary monitor position.")
+        staged = dict(stage)
+        staged.update(x=staging_position(stage["name"], records), y=0, mirror=None)
+        apply_monitor_setting(staged)
+
+    for setting in layout:
+        if setting.get("disabled"):
+            record = next(
+                (item for item in monitors() if item.get("name") == setting["name"]),
+                None,
+            )
+            if record and not record.get("disabled", False):
+                apply_monitor_setting(setting)
+
+    records = monitors()
+    by_name = {item["name"]: item for item in records}
+    if not all(monitor_setting_applied(setting, by_name) for setting in layout):
+        raise DisplayError("Hyprland did not apply the requested monitor layout.")
 
 
 def restore_layout(layout: list[dict[str, Any]]) -> None:
@@ -813,7 +949,7 @@ def move_workspace_to_monitor(workspace: str, monitor: str, allow_active_move: b
             f"monitor = {json.dumps(monitor)} "
             "})"
         )
-        command(["hyprctl", "eval", expression])
+        hypr_dispatch(expression)
     focused = next((item for item in records if item.get("focused") and item.get("connected")), None)
     focus_back = focused["name"] if focused else None
     if not workspace_on_monitor(workspace, monitor):
@@ -822,12 +958,12 @@ def move_workspace_to_monitor(workspace: str, monitor: str, allow_active_move: b
             "hl.dsp.focus({ workspace = " + json.dumps(workspace)
             + ", on_current_monitor = true })"
         )
-        command(["hyprctl", "eval", focus_target])
+        hypr_dispatch(focus_target)
         try:
-            command(["hyprctl", "eval", focus_workspace])
+            hypr_dispatch(focus_workspace)
         finally:
             if focus_back and focus_back != monitor:
-                command(["hyprctl", "eval", "hl.dsp.focus({ monitor = " + json.dumps(focus_back) + " })"])
+                hypr_dispatch("hl.dsp.focus({ monitor = " + json.dumps(focus_back) + " })")
 
     deadline = time.monotonic() + 3
     while time.monotonic() < deadline:
@@ -1701,7 +1837,7 @@ def move_orphaned_workspaces(connected: set[str], target: str) -> None:
                 f"monitor = {json.dumps(target)} "
                 "})"
             )
-            command(["hyprctl", "eval", expression])
+            hypr_dispatch(expression)
 
 
 def recover_disconnected_displays() -> None:
