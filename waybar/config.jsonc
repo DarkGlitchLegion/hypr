@@ -106,14 +106,22 @@
             "warning": 30,
             "critical": 15
         },
+        "interval": 10,
         "format": "{icon} {capacity}%",
-        "format-charging": "󰂄 {capacity}%",
-        "format-plugged": "󰚥 {capacity}%",
+        "format-charging": "{icon} {capacity}%",
+        "format-discharging": "{icon} {capacity}%",
+        "format-plugged": "{icon} {capacity}%",
+        "format-full": "{icon} {capacity}%",
         "format-alt": "{time} {icon}",
-        "format-icons": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"],
+        "format-icons": {
+            "default": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"],
+            "charging": ["󰢟", "󰢜", "󰂆", "󰂇", "󰂈", "󰢝", "󰂉", "󰢞", "󰂊", "󰂋", "󰂅"],
+            "plugged": "󰚥",
+            "full": "󰁹"
+        },
         "tooltip": true,
-        "tooltip-format": "Battery: {capacity}%\nStatus: {status}\nTime remaining: {time}\nPower draw: {power}W\nCycles: {cycles}",
-        "tooltip-format-charging": "Battery: {capacity}% (Charging)\nTime to full: {time}\nPower draw: {power}W\nCycles: {cycles}",
+        "tooltip-format": "Battery: {capacity}%\nTime remaining: {time}\nPower draw: {power}W\nHealth: {health}%\nCycles: {cycles}",
+        "tooltip-format-charging": "Battery: {capacity}% (Charging)\nTime to full: {time}\nPower draw: {power}W\nHealth: {health}%\nCycles: {cycles}",
         "on-click": "/home/darkglitch/.config/hypr/scripts/power-profile-menu.sh",
         "on-click-right": "/home/darkglitch/.config/hypr/scripts/power-profile-menu.sh cycle"
     },

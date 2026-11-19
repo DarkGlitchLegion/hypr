@@ -122,7 +122,7 @@ if bats:
             health_pct = (float(c_full) / float(c_design)) * 100.0
             health_str = f"{health_pct:.0f}%"
 
-    bat_str = f"BAT0: {cap}% [{stat} {draw_str}] │ Health: {health_str} ({cycles} Cycles)"
+    bat_str = f"{os.path.basename(b)}: {cap}% [{stat} {draw_str}] │ Health: {health_str} ({cycles} Cycles)"
 
 profiles = [
     ("performance", "󰓅", "Performance Mode", "Maximum AMD P-State frequency & boost", "#EBCB8B"),

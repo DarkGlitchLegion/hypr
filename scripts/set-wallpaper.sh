@@ -5,28 +5,30 @@
 
 WALLPAPER="$1"
 HYPR_DIR="${HOME}/.config/hypr"
-HYPRPAPER_CONF="${HYPR_DIR}/hyprpaper.conf"
 HYPRLOCK_CONF="${HYPR_DIR}/hyprlock.conf"
 HYPRLOCK_DIR_CONF="${HYPR_DIR}/hyprlock/hyprlock.conf"
 CURRENT_FILE="${HYPR_DIR}/current_wallpaper"
+RESTORE_SCRIPT="${HYPR_DIR}/scripts/restore-wallpaper.sh"
 
-if [ -z "${WALLPAPER}" ] || [ ! -f "${WALLPAPER}" ]; then
+if [ -z "${WALLPAPER}" ] || ! WALLPAPER=$(realpath -e -- "${WALLPAPER}" 2>/dev/null) || [ ! -f "${WALLPAPER}" ]; then
     dunstify -a "Wallpaper" -u critical "Wallpaper Error" "File not found: ${WALLPAPER}" 2>/dev/null || true
     exit 1
 fi
 
-# 1. Save current wallpaper path
-echo "${WALLPAPER}" > "${CURRENT_FILE}"
+if [[ "${WALLPAPER}" == *$'\n'* ]]; then
+    dunstify -a "Wallpaper" -u critical "Wallpaper Error" "Wallpaper paths cannot contain newlines." 2>/dev/null || true
+    exit 1
+fi
 
-# 2. Update hyprpaper.conf for session persistence across reboots
-cat << EOF > "${HYPRPAPER_CONF}"
-preload = ${WALLPAPER}
-wallpaper = ,${WALLPAPER}
-splash = false
-ipc = on
-EOF
+mkdir -p "${HYPR_DIR}"
+state_tmp=$(mktemp "${CURRENT_FILE}.XXXXXX") || exit 1
+trap 'rm -f -- "${state_tmp}"' EXIT
+printf '%s\n' "${WALLPAPER}" > "${state_tmp}" || exit 1
+chmod 644 "${state_tmp}" || exit 1
+mv -f -- "${state_tmp}" "${CURRENT_FILE}" || exit 1
+trap - EXIT
 
-# 3. Synchronize hyprlock configurations
+# Keep the lock screen background in sync with the selected desktop wallpaper.
 if [ -f "${HYPRLOCK_CONF}" ]; then
     sed -i "s|path = .*|path = ${WALLPAPER}|" "${HYPRLOCK_CONF}"
 fi
@@ -34,17 +36,11 @@ if [ -f "${HYPRLOCK_DIR_CONF}" ]; then
     sed -i "s|path = .*|path = ${WALLPAPER}|" "${HYPRLOCK_DIR_CONF}"
 fi
 
-# 4. Apply immediately to running hyprpaper instance without restart
-if pgrep -x hyprpaper >/dev/null 2>&1; then
-    hyprctl hyprpaper preload "${WALLPAPER}" 2>/dev/null
-    hyprctl hyprpaper wallpaper ",${WALLPAPER}" 2>/dev/null
-    hyprctl hyprpaper unload unused 2>/dev/null
-else
-    # Start hyprpaper if not already running
-    hyprpaper -c "${HYPRPAPER_CONF}" &
+if ! "${RESTORE_SCRIPT}"; then
+    dunstify -a "Wallpaper" -u critical "Wallpaper Error" "Saved ${WALLPAPER}, but could not apply it." 2>/dev/null || true
+    exit 1
 fi
 
-# 5. Send confirmation notification with thumbnail
 WALL_NAME=$(basename "${WALLPAPER}")
 dunstify -a "Wallpaper" \
          -u low \

@@ -16,8 +16,8 @@ hl.on("hyprland.start", function ()
     -- Dunst notification daemon
     hl.exec_cmd("dunst -config " .. config .. "/dunst/dunstrc")
 
-    -- Hyprpaper wallpaper daemon
-    hl.exec_cmd("hyprpaper -c " .. config .. "/hyprpaper.conf")
+    -- Restore the saved wallpaper before starting hyprpaper.
+    hl.exec_cmd(scripts .. "/restore-wallpaper.sh")
 
     -- Hypridle power/lock daemon
     hl.exec_cmd("hypridle -c " .. config .. "/hypridle.conf")
