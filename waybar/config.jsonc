@@ -18,7 +18,7 @@
         "network",
         "pulseaudio",
         "pulseaudio#microphone",
-        "bluetooth",
+        "custom/bluetooth",
         "battery",
         "power-profiles-daemon",
         "custom/dnd",
@@ -91,14 +91,12 @@
         "on-click-middle": "pavucontrol",
         "on-click-right": "/home/darkglitch/.config/hypr/scripts/volume.sh mic"
     },
-    "bluetooth": {
-        "format": "󰂯",
-        "format-disabled": "󰂲",
-        "format-connected": "󰂱 {device_alias}",
-        "format-connected-battery": "󰂱 {device_alias} ({device_battery_percentage}%)",
-        "tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected",
-        "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
-        "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
+    "custom/bluetooth": {
+        "exec": "/home/darkglitch/.config/hypr/scripts/bluetooth-status.py",
+        "return-type": "json",
+        "interval": 2,
+        "signal": 9,
+        "format": "{}",
         "on-click": "/home/darkglitch/.config/hypr/scripts/bluetooth-menu.sh"
     },
     "battery": {

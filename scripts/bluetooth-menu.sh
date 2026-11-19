@@ -24,6 +24,10 @@ notify() {
     dunstify -a "Bluetooth" -u "${urgency}" -i bluetooth "${title}" "${msg}" 2>/dev/null || true
 }
 
+refresh_waybar_bluetooth() {
+    pkill -RTMIN+9 waybar 2>/dev/null || true
+}
+
 ensure_agent() {
     if ! pgrep -fa bluetooth-agent.py >/dev/null 2>&1; then
         if command -v hyprctl >/dev/null 2>&1; then
@@ -43,6 +47,7 @@ is_powered() {
 toggle_power() {
     if is_powered; then
         bluetoothctl power off >/dev/null 2>&1
+        refresh_waybar_bluetooth
         notify "low" "Bluetooth Disabled" "Bluetooth adapter powered off."
     else
         # 1. Unblock hardware/software RF kill switches
@@ -58,6 +63,7 @@ toggle_power() {
         bluetoothctl power on >/dev/null 2>&1
         sleep 0.4
         ensure_agent
+        refresh_waybar_bluetooth
 
         if is_powered; then
             notify "low" "Bluetooth Enabled" "Bluetooth adapter powered on."
@@ -114,6 +120,7 @@ device_actions() {
 
             notify "low" "Connecting..." "Connecting to ${name}..."
             if timeout 10 bluetoothctl connect "${mac}" >/dev/null 2>&1; then
+                refresh_waybar_bluetooth
                 notify "low" "Connected" "Connected to ${name}."
             else
                 notify "critical" "Connection Failed" "Could not connect to ${name}."
@@ -121,10 +128,12 @@ device_actions() {
             ;;
         *"Disconnect"*)
             bluetoothctl disconnect "${mac}" >/dev/null 2>&1
+            refresh_waybar_bluetooth
             notify "low" "Disconnected" "Disconnected from ${name}."
             ;;
         *"Unpair"*|*"Remove"*)
             bluetoothctl remove "${mac}" >/dev/null 2>&1
+            refresh_waybar_bluetooth
             notify "low" "Device Removed" "Unpaired and removed ${name}."
             ;;
         *)

@@ -45,6 +45,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │   ├── power-profile-menu.sh # AMD P-State power profile switcher & battery health
 │   ├── wifi-menu.sh          # Non-blocking network manager
 │   ├── bluetooth-menu.sh     # Peripheral management & pairing
+│   ├── bluetooth-status.py   # Live Bluetooth power/connection icon for Waybar
 │   ├── bluetooth-agent.py    # D-Bus pairing & authentication agent
 │   ├── wallpaper-selector.sh # Rofi wallpaper thumbnail chooser
 │   ├── set-wallpaper.sh      # Hyprpaper IPC reload & Hyprlock persistence
@@ -144,9 +145,10 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 
 ### 5. Graphical Bluetooth Manager & Pairing Agent
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd>
-* **Waybar Trigger**: Click the **Bluetooth** (`󰂯`) widget in Waybar.
-* **Scripts**: `~/.config/hypr/scripts/bluetooth-menu.sh` & `bluetooth-agent.py`
+* **Waybar Trigger**: Click the Bluetooth widget to open the manager. Its icon distinguishes powered off (`󰂲`), powered on (`󰂯`), and connected (`󰂱`) states.
+* **Scripts**: `~/.config/hypr/scripts/bluetooth-menu.sh`, `bluetooth-status.py`, and `bluetooth-agent.py`
 * **What it does**:
+  * Waybar refreshes Bluetooth power and connection status every two seconds; manager actions also trigger an immediate refresh.
   * Connects to BlueZ via D-Bus and `bluetoothctl`.
   * Runs a dedicated background agent (`bluetooth-agent.py`) for automatic pairing, PIN handling, and Dunst notifications.
   * Lists paired and discovered devices with battery status percentages.
