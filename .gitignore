@@ -1,0 +1,31 @@
+# Local configuration backups and runtime state
+.backup/
+*.log
+/display-preferences.json
+/display-profiles.json
+/audio-preferences.json
+/session-presets.json
+/snapshot-settings.json
+
+# Python-generated files
+__pycache__/
+*.py[cod]
+
+# Local environments and tool caches
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editor and operating-system files
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Local secrets (keep sample templates trackable)
+.env
+.env.*
+!.env.example
+!.env.sample
