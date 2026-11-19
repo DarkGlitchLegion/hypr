@@ -30,6 +30,7 @@ show_main_hub() {
 <span color="#888888">── Quick Actions ─────────────────────────────────────────────────────────────</span>
 <span color="#AAAAAA"><b>󰄲  Application Launcher                  </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Search and launch desktop applications</span>
 <span color="#AAAAAA"><b>󰞷  Terminal (Kitty)                      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Open Kitty terminal emulator</span>
+<span color="#AAAAAA"><b>󰍹  Display Manager                       </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Manage connected displays and layouts</span>
 <span color="#AAAAAA"><b>󰉋  File Manager (Thunar)                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Browse local files and storage</span>
 <span color="#AAAAAA"><b>󰈹  Web Browser (Firefox)                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Launch default web browser</span>
 <span color="#AAAAAA"><b>󰤨  Wi-Fi Network Manager                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Scan, connect, and manage Wi-Fi</span>
@@ -84,7 +85,7 @@ show_display_menu() {
 <span color="#EBCB8B"><b>󰌍  [Back to Control Center]              </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Return to top-level menu</span>
 <span color="#AAAAAA"><b>󰸉  Wallpaper Selector                    </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Browse and switch desktop wallpapers</span>
 <span color="#AAAAAA"><b>󰔎  Synchronize GTK Dark Theme            </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Re-apply Adwaita-dark and icon tokens</span>
-<span color="#AAAAAA"><b>󰍹  Display Resolution &amp; Scaling         </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Show active monitor information</span>
+<span color="#AAAAAA"><b>󰍹  Display Manager                       </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Manage layouts, resolution, scale, and orientation</span>
 <span color="#AAAAAA"><b>󰃠  Set Brightness to 100% (Maximum)      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Maximize panel backlight</span>
 <span color="#AAAAAA"><b>󰃟  Set Brightness to 50%  (Balanced)     </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Set backlight to 50%</span>
 <span color="#AAAAAA"><b>󰃞  Set Brightness to 10%  (Minimum)      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Minimize backlight for dark environments</span>
@@ -174,6 +175,9 @@ handle_action() {
         *"Terminal (Kitty)"*)
             kitty --config "${KITTY_CONF}" &
             ;;
+        *"Display Manager"*)
+            "${SCRIPTS}/display-manager.py" &
+            ;;
         *"File Manager"*)
             thunar &
             ;;
@@ -204,9 +208,6 @@ handle_action() {
         *"Synchronize GTK Dark Theme"*)
             "${SCRIPTS}/apply-gtk-theme.sh" &
             notify "GTK Theme Synced" "Applied Adwaita-dark theme configuration."
-            ;;
-        *"Display Resolution & Scaling"*)
-            kitty --config "${KITTY_CONF}" -e sh -c "hyprctl monitors; echo ''; read -p 'Press Enter to close...' -r" &
             ;;
         *"Set Brightness to 100%"*)
             brightnessctl set 100% >/dev/null 2>&1

@@ -22,6 +22,7 @@ show_cheatsheet() {
     Super + Shift + E            Open Text Editor (Code / Nano)
     Super + Shift + T            Open Process Monitor (Btop - Transparent)
     Super + Shift + I            Show System Information (Fastfetch)
+    Super + Shift + M            Open Display Manager
     Super + Shift + C            Open Matrix Screensaver (CMatrix - Transparent)
     Super + Shift + S            Wi-Fi Network Manager (Rofi)
     Super + Shift + B            Bluetooth Manager (Rofi)

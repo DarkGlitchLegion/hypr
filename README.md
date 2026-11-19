@@ -202,6 +202,25 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 
 ---
 
+### 12. External Display Manager
+* **Hotkey**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd>
+* **Control Center**: Open **Display & Personalization** → **Display Manager**
+* **Script**: `~/.config/hypr/scripts/display-manager.py`
+* **Monitor configuration**: [monitors.lua](./lua/monitors.lua) remains the default fallback rule; display changes are applied at runtime and do not rewrite it.
+* **Previous limitation**: The fallback rule only selected a preferred mode, and the Control Center's display action only printed monitor information; there was no hotplug watcher, layout UI, or saved profile.
+* **What it does**:
+  * Reads monitor modes, resolution, refresh rate, scaling, position, and orientation from Hyprland. Detects connector plug/unplug state through the kernel DRM status files without hardcoding individual connector names.
+  * Offers Laptop only, External display only, Extend (left/right/above/below), Mirror, and Presentation layouts.
+  * Per-monitor controls enable/disable outputs, select a reported resolution/refresh rate, adjust scale and orientation, position relative to another display, or move a display to the top-left primary position.
+  * Every manual layout change has a 20-second confirmation window; choosing Keep saves it to `~/.config/hypr/display-profiles.json`, while canceling or letting the timer expire restores the previous layout. Saved profiles are retained separately for each connected-monitor combination.
+  * Use **Reapply saved layout** to choose and reload a saved profile on demand after changing display settings.
+  * The lightweight startup watcher checks for hotplug changes every three seconds. New displays trigger a Dunst notification with Extend, Mirror, External only, and Open manager actions. It only auto-applies a layout when you explicitly saved that exact connected-monitor combination.
+  * When a monitor disconnects, Hyprland handles the workspace reassignment to remaining active displays. The watcher reports the disconnect and does not apply an unsaved layout.
+  * Uses existing Python 3, Hyprland, Rofi, and Dunst; it adds no packages or system service.
+* **Connect and configure**: Plug in the display, choose a layout from the connection notification or open the manager, then choose **Keep** before the timer expires. Choose the save option to restore that layout on later connections and at startup. Use **Laptop only** to return to the built-in panel; choose **Revert** or let the timer expire to undo an unconfirmed change.
+
+---
+
 ## Master Keybindings Reference
 
 ### Application Launchers & Controls
@@ -216,6 +235,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> | Text Editor | Launches VS Code (falls back to Nano in Kitty) |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd> | Process Monitor | Opens Btop in transparent Kitty terminal |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> | System Information | Displays Fastfetch in a Kitty terminal |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd> | Display Manager | Configure monitor layouts, modes, scaling, and orientation |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> | CMatrix | Matrix digital rain terminal screensaver |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Wi-Fi Manager | Opens Rofi Wi-Fi manager |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> | Bluetooth Manager | Opens Rofi Bluetooth manager |

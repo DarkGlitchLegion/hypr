@@ -19,6 +19,9 @@ hl.on("hyprland.start", function ()
     -- Restore the saved wallpaper before starting hyprpaper.
     hl.exec_cmd(scripts .. "/restore-wallpaper.sh")
 
+    -- Detect monitor hotplug events and restore explicitly saved display layouts.
+    hl.exec_cmd(scripts .. "/display-manager.py --watch")
+
     -- Hypridle power/lock daemon
     hl.exec_cmd("hypridle -c " .. config .. "/hypridle.conf")
 

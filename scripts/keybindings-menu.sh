@@ -19,6 +19,7 @@ generate_list() {
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + E           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Text Editor (Code / Nano)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + T           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Process Monitor (Btop - Transparent)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + I           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Show System Information (Fastfetch)</span>
+<span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + M           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Display Manager</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + C           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Matrix Screensaver (CMatrix - Transparent)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + S           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Wi-Fi Network Manager (Rofi)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + B           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Bluetooth Manager (Rofi)</span>
@@ -105,6 +106,9 @@ case "${CHOSEN}" in
         ;;
     *"Super + Shift + I"*)
         kitty --class fastfetch --title fastfetch --hold --config "${HOME}/.config/hypr/kitty/kitty.conf" -e fastfetch &
+        ;;
+    *"Super + Shift + M"*)
+        "${HOME}/.config/hypr/scripts/display-manager.py" &
         ;;
     *"Super + Shift + C"*)
         "${HOME}/.config/hypr/scripts/cmatrix.sh" &
