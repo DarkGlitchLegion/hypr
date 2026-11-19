@@ -40,9 +40,9 @@ generate_list() {
 <span color="#888888">[Window   ]</span>  <span weight="bold" color="#AAAAAA">Super + Minus (-)           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Decrease Window Size (-30px)</span>
 <span color="#888888">[Window   ]</span>  <span weight="bold" color="#AAAAAA">Super + ;                   </span> <span color="#333333">│</span>  <span color="#D5D5D5">Shrink Focused Window (-30px)</span>
 <span color="#888888">[Window   ]</span>  <span weight="bold" color="#AAAAAA">Super + '                   </span> <span color="#333333">│</span>  <span color="#D5D5D5">Enlarge Focused Window (+30px)</span>
-<span color="#888888">[Workspace]</span>  <span weight="bold" color="#AAAAAA">Super + 1..5                </span> <span color="#333333">│</span>  <span color="#D5D5D5">Jump to Workspace 1–5</span>
-<span color="#888888">[Workspace]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + 1..5        </span> <span color="#333333">│</span>  <span color="#D5D5D5">Move Window to Workspace &amp; Follow</span>
-<span color="#888888">[Workspace]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + Alt + 1..5  </span> <span color="#333333">│</span>  <span color="#D5D5D5">Move Window to Workspace Silently</span>
+<span color="#888888">[Workspace]</span>  <span weight="bold" color="#AAAAAA">Super + 1..9, 0             </span> <span color="#333333">│</span>  <span color="#D5D5D5">Jump to Workspace 1–10 (0 = 10)</span>
+<span color="#888888">[Workspace]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + 1..9, 0     </span> <span color="#333333">│</span>  <span color="#D5D5D5">Move Window to Workspace &amp; Follow</span>
+<span color="#888888">[Workspace]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + Alt + 1..9, 0</span> <span color="#333333">│</span>  <span color="#D5D5D5">Move Window to Workspace Silently</span>
 <span color="#888888">[Workspace]</span>  <span weight="bold" color="#AAAAAA">Super + Tab                 </span> <span color="#333333">│</span>  <span color="#D5D5D5">Jump to Next Workspace</span>
 <span color="#888888">[Workspace]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + Tab         </span> <span color="#333333">│</span>  <span color="#D5D5D5">Jump to Previous Workspace</span>
 <span color="#888888">[Workspace]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + Tab          </span> <span color="#333333">│</span>  <span color="#D5D5D5">Jump to Former / Recent Workspace</span>

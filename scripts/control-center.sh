@@ -57,6 +57,7 @@ show_system_menu() {
 <span color="#AAAAAA"><b>󰋊  Disk Usage &amp; Storage Overview         </b></span> <span color="#333333">│</span> <span color="#D5D5D5">View local filesystem storage in terminal</span>
 <span color="#AAAAAA"><b>󰑓  Restart Waybar                        </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Reload top status bar</span>
 <span color="#AAAAAA"><b>󰑓  Reload Hyprland Desktop               </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Refresh Hyprland configuration</span>
+<span color="#AAAAAA"><b>󰒓  Rice Health &amp; Diagnostics            </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Check config, displays, workspaces, tools</span>
 <span color="#AAAAAA"><b>󰒓  Hyprland Config Directory             </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Open ~/.config/hypr in Kitty</span>
 EOF
 }
@@ -177,6 +178,9 @@ handle_action() {
             ;;
         *"Display Manager"*)
             "${SCRIPTS}/display-manager.py" &
+            ;;
+        *"Rice Health & Diagnostics"*|*"Rice Health &amp; Diagnostics"*)
+            "${SCRIPTS}/rice-health.py" &
             ;;
         *"File Manager"*)
             thunar &

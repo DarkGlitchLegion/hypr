@@ -49,9 +49,9 @@ show_cheatsheet() {
     Super + Right Mouse Drag     Resize Window
 
   [ WORKSPACE MANAGEMENT ]
-    Super + 1 .. 5               Switch to Workspace 1–5
-    Super + Shift + 1 .. 5       Move Window to Workspace & Follow
-    Super + Shift + Alt + 1 .. 5 Move Window to Workspace Silently
+    Super + 1 .. 9, 0            Switch to Workspace 1–10 (0 = 10)
+    Super + Shift + 1 .. 9, 0    Move Window to Workspace & Follow
+    Super + Shift + Alt + 1 .. 9, 0 Move Window to Workspace Silently
     Super + Tab                  Switch to Next Workspace
     Super + Shift + Tab          Switch to Previous Workspace
     Super + Ctrl + Tab           Switch to Former / Recent Workspace

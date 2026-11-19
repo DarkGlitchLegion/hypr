@@ -37,6 +37,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │   └── wallpaper.rasi        # Wallpaper visual thumbnail grid
 ├── scripts/                  # Shell & Python automation utilities
 │   ├── control-center.sh     # Rice Control Center super-hub
+│   ├── rice-health.py        # Hyprland, display, workspace, and tool diagnostics
 │   ├── audio-menu.sh         # PipeWire sink & source switcher (wpctl)
 │   ├── power-profile-menu.sh # AMD P-State power profile switcher & battery health
 │   ├── wifi-menu.sh          # Non-blocking network manager
@@ -68,8 +69,9 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 * **Hotkey**: <kbd>Super</kbd> + <kbd>C</kbd> or <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>Space</kbd>
 * **Script**: `~/.config/hypr/scripts/control-center.sh`
 * **What it does**: Provides a centralized keyboard dashboard for the entire desktop.
+  * **Rice Health & Diagnostics** is available under System & Performance. It checks Hyprland config/IPC, display watcher count, active monitor geometry for overlaps, workspace state, saved external workspace preference, and commands used by rice features. Choose **Refresh diagnostics** to re-query live state.
   * **Categorized Submenus**:
-    * `󰒓 System & Performance`: Process monitor (`btop`), power center, disk usage, desktop/Waybar reload.
+    * `󰒓 System & Performance`: Rice health diagnostics, process monitor (`btop`), power center, disk usage, desktop/Waybar reload.
     * `󰤨 Hardware & Connectivity`: Wi-Fi, Bluetooth, PipeWire audio switcher, battery diagnostics.
     * `󰍹 Display & Personalization`: Wallpaper selector, GTK theme synchronization, display info.
     * `󰲋 Developer & Workstation`: VS Code, Kitty, Lazygit, tools folder, CMatrix.
@@ -275,11 +277,13 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 | <kbd>Super</kbd> + Right Mouse Drag | Resize Window | Resizes window via mouse |
 
 ### Workspace Management
+Workspace shortcuts now cover 1–10 to match the Display Manager; use <kbd>Super</kbd> + <kbd>0</kbd> for workspace 10.
+
 | Shortcut | Action | Description |
 | :--- | :--- | :--- |
-| <kbd>Super</kbd> + <kbd>1</kbd> .. <kbd>5</kbd> | Switch Workspace | Jumps to workspace 1 through 5 |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd> .. <kbd>5</kbd> | Move to Workspace | Moves focused window to workspace and follows |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>1</kbd> .. <kbd>5</kbd> | Move Silently | Moves focused window to workspace without following |
+| <kbd>Super</kbd> + <kbd>1</kbd> .. <kbd>9</kbd>, <kbd>0</kbd> | Switch Workspace | Jumps to workspace 1 through 10; <kbd>0</kbd> selects workspace 10 |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>1</kbd> .. <kbd>9</kbd>, <kbd>0</kbd> | Move to Workspace | Moves focused window to workspace and follows |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>Alt</kbd> + <kbd>1</kbd> .. <kbd>9</kbd>, <kbd>0</kbd> | Move Silently | Moves focused window to workspace without following |
 | <kbd>Super</kbd> + <kbd>Tab</kbd> | Next Workspace | Switches to next workspace (`e+1`) |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>Tab</kbd> | Prev Workspace | Switches to previous workspace (`e-1`) |
 | <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>Tab</kbd> | Previous Workspace| Switches to the most recently active workspace |
