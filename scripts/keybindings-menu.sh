@@ -11,8 +11,8 @@ ROFI_THEME="${HOME}/.config/hypr/rofi/keybindings.rasi"
 generate_list() {
     cat << 'EOF'
 <span color="#888888">[Launcher ]</span>  <span weight="bold" color="#AAAAAA">Super + Space               </span> <span color="#333333">│</span>  <span color="#D5D5D5">Application Launcher (Rofi)</span>
-<span color="#888888">[Command  ]</span>  <span weight="bold" color="#AAAAAA">Super + Alt + Space         </span> <span color="#333333">│</span>  <span color="#D5D5D5">Command Center (Quick Actions)</span>
-<span color="#888888">[Command  ]</span>  <span weight="bold" color="#AAAAAA">Super + C                   </span> <span color="#333333">│</span>  <span color="#D5D5D5">Command Center (Alternative)</span>
+<span color="#888888">[Command  ]</span>  <span weight="bold" color="#AAAAAA">Super + Alt + Space         </span> <span color="#333333">│</span>  <span color="#D5D5D5">Control Center (Desktop Super-Hub)</span>
+<span color="#888888">[Command  ]</span>  <span weight="bold" color="#AAAAAA">Super + C                   </span> <span color="#333333">│</span>  <span color="#D5D5D5">Control Center (Alternative)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Return              </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Terminal (Kitty)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + Return      </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Web Browser (Firefox)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + F           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open File Manager (Thunar)</span>
@@ -45,7 +45,7 @@ generate_list() {
 <span color="#888888">[System   ]</span>  <span weight="bold" color="#AAAAAA">Super + Escape              </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open System / Power Menu</span>
 <span color="#888888">[System   ]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + L            </span> <span color="#333333">│</span>  <span color="#D5D5D5">Lock Screen (Hyprlock)</span>
 <span color="#888888">[System   ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + R           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Restart Waybar &amp; Reload Desktop</span>
-<span color="#888888">[System   ]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + A            </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Audio Mixer (Pavucontrol)</span>
+<span color="#888888">[System   ]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + A            </span> <span color="#333333">│</span>  <span color="#D5D5D5">PipeWire Audio Switcher (Rofi)</span>
 <span color="#888888">[Clipboard]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + V            </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Clipboard History Manager</span>
 <span color="#888888">[Clipboard]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + Shift + V    </span> <span color="#333333">│</span>  <span color="#D5D5D5">Wipe All Clipboard History</span>
 <span color="#888888">[Style    ]</span>  <span weight="bold" color="#AAAAAA">Super + Ctrl + W            </span> <span color="#333333">│</span>  <span color="#D5D5D5">Wallpaper Selector (Thumbnail Grid)</span>
@@ -146,7 +146,7 @@ case "${CHOSEN}" in
         "${HOME}/.config/hypr/scripts/restart-waybar.sh" && hyprctl reload
         ;;
     *"Super + Ctrl + A"*)
-        pavucontrol &
+        "${HOME}/.config/hypr/scripts/audio-menu.sh" &
         ;;
     *"Super + Ctrl + Shift + V"*)
         "${HOME}/.config/hypr/scripts/clipboard-clear.sh" &

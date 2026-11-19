@@ -20,6 +20,7 @@
         "pulseaudio#microphone",
         "bluetooth",
         "battery",
+        "power-profiles-daemon",
         "custom/dnd",
         "clock",
         "custom/power"
@@ -76,7 +77,8 @@
             "default": ["󰕿", "󰖀", "󰕾"]
         },
         "scroll-step": 2,
-        "on-click": "pavucontrol",
+        "on-click": "/home/darkglitch/.config/hypr/scripts/audio-menu.sh",
+        "on-click-middle": "pavucontrol",
         "on-click-right": "/home/darkglitch/.config/hypr/scripts/volume.sh mute"
     },
     "pulseaudio#microphone": {
@@ -84,7 +86,8 @@
         "format-source": "󰍬 {volume}%",
         "format-source-muted": "󰍭 Muted",
         "scroll-step": 2,
-        "on-click": "pavucontrol",
+        "on-click": "/home/darkglitch/.config/hypr/scripts/audio-menu.sh inputs",
+        "on-click-middle": "pavucontrol",
         "on-click-right": "/home/darkglitch/.config/hypr/scripts/volume.sh mic"
     },
     "bluetooth": {
@@ -107,7 +110,23 @@
         "format-charging": "󰂄 {capacity}%",
         "format-plugged": "󰚥 {capacity}%",
         "format-alt": "{time} {icon}",
-        "format-icons": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
+        "format-icons": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"],
+        "tooltip": true,
+        "tooltip-format": "Battery: {capacity}%\nStatus: {status}\nTime remaining: {time}\nPower draw: {power}W\nCycles: {cycles}",
+        "tooltip-format-charging": "Battery: {capacity}% (Charging)\nTime to full: {time}\nPower draw: {power}W\nCycles: {cycles}",
+        "on-click": "/home/darkglitch/.config/hypr/scripts/power-profile-menu.sh",
+        "on-click-right": "/home/darkglitch/.config/hypr/scripts/power-profile-menu.sh cycle"
+    },
+    "power-profiles-daemon": {
+        "format": "{icon}",
+        "tooltip-format": "Power Profile: {profile}\nDriver: {driver}",
+        "tooltip": true,
+        "format-icons": {
+            "default": "󰾆",
+            "performance": "󰓅",
+            "balanced": "󰾆",
+            "power-saver": "󰌪"
+        }
     },
     "custom/dnd": {
         "exec": "/home/darkglitch/.config/hypr/scripts/dnd-status.sh",

@@ -63,6 +63,7 @@ window#waybar {
 #pulseaudio.microphone,
 #bluetooth,
 #battery,
+#power-profiles-daemon,
 #custom-dnd,
 #clock,
 #custom-power {
@@ -82,6 +83,7 @@ window#waybar {
 #pulseaudio.microphone:hover,
 #bluetooth:hover,
 #battery:hover,
+#power-profiles-daemon:hover,
 #custom-dnd:hover,
 #clock:hover,
 #custom-power:hover {
@@ -125,6 +127,20 @@ window#waybar {
 #battery.critical:not(.charging) {
     color: #BF616A;
     border-color: #BF616A;
+}
+
+#power-profiles-daemon.performance {
+    color: #EBCB8B;
+    border-color: rgba(235, 203, 139, 0.4);
+}
+
+#power-profiles-daemon.power-saver {
+    color: #A3BE8C;
+    border-color: rgba(163, 190, 140, 0.4);
+}
+
+#power-profiles-daemon.balanced {
+    color: #AAAAAA;
 }
 
 #custom-dnd.paused {

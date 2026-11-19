@@ -1,0 +1,120 @@
+/**
+ * Rofi Audio Manager Theme
+ * Minimal Dark Palette (#0C0D10, #17191F, #202126, #AAAAAA)
+ * Font: JetBrainsMono Nerd Font
+ */
+
+configuration {
+    modi: "dmenu";
+    font: "JetBrainsMono Nerd Font 10.5";
+    show-icons: false;
+    case-sensitive: false;
+    cycle: true;
+}
+
+@theme "/dev/null"
+
+* {
+    bg:          #0C0D10;
+    bg-alt:      #17191F;
+    surface:     #202126;
+    fg:          #D5D5D5;
+    fg-dim:      #888888;
+    accent:      #AAAAAA;
+    border-col:  #333333;
+
+    background-color: transparent;
+    text-color:       @fg;
+    margin:           0;
+    padding:          0;
+    spacing:          0;
+}
+
+window {
+    width:            680px;
+    height:           520px;
+    background-color: @bg;
+    border:           1px solid;
+    border-color:     @border-col;
+    border-radius:    10px;
+    padding:          18px;
+    location:         center;
+    anchor:           center;
+}
+
+mainbox {
+    children: [ inputbar, listview, footer ];
+    spacing:  12px;
+}
+
+inputbar {
+    background-color: @bg-alt;
+    border:           1px solid;
+    border-color:     @surface;
+    border-radius:    8px;
+    padding:          10px 14px;
+    children:         [ prompt, entry ];
+    spacing:          12px;
+}
+
+prompt {
+    text-color: @accent;
+    font:       "JetBrainsMono Nerd Font Bold 11";
+}
+
+entry {
+    text-color:        @fg;
+    font:              "JetBrainsMono Nerd Font 10.5";
+    placeholder:       "Select audio output or microphone...";
+    placeholder-color: @fg-dim;
+}
+
+listview {
+    lines:        9;
+    columns:      1;
+    spacing:      5px;
+    scrollbar:    true;
+    dynamic:      true;
+}
+
+scrollbar {
+    width:        4px;
+    handle-width: 4px;
+    handle-color: @surface;
+    border-radius: 4px;
+    margin:       0 0 0 6px;
+}
+
+element {
+    padding:       8px 14px;
+    border-radius: 6px;
+    children:      [ element-text ];
+    spacing:       10px;
+}
+
+element selected {
+    background-color: @surface;
+    text-color:       #FFFFFF;
+    border:           1px solid;
+    border-color:     @accent;
+}
+
+element-text {
+    background-color: transparent;
+    text-color:       inherit;
+    vertical-align:   0.5;
+}
+
+footer {
+    expand:   false;
+    children: [ textbox-footer ];
+}
+
+textbox-footer {
+    expand:            false;
+    content:           "Enter: Select / Toggle  │  Esc: Close";
+    font:              "JetBrainsMono Nerd Font 9.5";
+    text-color:        @fg-dim;
+    horizontal-align:  0.5;
+    padding:           4px 0 0 0;
+}

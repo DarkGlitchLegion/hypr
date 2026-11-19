@@ -12,10 +12,10 @@ show_cheatsheet() {
   ARCH HYPRLAND RICE — KEYBOARD SHORTCUTS
  ─────────────────────────────────────────────────────────────────────────────
 
-  [ LAUNCHER & COMMAND CENTER ]
+  [ LAUNCHER & CONTROL CENTER ]
     Super + Space                Application Launcher (Rofi)
-    Super + Alt + Space          Command Center (Quick Desktop Actions)
-    Super + C                    Command Center (Alternative)
+    Super + Alt + Space          Control Center (Desktop Super-Hub)
+    Super + C                    Control Center (Alternative)
     Super + Return               Open Terminal (Kitty)
     Super + Shift + Return       Open Web Browser (Firefox)
     Super + Shift + F            Open File Manager (Thunar)
@@ -58,7 +58,7 @@ show_cheatsheet() {
     Super + Ctrl + L             Lock Screen Immediately (Hyprlock)
     Super + L                    Lock Screen (Fallback)
     Super + Shift + R            Restart Waybar & Reload Hyprland
-    Super + Ctrl + A             Open Audio Mixer Panel (Pavucontrol)
+    Super + Ctrl + A             Open PipeWire Audio Switcher (Rofi)
     Super + Shift + D            Toggle Do Not Disturb (DND)
     Super + Ctrl + N             Open Notification History Viewer
     Super + N                    Notification History (Pop Last)
