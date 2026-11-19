@@ -29,7 +29,7 @@ def print_alert(message):
     payload = {
         "app_key": SMS_APP_KEY,
         "app_secret": SMS_APP_SECRET,
-        "msisdn": SMS_MSISDN,
+        "msisdn": f"+{SMS_MSISDN}",
         "shortcode_mask": SMS_SHORTCODE_MASK,
         "rcvd_transid": SMS_RCVD_TRANSID,
         "message": message,
