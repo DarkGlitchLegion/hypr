@@ -35,7 +35,7 @@ show_main_hub() {
 <span color="#AAAAAA"><b>󰈹  Web Browser (Firefox)                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Launch default web browser</span>
 <span color="#AAAAAA"><b>󰤨  Wi-Fi Network Manager                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Scan, connect, and manage Wi-Fi</span>
 <span color="#AAAAAA"><b>󰂯  Bluetooth Device Manager              </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Pair and connect Bluetooth peripherals</span>
-<span color="#AAAAAA"><b>󰕾  PipeWire Audio Control Center         </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Switch output sinks &amp; microphones</span>
+<span color="#AAAAAA"><b>󰕾  PipeWire Audio Control Center         </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Outputs, volume, microphones, HDMI auto-switch</span>
 <span color="#AAAAAA"><b>󰓅  Power Profiles &amp; Battery Center       </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Switch power profiles &amp; check battery</span>
 <span color="#AAAAAA"><b>󰸉  Wallpaper Selector                    </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Select wallpaper with live preview</span>
 <span color="#AAAAAA"><b>󰅇  Clipboard History Manager             </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Search and paste clipboard history</span>
@@ -70,7 +70,7 @@ show_hardware_menu() {
 <span color="#EBCB8B"><b>󰌍  [Back to Control Center]              </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Return to top-level menu</span>
 <span color="#AAAAAA"><b>󰤨  Wi-Fi Network Manager                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Scan, connect, and disconnect networks</span>
 <span color="#AAAAAA"><b>󰂯  Bluetooth Device Manager              </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Pair and manage Bluetooth connections</span>
-<span color="#AAAAAA"><b>󰕾  PipeWire Audio Control Center         </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Switch default audio sink and source</span>
+<span color="#AAAAAA"><b>󰕾  PipeWire Audio Control Center         </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Outputs, volume, microphones, HDMI auto-switch</span>
 <span color="#AAAAAA"><b>󰓅  Power Profiles &amp; Battery Center       </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Battery health &amp; CPU power throttling</span>
 <span color="#AAAAAA"><b>󰝟  Toggle Audio Mute                     </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Mute or unmute default output sink</span>
 <span color="#AAAAAA"><b>󰍭  Toggle Microphone Mute                </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Mute or unmute default microphone</span>

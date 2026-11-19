@@ -22,6 +22,9 @@ hl.on("hyprland.start", function ()
     -- Detect monitor hotplug events and restore explicitly saved display layouts.
     hl.exec_cmd(scripts .. "/display-manager.py --watch")
 
+    -- Watch PipeWire sink hotplug events when optional automatic HDMI routing is enabled.
+    hl.exec_cmd(scripts .. "/audio-manager.py --watch")
+
     -- Hypridle power/lock daemon
     hl.exec_cmd("hypridle -c " .. config .. "/hypridle.conf")
 

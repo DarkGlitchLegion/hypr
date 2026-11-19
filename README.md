@@ -21,6 +21,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │   ├── appearance.lua        # Compositor layout, borders, rounding, shadows & blur
 │   ├── animations.lua        # Custom quintic & cubic Bezier animation curves
 │   ├── rules.lua             # Window rules, dialog centering & layer blur rules
+│   ├── app-placement.lua     # App workspace placement (Firefox follows display preference)
 │   └── keybinds.lua          # Keyboard shortcuts & window dispatchers
 ├── waybar/                   # Waybar status bar
 │   ├── config.jsonc          # Modular widgets, PipeWire, power profiles, battery
@@ -38,7 +39,8 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 ├── scripts/                  # Shell & Python automation utilities
 │   ├── control-center.sh     # Rice Control Center super-hub
 │   ├── rice-health.py        # Hyprland, display, workspace, and tool diagnostics
-│   ├── audio-menu.sh         # PipeWire sink & source switcher (wpctl)
+│   ├── audio-menu.sh         # Rofi entry point for the PipeWire audio manager
+│   ├── audio-manager.py      # Live sink/source selector and optional HDMI hotplug handling
 │   ├── power-profile-menu.sh # AMD P-State power profile switcher & battery health
 │   ├── wifi-menu.sh          # Non-blocking network manager
 │   ├── bluetooth-menu.sh     # Peripheral management & pairing
@@ -86,11 +88,18 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 * **Waybar Trigger**: Click the **Audio** (`󰕾`) or **Microphone** (`󰍬`) icon in Waybar.
 * **Script**: `~/.config/hypr/scripts/audio-menu.sh`
 * **What it does**:
-  * Auto-detects all available PipeWire audio sinks (Laptop Speakers, HDMI/DisplayPort, Bluetooth headphones).
-  * Auto-detects input microphones (Built-in mic, external headset mic).
-  * Displays active devices with a `● Active` indicator, volume percentage, and mute status.
-  * Clicking any device sets it as the system default sink/source via `wpctl set-default <ID>` and triggers a notification.
-  * Includes quick toggles for muting outputs/inputs, raising/lowering volume, and opening `pavucontrol`.
+  * Enumerates current PipeWire-Pulse outputs and inputs from JSON, including built-in speakers, HDMI/DisplayPort, Bluetooth, and headsets when exposed by PipeWire.
+  * Shows the active route and device-provided description; selecting an output changes the default and moves active streams.
+  * The **Set output volume** menu offers 0–100% in 5% steps. Waybar scroll adjusts volume; middle-click opens Pavucontrol's live sliders and per-app routing.
+  * Automatic HDMI routing is **off by default**. Enable it from the audio menu; the single autostart watcher selects HDMI/DisplayPort when an audio sink appears and falls back when it disappears.
+  * Manual output selection is saved in `~/.config/hypr/audio-preferences.json` and restored at startup or when that output reconnects, provided automatic HDMI routing has not taken precedence.
+  * No audio-device names are hardcoded. A connected TV without a PipeWire audio sink is ignored.
+
+### Application Workspace Placement
+* Firefox opens on the workspace saved by the Display Manager as the external-display workspace.
+* When HDMI is disconnected, that workspace remains usable on the laptop; the placement rule does not require the external monitor to be connected.
+* Change the external workspace in Display Manager, then reload Hyprland for new Firefox windows to use the updated preference. Existing windows are not moved.
+* Add or change app-class-to-workspace rules in [app-placement.lua](./lua/app-placement.lua). Rules use Hyprland's native window matching and workspace assignment; the example chat rule is intentionally commented out.
 
 ---
 
