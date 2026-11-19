@@ -196,7 +196,7 @@ hl.bind(mainMod .. " + SHIFT + F",      hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + SHIFT + E",      hl.dsp.exec_cmd("code || kitty --config " .. homeDir .. "/.config/hypr/kitty/kitty.conf -e nano"))
 hl.bind(mainMod .. " + SHIFT + T",      hl.dsp.exec_cmd("kitty --class btop --title btop --config " .. homeDir .. "/.config/hypr/kitty/kitty.conf -e btop"))
 hl.bind(mainMod .. " + SHIFT + C",      hl.dsp.exec_cmd(scripts .. "/cmatrix.sh"))
-hl.bind(mainMod .. " + SHIFT + S",      hl.dsp.exec_cmd("kitty --config " .. homeDir .. "/.config/hypr/kitty/kitty.conf -e nmtui"))
+hl.bind(mainMod .. " + SHIFT + S",      hl.dsp.exec_cmd(scripts .. "/wifi-menu.sh"))
 
 -- 2. Window Management
 hl.bind(mainMod .. " + W",       hl.dsp.window.close())

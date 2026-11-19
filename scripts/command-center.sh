@@ -14,6 +14,7 @@ generate_commands() {
 <span color="#AAAAAA"><b>󰞷  Terminal (Kitty)           </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Open Kitty terminal emulator</span>
 <span color="#AAAAAA"><b>󰉋  File Manager (Thunar)      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Browse local files and storage</span>
 <span color="#AAAAAA"><b>󰈹  Web Browser (Firefox)      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Launch default web browser</span>
+<span color="#AAAAAA"><b>󰤨  Wi-Fi Network Manager      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Connect, scan, and manage wireless networks</span>
 <span color="#AAAAAA"><b>  Process Monitor (Btop)     </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Open transparent resource monitor</span>
 <span color="#AAAAAA"><b>󱤤  Matrix Screensaver         </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Open transparent cmatrix terminal</span>
 <span color="#AAAAAA"><b>󰸉  Wallpaper Selector         </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Choose wallpaper with live thumbnails</span>
@@ -47,6 +48,9 @@ case "${CHOSEN}" in
         ;;
     *"Web Browser"*)
         firefox &
+        ;;
+    *"Wi-Fi Network Manager"*)
+        "${SCRIPTS}/wifi-menu.sh" &
         ;;
     *"Process Monitor"*)
         kitty --class btop --title btop --config "${HOME}/.config/hypr/kitty/kitty.conf" -e btop &

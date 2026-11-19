@@ -22,7 +22,7 @@ show_cheatsheet() {
     Super + Shift + E            Open Text Editor (Code / Nano)
     Super + Shift + T            Open Process Monitor (Btop - Transparent)
     Super + Shift + C            Open Matrix Screensaver (CMatrix - Transparent)
-    Super + Shift + S            Network & System Settings (nmtui)
+    Super + Shift + S            Wi-Fi Network Manager (Rofi)
 
   [ WINDOW MANAGEMENT ]
     Super + W                    Close Focused Window
