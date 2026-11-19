@@ -21,6 +21,7 @@ show_cheatsheet() {
     Super + Shift + F            Open File Manager (Thunar)
     Super + Shift + E            Open Text Editor (Code / Nano)
     Super + Shift + T            Open Process Monitor (Btop - Transparent)
+    Super + Shift + I            Show System Information (Fastfetch)
     Super + Shift + C            Open Matrix Screensaver (CMatrix - Transparent)
     Super + Shift + S            Wi-Fi Network Manager (Rofi)
     Super + Shift + B            Bluetooth Manager (Rofi)
@@ -41,6 +42,8 @@ show_cheatsheet() {
     Super + Shift + Arrow Keys   Move / Swap Window Position
     Super + Equal (=)            Increase Window Size (+30px)
     Super + Minus (-)            Decrease Window Size (-30px)
+    Super + ;                    Shrink Focused Window (-30px)
+    Super + '                    Enlarge Focused Window (+30px)
     Super + Left Mouse Drag      Move Window
     Super + Right Mouse Drag     Resize Window
 

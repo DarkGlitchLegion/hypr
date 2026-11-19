@@ -23,6 +23,7 @@ hl.bind(mainMod .. " + C",              hl.dsp.exec_cmd(controlCenter))
 hl.bind(mainMod .. " + SHIFT + F",      hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + SHIFT + E",      hl.dsp.exec_cmd("code || " .. terminal .. " -e nano"))
 hl.bind(mainMod .. " + SHIFT + T",      hl.dsp.exec_cmd("kitty --class btop --title btop --config " .. Desktop.config .. "/kitty/kitty.conf -e btop"))
+hl.bind(mainMod .. " + SHIFT + I",      hl.dsp.exec_cmd("kitty --class fastfetch --title fastfetch --hold --config " .. Desktop.config .. "/kitty/kitty.conf -e fastfetch"))
 hl.bind(mainMod .. " + SHIFT + C",      hl.dsp.exec_cmd(scripts .. "/cmatrix.sh"))
 hl.bind(mainMod .. " + SHIFT + S",      hl.dsp.exec_cmd(scripts .. "/wifi-menu.sh"))
 hl.bind(mainMod .. " + SHIFT + B",      hl.dsp.exec_cmd(scripts .. "/bluetooth-menu.sh"))
@@ -59,6 +60,8 @@ hl.bind(mainMod .. " + SHIFT + down",  hl.dsp.window.move({ direction = "down" }
 -- Keyboard Window Resizing
 hl.bind(mainMod .. " + equal", hl.dsp.exec_cmd("hyprctl dispatch resizeactive 30 30"),   { repeating = true })
 hl.bind(mainMod .. " + minus", hl.dsp.exec_cmd("hyprctl dispatch resizeactive -30 -30"), { repeating = true })
+hl.bind(mainMod .. " + semicolon", hl.dsp.window.resize({ x = -30, y = -30, relative = true }), { repeating = true })
+hl.bind(mainMod .. " + apostrophe", hl.dsp.window.resize({ x = 30, y = 30, relative = true }), { repeating = true })
 
 -- Mouse Window Manipulation
 hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(),   { mouse = true })

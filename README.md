@@ -215,6 +215,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd> | File Manager | Opens Thunar file manager |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>E</kbd> | Text Editor | Launches VS Code (falls back to Nano in Kitty) |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd> | Process Monitor | Opens Btop in transparent Kitty terminal |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> | System Information | Displays Fastfetch in a Kitty terminal |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> | CMatrix | Matrix digital rain terminal screensaver |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Wi-Fi Manager | Opens Rofi Wi-Fi manager |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> | Bluetooth Manager | Opens Rofi Bluetooth manager |
@@ -234,6 +235,8 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 | <kbd>Super</kbd> + Arrow Keys | Focus Window | Moves focus Left, Right, Up, or Down |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + Arrow Keys | Move Window | Moves/swaps window position |
 | <kbd>Super</kbd> + <kbd>=</kbd> / <kbd>-</kbd> | Resize Window | Coarse window resize (+/- 30px) |
+| <kbd>Super</kbd> + <kbd>;</kbd> | Shrink Window | Shrinks the focused window by 30px |
+| <kbd>Super</kbd> + <kbd>'</kbd> | Enlarge Window | Enlarges the focused window by 30px |
 | <kbd>Super</kbd> + Left Mouse Drag | Drag Window | Drags window to float / reposition |
 | <kbd>Super</kbd> + Right Mouse Drag | Resize Window | Resizes window via mouse |
 

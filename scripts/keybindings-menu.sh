@@ -18,6 +18,7 @@ generate_list() {
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + F           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open File Manager (Thunar)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + E           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Text Editor (Code / Nano)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + T           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Process Monitor (Btop - Transparent)</span>
+<span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + I           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Show System Information (Fastfetch)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + C           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Matrix Screensaver (CMatrix - Transparent)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + S           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Wi-Fi Network Manager (Rofi)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + B           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Bluetooth Manager (Rofi)</span>
@@ -36,6 +37,8 @@ generate_list() {
 <span color="#888888">[Window   ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + Arrow       </span> <span color="#333333">│</span>  <span color="#D5D5D5">Move / Swap Window in Direction</span>
 <span color="#888888">[Window   ]</span>  <span weight="bold" color="#AAAAAA">Super + Equal (=)           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Increase Window Size (+30px)</span>
 <span color="#888888">[Window   ]</span>  <span weight="bold" color="#AAAAAA">Super + Minus (-)           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Decrease Window Size (-30px)</span>
+<span color="#888888">[Window   ]</span>  <span weight="bold" color="#AAAAAA">Super + ;                   </span> <span color="#333333">│</span>  <span color="#D5D5D5">Shrink Focused Window (-30px)</span>
+<span color="#888888">[Window   ]</span>  <span weight="bold" color="#AAAAAA">Super + '                   </span> <span color="#333333">│</span>  <span color="#D5D5D5">Enlarge Focused Window (+30px)</span>
 <span color="#888888">[Workspace]</span>  <span weight="bold" color="#AAAAAA">Super + 1..5                </span> <span color="#333333">│</span>  <span color="#D5D5D5">Jump to Workspace 1–5</span>
 <span color="#888888">[Workspace]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + 1..5        </span> <span color="#333333">│</span>  <span color="#D5D5D5">Move Window to Workspace &amp; Follow</span>
 <span color="#888888">[Workspace]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + Alt + 1..5  </span> <span color="#333333">│</span>  <span color="#D5D5D5">Move Window to Workspace Silently</span>
@@ -100,6 +103,9 @@ case "${CHOSEN}" in
     *"Super + Shift + T"*)
         kitty --class btop --title btop --config "${HOME}/.config/hypr/kitty/kitty.conf" -e btop &
         ;;
+    *"Super + Shift + I"*)
+        kitty --class fastfetch --title fastfetch --hold --config "${HOME}/.config/hypr/kitty/kitty.conf" -e fastfetch &
+        ;;
     *"Super + Shift + C"*)
         "${HOME}/.config/hypr/scripts/cmatrix.sh" &
         ;;
@@ -135,6 +141,12 @@ case "${CHOSEN}" in
         ;;
     *"Super + Alt + Tab"*)
         hyprctl dispatch changegroupactive f
+        ;;
+    *"Super + ;"*)
+        hyprctl dispatch 'hl.dsp.window.resize({ x = -30, y = -30, relative = true })'
+        ;;
+    *"Super + '"*)
+        hyprctl dispatch 'hl.dsp.window.resize({ x = 30, y = 30, relative = true })'
         ;;
     *"Super + Escape"*)
         "${HOME}/.config/hypr/scripts/power-menu.sh" &
