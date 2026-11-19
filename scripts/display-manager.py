@@ -23,6 +23,7 @@ from typing import Any
 CONFIG = Path.home() / ".config" / "hypr"
 ROFI_THEME = CONFIG / "rofi" / "command-center.rasi"
 STATE_FILE = CONFIG / "display-profiles.json"
+DISPLAY_PREFERENCES = CONFIG / "display-preferences.json"
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
 WATCH_LOCK = RUNTIME_DIR / "hypr-display-manager.lock"
 APPLY_LOCK = RUNTIME_DIR / "hypr-display-manager-apply.lock"
@@ -41,6 +42,7 @@ TRANSFORMS = {
     7: "Flipped portrait (270°)",
 }
 OUTPUT_NAME = re.compile(r"^[A-Za-z0-9_.-]+$")
+NAMED_WORKSPACE = re.compile(r"^name:[A-Za-z0-9][A-Za-z0-9_. -]{0,31}$")
 MODE = re.compile(r"^(?:preferred|[0-9]{2,5}x[0-9]{2,5}(?:@[0-9]+(?:\.[0-9]+)?Hz)?)$")
 
 
@@ -646,6 +648,214 @@ def external_outputs(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [item for item in records if item.get("connected") and not item.get("internal")]
 
 
+def canonical_workspace(value: Any) -> str | None:
+    if isinstance(value, int) and not isinstance(value, bool):
+        value = str(value)
+    if not isinstance(value, str):
+        return None
+    value = value.strip()
+    if value.isdigit() and 1 <= int(value) <= 10:
+        return str(int(value))
+    if value.startswith("name:") and NAMED_WORKSPACE.fullmatch(value):
+        return value
+    return None
+
+
+def workspace_selector(record: dict[str, Any]) -> str | None:
+    name = record.get("name")
+    if isinstance(name, str) and name.startswith("name:"):
+        return canonical_workspace(name)
+    return canonical_workspace(name)
+
+
+def load_external_workspace_preference() -> str | None:
+    try:
+        data = json.loads(DISPLAY_PREFERENCES.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return None
+    except (OSError, json.JSONDecodeError) as exc:
+        notify("Display Manager", f"Could not read display preferences: {exc}", "critical")
+        return None
+    if not isinstance(data, dict):
+        notify("Display Manager", "Display preferences are malformed and were ignored.", "critical")
+        return None
+    preference = canonical_workspace(data.get("external_workspace"))
+    if data.get("external_workspace") is not None and preference is None:
+        notify("Display Manager", "The saved external workspace is invalid and was ignored.", "critical")
+    return preference
+
+
+def save_external_workspace_preference(workspace: str) -> None:
+    workspace = canonical_workspace(workspace)
+    if workspace is None:
+        raise DisplayError("Choose workspace 1-10 or a valid named workspace.")
+    try:
+        data = json.loads(DISPLAY_PREFERENCES.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        data = {}
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DisplayError(f"Could not read display preferences: {exc}") from exc
+    if not isinstance(data, dict):
+        raise DisplayError("Display preferences are malformed; they were not overwritten.")
+    data["external_workspace"] = workspace
+    DISPLAY_PREFERENCES.parent.mkdir(parents=True, exist_ok=True)
+    fd, temp_name = tempfile.mkstemp(prefix=".display-preferences-", dir=DISPLAY_PREFERENCES.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as file:
+            json.dump(data, file, indent=2)
+            file.write("\n")
+        os.replace(temp_name, DISPLAY_PREFERENCES)
+    except OSError as exc:
+        try:
+            os.unlink(temp_name)
+        except OSError:
+            pass
+        raise DisplayError(f"Could not save display preferences: {exc}") from exc
+
+
+def choose_external_workspace(records: list[dict[str, Any]], current: str | None = None) -> str | None:
+    workspaces = hyprctl_json("workspaces")
+    if not isinstance(workspaces, list):
+        raise DisplayError("Hyprland did not return workspace state.")
+    named = sorted(
+        {
+            selector
+            for record in workspaces
+            if isinstance(record, dict)
+            and (selector := workspace_selector(record)) is not None
+            and selector.startswith("name:")
+        }
+    )
+    options = [str(number) for number in range(1, 11)] + named
+    labels = [f"Workspace: {item}" for item in options]
+    custom = "Enter named workspace…"
+    labels.append(custom)
+    selected = rofi(labels, f"External workspace — current: {current or 'choose when extending'}")
+    if not selected:
+        return None
+    if selected == custom:
+        entered = rofi(["name:work"], "Named workspace (name:...)")
+        workspace = canonical_workspace(entered)
+        if workspace is None or not workspace.startswith("name:"):
+            notify("Display Manager", "Enter a valid named workspace such as name:presentation.", "critical")
+            return None
+        return workspace
+    return canonical_workspace(selected.partition(": ")[2])
+
+
+def workspace_on_monitor(workspace: str, monitor: str) -> bool:
+    records = monitors()
+    target = next((item for item in records if item.get("name") == monitor), None)
+    if not target or target.get("disabled"):
+        return False
+    active = target.get("activeWorkspace")
+    return isinstance(active, dict) and workspace_selector(active) == workspace
+
+
+def move_workspace_to_monitor(workspace: str, monitor: str, allow_active_move: bool = False) -> None:
+    workspace = canonical_workspace(workspace)
+    if workspace is None:
+        raise DisplayError("The selected external workspace is invalid.")
+    records = monitors()
+    target = next(
+        (
+            item
+            for item in records
+            if item.get("name") == monitor and item.get("connected") and not item.get("disabled")
+        ),
+        None,
+    )
+    if not target:
+        raise DisplayError(f"{monitor} is no longer an active connected display.")
+    workspaces = hyprctl_json("workspaces")
+    if not isinstance(workspaces, list):
+        raise DisplayError("Hyprland did not return workspace state.")
+    found = next(
+        (
+            record
+            for record in workspaces
+            if isinstance(record, dict) and workspace_selector(record) == workspace
+        ),
+        None,
+    )
+    if found and found.get("monitor") == monitor and workspace_on_monitor(workspace, monitor):
+        return
+
+    active_internal = next(
+        (item for item in records if item.get("connected") and item.get("internal")),
+        None,
+    )
+    active_name = None
+    if active_internal:
+        active = active_internal.get("activeWorkspace")
+        active_name = workspace_selector(active) if isinstance(active, dict) else None
+    if (
+        found
+        and active_internal
+        and found.get("monitor") == active_internal["name"]
+        and active_name == workspace
+        and not allow_active_move
+    ):
+        choice = rofi(
+            [
+                f"Move workspace {workspace} to {monitor} (the laptop will switch workspaces)",
+                "Cancel",
+            ],
+            "Workspace is active on laptop",
+        )
+        if not choice or choice == "Cancel":
+            raise DisplayError("Workspace assignment cancelled to preserve the laptop's active workspace.")
+
+    if found and found.get("monitor") != monitor:
+        expression = (
+            "hl.dsp.workspace.move({ "
+            f"workspace = {json.dumps(workspace)}, "
+            f"monitor = {json.dumps(monitor)} "
+            "})"
+        )
+        command(["hyprctl", "eval", expression])
+    focused = next((item for item in records if item.get("focused") and item.get("connected")), None)
+    focus_back = focused["name"] if focused else None
+    if not workspace_on_monitor(workspace, monitor):
+        focus_target = "hl.dsp.focus({ monitor = " + json.dumps(monitor) + " })"
+        focus_workspace = (
+            "hl.dsp.focus({ workspace = " + json.dumps(workspace)
+            + ", on_current_monitor = true })"
+        )
+        command(["hyprctl", "eval", focus_target])
+        try:
+            command(["hyprctl", "eval", focus_workspace])
+        finally:
+            if focus_back and focus_back != monitor:
+                command(["hyprctl", "eval", "hl.dsp.focus({ monitor = " + json.dumps(focus_back) + " })"])
+
+    deadline = time.monotonic() + 3
+    while time.monotonic() < deadline:
+        if workspace_on_monitor(workspace, monitor):
+            return
+        time.sleep(0.1)
+    raise DisplayError(f"Hyprland did not show workspace {workspace} on {monitor}.")
+
+
+def assign_saved_external_workspace(records: list[dict[str, Any]]) -> None:
+    preference = load_external_workspace_preference()
+    if not preference:
+        return
+    active = active_records(records)
+    if not any(item.get("internal") for item in active):
+        return
+    external = next((item for item in active if not item.get("internal")), None)
+    if external is None:
+        return
+    with display_operation_lock(timeout=5) as acquired:
+        if not acquired:
+            return
+        try:
+            move_workspace_to_monitor(preference, external["name"], allow_active_move=True)
+        except DisplayError as exc:
+            notify("External workspace preference", str(exc), "critical")
+
+
 def common_mirror_mode(first: dict[str, Any], second: dict[str, Any]) -> str | None:
     first_modes = set(first.get("availableModes") or [])
     second_modes = set(second.get("availableModes") or [])
@@ -784,7 +994,25 @@ def apply_preset(preset: str, output: str | None = None) -> None:
         start_presentation_mode()
         return
     side = "right"
+    selected_workspace: str | None = None
+    selected_output = output
     if preset == "extend":
+        records = monitors()
+        external = next(
+            (item for item in external_outputs(records) if item["name"] == output),
+            None,
+        )
+        if external is None:
+            external = choose_output(external_outputs(records), "󰍹  Choose external display")
+        if not external:
+            return
+        selected_output = external["name"]
+        selected_workspace = choose_external_workspace(
+            records,
+            load_external_workspace_preference(),
+        )
+        if not selected_workspace:
+            return
         position = rofi(
             ["Right of laptop", "Left of laptop", "Above laptop", "Below laptop"],
             "󰍹  Position external display",
@@ -797,9 +1025,23 @@ def apply_preset(preset: str, output: str | None = None) -> None:
             "Above laptop": "above",
             "Below laptop": "below",
         }[position]
-    result = preset_layout(preset, output, side)
+    result = preset_layout(preset, selected_output, side)
     if result:
-        transaction(result[0], result[1])
+        applied = transaction(result[0], result[1])
+        if applied and preset == "extend" and selected_workspace and selected_output:
+            with display_operation_lock(timeout=5) as acquired:
+                if not acquired:
+                    notify("Display Manager busy", "Could not safely assign the external workspace.")
+                    return
+                try:
+                    move_workspace_to_monitor(selected_workspace, selected_output)
+                    save_external_workspace_preference(selected_workspace)
+                    notify(
+                        "External workspace assigned",
+                        f"Workspace {selected_workspace} is shown on {selected_output} and will be remembered.",
+                    )
+                except DisplayError as exc:
+                    notify("External workspace assignment failed", str(exc), "critical")
 
 
 def presentation_state() -> dict[str, Any] | None:
@@ -1228,6 +1470,21 @@ def reapply_saved_layout() -> None:
 def display_manager() -> None:
     records = monitors()
     presentation_running = presentation_state() is not None
+    workspace_preference = load_external_workspace_preference()
+    active_external = next(
+        (item for item in active_records(records) if not item.get("internal")),
+        None,
+    )
+    external_workspace_status = ""
+    if active_external:
+        active_workspace = active_external.get("activeWorkspace")
+        active_selector = (
+            workspace_selector(active_workspace)
+            if isinstance(active_workspace, dict)
+            else None
+        )
+        if active_selector:
+            external_workspace_status = f"; currently showing {active_selector}"
     options = [display_card(item) for item in records]
     actions: dict[str, tuple[str, str | None]] = {}
     for item in records:
@@ -1237,6 +1494,7 @@ def display_manager() -> None:
         "Preset: External display only",
         "Preset: Extend displays",
         "Preset: Mirror displays",
+        f"External workspace: {workspace_preference or 'choose on Extend'}{external_workspace_status}",
         "Presentation Mode: Exit" if presentation_running else "Presentation Mode: Start",
     ])
     for item in records:
@@ -1253,6 +1511,7 @@ def display_manager() -> None:
     for preset in ("laptop", "external", "extend", "mirror"):
         actions[f"Preset: {dict(laptop='Laptop only', external='External display only', extend='Extend displays', mirror='Mirror displays')[preset]}"] = ("preset", preset)
     actions["Presentation Mode: Exit" if presentation_running else "Presentation Mode: Start"] = ("presentation", "")
+    actions[f"External workspace: {workspace_preference or 'choose on Extend'}{external_workspace_status}"] = ("external-workspace", "")
     actions["Save current layout for startup/reconnect"] = ("save", "")
     actions["Reapply saved layout (with rollback)"] = ("reapply", "")
 
@@ -1279,10 +1538,38 @@ def display_manager() -> None:
             exit_presentation_mode()
         else:
             start_presentation_mode()
+    elif action == "external-workspace":
+        update_external_workspace_preference()
     elif action == "save":
         save_current_layout()
     elif action == "reapply":
         reapply_saved_layout()
+
+
+def update_external_workspace_preference() -> None:
+    records = monitors()
+    selected = choose_external_workspace(records, load_external_workspace_preference())
+    if not selected:
+        return
+    active = active_records(records)
+    with display_operation_lock(timeout=5) as acquired:
+        if not acquired:
+            notify("Display Manager busy", "Could not safely update the external workspace preference.")
+            return
+        if any(item.get("internal") for item in active):
+            external = next((item for item in active if not item.get("internal")), None)
+            if external:
+                try:
+                    move_workspace_to_monitor(selected, external["name"])
+                except DisplayError as exc:
+                    notify("External workspace unchanged", str(exc), "critical")
+                    return
+        try:
+            save_external_workspace_preference(selected)
+        except DisplayError as exc:
+            notify("Display Manager", str(exc), "critical")
+            return
+    notify("External workspace saved", f"Workspace {selected} will be used on the external display when extending.")
 
 
 def saved_layout_ready(profile: dict[str, Any], records: list[dict[str, Any]]) -> bool:
@@ -1462,6 +1749,7 @@ def watch_displays() -> None:
     profile = load_profile(records)
     if not presentation_state() and profile and saved_layout_ready(profile, records):
         restore_saved_layout(profile, "Your saved layout is active.")
+    assign_saved_external_workspace(monitors())
 
     notified_unavailable = False
     while True:
@@ -1501,6 +1789,8 @@ def watch_displays() -> None:
                     and saved_layout_ready(profile, records)
                     and restore_saved_layout(profile, "Your remembered monitor layout was restored.")
                 )
+                if appeared:
+                    assign_saved_external_workspace(monitors())
                 if appeared and not restored:
                     for output in sorted(appeared):
                         record = next((item for item in records if item["name"] == output), {})
