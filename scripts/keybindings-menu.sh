@@ -17,7 +17,8 @@ generate_list() {
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + Return      </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Web Browser (Firefox)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + F           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open File Manager (Thunar)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + E           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Text Editor (Code / Nano)</span>
-<span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + T           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Process Monitor (Btop)</span>
+<span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + T           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Process Monitor (Btop - Transparent)</span>
+<span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + C           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Open Matrix Screensaver (CMatrix - Transparent)</span>
 <span color="#888888">[App      ]</span>  <span weight="bold" color="#AAAAAA">Super + Shift + S           </span> <span color="#333333">│</span>  <span color="#D5D5D5">Network &amp; System Tools (nmtui)</span>
 <span color="#888888">[Window   ]</span>  <span weight="bold" color="#AAAAAA">Super + W                   </span> <span color="#333333">│</span>  <span color="#D5D5D5">Close Focused Window</span>
 <span color="#888888">[Window   ]</span>  <span weight="bold" color="#AAAAAA">Super + Q                   </span> <span color="#333333">│</span>  <span color="#D5D5D5">Close Focused Window (Alt)</span>
@@ -96,7 +97,10 @@ case "${CHOSEN}" in
         code &
         ;;
     *"Super + Shift + T"*)
-        kitty --config "${HOME}/.config/hypr/kitty/kitty.conf" -e btop &
+        kitty --class btop --title btop --config "${HOME}/.config/hypr/kitty/kitty.conf" -e btop &
+        ;;
+    *"Super + Shift + C"*)
+        "${HOME}/.config/hypr/scripts/cmatrix.sh" &
         ;;
     *"Super + Shift + S"*)
         kitty --config "${HOME}/.config/hypr/kitty/kitty.conf" -e nmtui &

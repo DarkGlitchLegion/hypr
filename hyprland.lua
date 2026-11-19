@@ -194,7 +194,8 @@ hl.bind(mainMod .. " + ALT + SPACE",    hl.dsp.exec_cmd(commandCenter))
 hl.bind(mainMod .. " + C",              hl.dsp.exec_cmd(commandCenter))
 hl.bind(mainMod .. " + SHIFT + F",      hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + SHIFT + E",      hl.dsp.exec_cmd("code || kitty --config " .. homeDir .. "/.config/hypr/kitty/kitty.conf -e nano"))
-hl.bind(mainMod .. " + SHIFT + T",      hl.dsp.exec_cmd("kitty --config " .. homeDir .. "/.config/hypr/kitty/kitty.conf -e btop"))
+hl.bind(mainMod .. " + SHIFT + T",      hl.dsp.exec_cmd("kitty --class btop --title btop --config " .. homeDir .. "/.config/hypr/kitty/kitty.conf -e btop"))
+hl.bind(mainMod .. " + SHIFT + C",      hl.dsp.exec_cmd(scripts .. "/cmatrix.sh"))
 hl.bind(mainMod .. " + SHIFT + S",      hl.dsp.exec_cmd("kitty --config " .. homeDir .. "/.config/hypr/kitty/kitty.conf -e nmtui"))
 
 -- 2. Window Management
@@ -316,4 +317,29 @@ hl.window_rule({
     name = "float-hypr-keybindings",
     match = { class = "hypr-keybindings" },
     float = true,
+})
+
+-- Transparency Rules for btop and cmatrix
+hl.window_rule({
+    name = "transparent-btop-class",
+    match = { class = "btop" },
+    opacity = 0.82,
+})
+
+hl.window_rule({
+    name = "transparent-btop-title",
+    match = { title = "btop" },
+    opacity = 0.82,
+})
+
+hl.window_rule({
+    name = "transparent-cmatrix-class",
+    match = { class = "cmatrix" },
+    opacity = 0.75,
+})
+
+hl.window_rule({
+    name = "transparent-cmatrix-title",
+    match = { title = "cmatrix" },
+    opacity = 0.75,
 })

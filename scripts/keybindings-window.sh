@@ -20,7 +20,8 @@ show_cheatsheet() {
     Super + Shift + Return       Open Web Browser (Firefox)
     Super + Shift + F            Open File Manager (Thunar)
     Super + Shift + E            Open Text Editor (Code / Nano)
-    Super + Shift + T            Open Process Monitor (Btop)
+    Super + Shift + T            Open Process Monitor (Btop - Transparent)
+    Super + Shift + C            Open Matrix Screensaver (CMatrix - Transparent)
     Super + Shift + S            Network & System Settings (nmtui)
 
   [ WINDOW MANAGEMENT ]
