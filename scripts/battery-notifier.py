@@ -31,7 +31,7 @@ def print_alert(message):
         "msisdn": f"+{SMS_MSISDN}",
         "shortcode_mask": SMS_SHORTCODE_MASK,
         "rcvd_transid": SMS_RCVD_TRANSID,
-        "message": message,
+        "content": message,
         "intl": SMS_INTL
     }
     try:
