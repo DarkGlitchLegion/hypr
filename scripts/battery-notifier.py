@@ -25,7 +25,6 @@ def timestamp():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 def print_alert(message):
-    url = SMS_URL
     payload = {
         "app_key": SMS_APP_KEY,
         "app_secret": SMS_APP_SECRET,
@@ -35,8 +34,22 @@ def print_alert(message):
         "message": message,
         "intl": SMS_INTL
     }
-    response = requests.post(url, json=payload)
-    print(f"[{timestamp()}] {message} - SMS sent with status code: {response.status_code}")
+    try:
+        response = requests.post(SMS_URL, json=payload, timeout=10)
+    except requests.RequestException as exc:
+        print(f"[{timestamp()}] SMS request failed: {exc}")
+        return False
+
+    if not response.ok:
+        detail = response.text[:500]
+        for secret in (SMS_APP_KEY, SMS_APP_SECRET, SMS_MSISDN):
+            if secret:
+                detail = detail.replace(secret, "[REDACTED]")
+        print(f"[{timestamp()}] SMS request rejected (HTTP {response.status_code}): {detail}")
+        return False
+
+    print(f"[{timestamp()}] SMS request accepted (HTTP {response.status_code}): {message}")
+    return True
 
 def check_battery():
     low_alerted = False
@@ -56,20 +69,22 @@ def check_battery():
             print(f"[{timestamp()}] Battery: {percent}% - {status}")
 
             if not plugged and percent <= LOW_THRESHOLD and not low_alerted:
-                print_alert(f"Low battery alert! Battery is at {percent}%. Please plug in your charger.")
-                low_alerted = True
+                low_alerted = print_alert(
+                    f"Low battery alert! Battery is at {percent:.1f}%. Please plug in your charger."
+                )
             elif plugged or percent > LOW_THRESHOLD:
                 low_alerted = False
             
             if plugged and percent >= FULL_THRESHOLD and not full_alerted:
-                print_alert(f"Battery is fully charged at {percent}%. You can unplug the charger.")
-                full_alerted = True
+                full_alerted = print_alert(
+                    f"Battery is fully charged at {percent:.1f}%. You can unplug the charger."
+                )
             elif not plugged or percent < FULL_THRESHOLD:
                 full_alerted = False
 
             time.sleep(CHECK_INTERVAL)
     except KeyboardInterrupt:
-        print_alert("Battery notifier stopped by user.")
+        print(f"[{timestamp()}] Battery notifier stopped by user.")
 
 if __name__ == "__main__":
     check_battery()
