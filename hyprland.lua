@@ -51,6 +51,9 @@ hl.on("hyprland.start", function ()
 
     -- Clipboard history persistence daemon
     hl.exec_cmd(homeDir .. "/.config/hypr/scripts/clipboard-daemon.sh")
+
+    -- Synchronize GTK dark theme & icons for Thunar and GTK apps
+    hl.exec_cmd(homeDir .. "/.config/hypr/scripts/apply-gtk-theme.sh")
 end)
 
 -------------------------------
@@ -61,6 +64,9 @@ hl.env("XDG_SESSION_TYPE", "wayland")
 hl.env("XDG_SESSION_DESKTOP", "Hyprland")
 hl.env("GDK_BACKEND", "wayland,x11,*")
 hl.env("CLUTTER_BACKEND", "wayland")
+
+-- GTK Theme & Dark Scheme Integration
+hl.env("GTK_THEME", "Adwaita-dark")
 
 -- Standard Desktop Scaling (1:1, no artificial upscaling)
 hl.env("GDK_SCALE", "1")
