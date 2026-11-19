@@ -59,8 +59,6 @@ hl.bind(mainMod .. " + SHIFT + up",    hl.dsp.window.move({ direction = "up" }))
 hl.bind(mainMod .. " + SHIFT + down",  hl.dsp.window.move({ direction = "down" }))
 
 -- Keyboard Window Resizing
-hl.bind(mainMod .. " + equal", hl.dsp.exec_cmd("hyprctl dispatch resizeactive 30 30"),   { repeating = true })
-hl.bind(mainMod .. " + minus", hl.dsp.exec_cmd("hyprctl dispatch resizeactive -30 -30"), { repeating = true })
 hl.bind(mainMod .. " + semicolon", hl.dsp.window.resize({ x = -30, y = -30, relative = true }), { repeating = true })
 hl.bind(mainMod .. " + apostrophe", hl.dsp.window.resize({ x = 30, y = 30, relative = true }), { repeating = true })
 

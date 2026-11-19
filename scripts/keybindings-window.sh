@@ -41,8 +41,6 @@ show_cheatsheet() {
     Super + Alt + Tab            Cycle Windows in Active Group
     Super + Arrow Keys           Move Window Focus (Left, Right, Up, Down)
     Super + Shift + Arrow Keys   Move / Swap Window Position
-    Super + Equal (=)            Increase Window Size (+30px)
-    Super + Minus (-)            Decrease Window Size (-30px)
     Super + ;                    Shrink Focused Window (-30px)
     Super + '                    Enlarge Focused Window (+30px)
     Super + Left Mouse Drag      Move Window
