@@ -17,6 +17,7 @@ FILE_MANAGER="thunar"
 WAYBAR_ENABLED=1
 NETWORK_PROFILE="none"
 NETWORK_NAME="hyprsec-bridge"
+ISOLATED_NETWORK_NAME="hyprsec-isolated"
 CONTAINER_CAPABILITIES=()
 
 if [[ -f "${CONFIG_ROOT}/hyprsec/config.example.sh" ]]; then
@@ -109,6 +110,10 @@ validate_config() {
         fail "Invalid Podman network name in HyprSec config."
         return 1
     }
+    [[ "${ISOLATED_NETWORK_NAME}" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,62}$ ]] || {
+        fail "Invalid isolated Podman network name in HyprSec config."
+        return 1
+    }
     [[ "${WORKSPACE_ROOT}" == /* ]] || {
         fail "WORKSPACE_ROOT must be an absolute path."
         return 1
@@ -159,9 +164,25 @@ ensure_network() {
     fi
 }
 
+ensure_isolated_network() {
+    if ! podman network exists "${ISOLATED_NETWORK_NAME}" >/dev/null 2>&1; then
+        podman network create --internal "${ISOLATED_NETWORK_NAME}" >/dev/null || {
+            fail "Could not create isolated Podman network '${ISOLATED_NETWORK_NAME}'."
+            return 1
+        }
+    fi
+}
+
 has_bridge() {
     podman inspect --format '{{json .NetworkSettings.Networks}}' "${CONTAINER_NAME}" 2>/dev/null \
         | grep -Fq "\"${NETWORK_NAME}\""
+}
+
+uses_legacy_none_network() {
+    local networks
+    networks="$(podman inspect --format '{{json .NetworkSettings.Networks}}' "${CONTAINER_NAME}" 2>/dev/null)" \
+        || return 1
+    [[ "${networks}" == *'"none"'* ]]
 }
 
 create_container() {
@@ -171,15 +192,7 @@ create_container() {
         return 0
     fi
 
-    local network=none
-    if [[ "${NETWORK_PROFILE}" == "bridge" ]]; then
-        confirm "Bridge networking allows container network access. Enable it?" "Enable bridge" || {
-            fail "Container creation cancelled; network remains disabled."
-            return 1
-        }
-        ensure_network || return
-        network="${NETWORK_NAME}"
-    fi
+    ensure_isolated_network || return
 
     local capability
     if ((${#CONTAINER_CAPABILITIES[@]})); then
@@ -205,7 +218,7 @@ create_container() {
 
     local root dir
     root="$(workspace_path)"
-    local -a args=(create --name "${CONTAINER_NAME}" --network "${network}"
+    local -a args=(create --name "${CONTAINER_NAME}" --network "${ISOLATED_NETWORK_NAME}"
         --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=512
         --label "io.hyprsec.managed=true")
     for dir in "${WORKSPACE_DIRS[@]}"; do
@@ -216,8 +229,8 @@ create_container() {
     done
     args+=(--entrypoint /bin/sleep "${CONTAINER_IMAGE}" infinity)
     if podman "${args[@]}"; then
-        log "Created rootless container '${CONTAINER_NAME}' with network '${network}'."
-        notify "HyprSec Box" "Container created with no host filesystem mounts beyond ~/HyprSec/workspace."
+        log "Created rootless container '${CONTAINER_NAME}' on isolated network '${ISOLATED_NETWORK_NAME}'."
+        notify "HyprSec Box" "Container created offline on a private internal network."
     else
         fail "Container creation failed. See ${LOG_FILE}."
         return 1
@@ -225,7 +238,6 @@ create_container() {
 }
 
 start_container() {
-    require_command "${LAUNCHER}" || return
     require_podman || return
     container_exists || {
         fail "Container is not created. Choose Create container first."
@@ -410,6 +422,10 @@ network_enable() {
         fail "Create the container before changing its network."
         return 1
     }
+    if uses_legacy_none_network; then
+        fail "This older container uses Podman's special 'none' mode, which cannot be attached to a bridge. Choose Rebuild container to migrate it; workspace files stay, but container-installed packages are reset."
+        return 1
+    fi
     confirm "This enables network access from the container through a rootless Podman bridge. Continue only on trusted networks." \
         "Enable network" || return 1
     ensure_network || return
@@ -423,10 +439,11 @@ network_enable() {
         notify "HyprSec Box" "Network is already enabled."
         return 0
     fi
-    podman network connect "${NETWORK_NAME}" "${CONTAINER_NAME}" || {
-        fail "Could not enable network. No network was silently enabled."
+    local error
+    if ! error="$(podman network connect "${NETWORK_NAME}" "${CONTAINER_NAME}" 2>&1)"; then
+        fail "Could not enable network: ${error:-Podman returned an unspecified error.}"
         return 1
-    }
+    fi
     log "Enabled explicit bridge network '${NETWORK_NAME}'."
     notify "HyprSec Box" "Network enabled. Disable it after package updates."
 }
@@ -610,7 +627,7 @@ remove_container() {
 
 rebuild_container() {
     require_podman || return
-    confirm "Rebuild '${CONTAINER_NAME}'? Container packages will be lost; workspace data is retained." \
+    confirm "Rebuild '${CONTAINER_NAME}'? Container-installed packages will be reset; workspace files are retained." \
         "Rebuild container" || return 1
     podman pull "${CONTAINER_IMAGE}" || {
         fail "Could not update the image; existing container was left intact."

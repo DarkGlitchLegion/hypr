@@ -40,7 +40,7 @@ The automated suite only reports tests it actually ran. Hardware items below rem
 ## HyprSec Box
 
 - [ ] Run `scripts/hyprsec-box.sh status` as a regular user and verify rootless status.
-- [ ] Create the Kali container and verify its default network is `none`, capabilities are dropped, and only the named workspace subfolders are mounted.
+- [ ] Create the Kali container and verify its default network is internal-only, capabilities are dropped, and only the named workspace subfolders are mounted.
 - [ ] Start the container, open a shell, and verify host files outside the workspace are not mounted.
 - [ ] Confirm package installation is blocked until networking is explicitly enabled; enable the bridge only on a trusted network, update, and disable it afterward.
 - [ ] Check the Waybar state and confirm right-click prompts before stopping the container.

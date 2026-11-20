@@ -8,4 +8,5 @@ FILE_MANAGER="thunar"
 WAYBAR_ENABLED=1
 NETWORK_PROFILE="none" # none or bridge; bridge networking requires confirmation.
 NETWORK_NAME="hyprsec-bridge"
+ISOLATED_NETWORK_NAME="hyprsec-isolated"
 CONTAINER_CAPABILITIES=() # Keep empty unless a reviewed workflow requires more access.

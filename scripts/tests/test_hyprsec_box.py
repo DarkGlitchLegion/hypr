@@ -43,10 +43,20 @@ case "$1" in
         case "$3" in
           *State.Status*) printf 'created\\n' ;;
           *State.Running*) printf 'false\\n' ;;
-          *NetworkSettings.Networks*) printf '{}\\n' ;;
+          *NetworkSettings.Networks*)
+            if [[ "${FAKE_NETWORKS:-}" == none ]]; then
+              printf '{"none":{"NetworkID":"none"}}\\n'
+            else
+              printf '{}\\n'
+            fi
+            ;;
         esac
         ;;
     esac
+    ;;
+  network)
+    printf '%s\\n' "$@" >> "$FAKE_LOG"
+    exit 0
     ;;
   *) exit 0 ;;
 esac
@@ -54,6 +64,12 @@ esac
             encoding="utf-8",
         )
         fake_podman.chmod(0o755)
+        fake_rofi = self.bin / "rofi"
+        fake_rofi.write_text(
+            "#!/usr/bin/env bash\ncat >/dev/null\nprintf 'Enable network\\n'\n",
+            encoding="utf-8",
+        )
+        fake_rofi.chmod(0o755)
         self.config = self.root / "config.sh"
         self.config.write_text(
             'CONTAINER_NAME="test-kali"\n'
@@ -111,12 +127,12 @@ esac
         self.assertEqual(catalog_file.read_text(encoding="utf-8"), "Custom|git|user entry\n")
         self.assertEqual(keybind_file.read_text(encoding="utf-8"), "SUPER + SHIFT + X\n")
 
-    def test_create_uses_none_network_and_workspace_mounts_only(self) -> None:
+    def test_create_uses_isolated_network_and_workspace_mounts_only(self) -> None:
         result = self.run_manager("create")
         self.assertEqual(result.returncode, 0, result.stderr)
         args = self.log.read_text(encoding="utf-8").splitlines()
         self.assertIn("--network", args)
-        self.assertEqual(args[args.index("--network") + 1], "none")
+        self.assertEqual(args[args.index("--network") + 1], "hyprsec-isolated")
         self.assertIn("--cap-drop=ALL", args)
         self.assertIn("--security-opt=no-new-privileges", args)
         self.assertNotIn("--privileged", args)
@@ -124,6 +140,23 @@ esac
         self.assertEqual(len(mounts), 6)
         self.assertTrue(all(mount.startswith(str(self.home / "HyprSec/workspace/")) for mount in mounts))
         self.assertTrue(all(":rw" in mount for mount in mounts))
+
+    def test_existing_none_mode_container_gets_migration_guidance(self) -> None:
+        self.state.touch()
+        self.env["FAKE_NETWORKS"] = "none"
+        result = self.run_manager("network-enable")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Choose Rebuild container to migrate it", result.stderr)
+        self.assertNotIn("connect", self.log.read_text(encoding="utf-8") if self.log.exists() else "")
+
+    def test_network_enable_attaches_bridge_only_after_confirmation(self) -> None:
+        self.state.touch()
+        self.env["WAYLAND_DISPLAY"] = "wayland-test"
+        result = self.run_manager("network-enable")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = self.log.read_text(encoding="utf-8").splitlines()
+        self.assertIn("connect", args)
+        self.assertEqual(args[args.index("connect") + 1:], ["test-bridge", "test-kali"])
 
     def test_refuses_non_rootless_engine(self) -> None:
         self.env["FAKE_ROOTLESS"] = "false"
