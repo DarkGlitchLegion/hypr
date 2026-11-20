@@ -8,6 +8,7 @@ Uses GTK3 + gtk-layer-shell for proper Wayland overlay positioning.
 from __future__ import annotations
 
 import json
+import math
 import os
 import signal
 import subprocess
@@ -29,6 +30,7 @@ from gi.repository import GLib, Gtk, GtkLayerShell, Pango  # noqa: E402
 HOME = Path.home()
 SCRIPTS = HOME / ".config" / "hypr" / "scripts"
 STYLESHEET = HOME / ".config" / "hypr" / "waybar" / "style.css"
+TRAFFIC_STATE = Path(os.environ.get("XDG_STATE_HOME", HOME / ".local" / "state")) / "hypr-rice" / "network-traffic.json"
 LOCK_FILE = Path(tempfile.gettempdir()) / "hypr-quick-settings.lock"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -55,6 +57,19 @@ def refresh_waybar() -> None:
         stderr=subprocess.DEVNULL,
         check=False,
     )
+
+
+def start_network_traffic_monitor() -> None:
+    try:
+        subprocess.Popen(
+            [str(SCRIPTS / "network-traffic.py"), "--watch"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except OSError as exc:
+        print(f"Unable to start network traffic monitor: {exc}", file=sys.stderr)
 
 
 def _read_sys(path: str) -> Optional[str]:
@@ -186,6 +201,46 @@ def get_network() -> dict:
     }
 
 
+def get_network_traffic() -> dict:
+    try:
+        state = json.loads(TRAFFIC_STATE.read_text(encoding="utf-8"))
+        downloaded = state["downloaded_bytes"]
+        uploaded = state["uploaded_bytes"]
+        download_bps = state["download_bps"]
+        upload_bps = state["upload_bps"]
+        interface = state["interface"]
+        connected = state["connected"]
+        updated_at = state["updated_at"]
+        if (state.get("version") != 1
+                or type(downloaded) is not int or downloaded < 0
+                or type(uploaded) is not int or uploaded < 0
+                or not isinstance(download_bps, (int, float))
+                or not math.isfinite(download_bps) or download_bps < 0
+                or not isinstance(upload_bps, (int, float))
+                or not math.isfinite(upload_bps) or upload_bps < 0
+                or not isinstance(interface, str)
+                or not isinstance(connected, bool)
+                or not isinstance(updated_at, (int, float))
+                or not math.isfinite(updated_at)):
+            raise ValueError("invalid network traffic state")
+        if not 0 <= time.time() - updated_at <= 3.0:
+            return {"available": False}
+    except FileNotFoundError:
+        return {"available": False}
+    except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+        print(f"Unable to read network traffic statistics: {exc}", file=sys.stderr)
+        return {"available": False}
+    return {
+        "available": True,
+        "downloaded_bytes": downloaded,
+        "uploaded_bytes": uploaded,
+        "download_bps": float(download_bps),
+        "upload_bps": float(upload_bps),
+        "interface": interface,
+        "connected": connected,
+    }
+
+
 def get_bluetooth() -> dict:
     out = run_out(["bluetoothctl", "show"], timeout=3)
     powered = "Powered: yes" in out
@@ -280,7 +335,9 @@ class QuickSettings(Gtk.Window):
         self._status_widgets = {}
         self._updating_status = False
         self._refreshing = False
+        self._refresh_id = 0
         self._stats_refresh_id = 0
+        self._traffic_refresh_id = 0
 
         self.show_all()
 
@@ -288,7 +345,6 @@ class QuickSettings(Gtk.Window):
         self.present()
         GLib.timeout_add(50, self._grab_focus)
 
-        self._refresh_id = 0
         threading.Thread(target=self._load_panel_data, daemon=True).start()
 
     # ── Focus ──────────────────────────────────────────────────────────────
@@ -307,6 +363,8 @@ class QuickSettings(Gtk.Window):
             GLib.source_remove(self._refresh_id)
         if self._stats_refresh_id:
             GLib.source_remove(self._stats_refresh_id)
+        if self._traffic_refresh_id:
+            GLib.source_remove(self._traffic_refresh_id)
         LOCK_FILE.unlink(missing_ok=True)
         self.destroy()
         Gtk.main_quit()
@@ -346,6 +404,8 @@ class QuickSettings(Gtk.Window):
         self._add_divider(root)
         self._build_connectivity(root, data["network"], data["bluetooth"])
         self._add_divider(root)
+        self._build_network_traffic(root, data["traffic"])
+        self._add_divider(root)
         self._build_audio(root, data["volume"], data["mic_muted"],
                           data["brightness"], data["dnd"])
         self._add_divider(root)
@@ -356,6 +416,7 @@ class QuickSettings(Gtk.Window):
         self.show_all()
         self._refresh_id = GLib.timeout_add_seconds(1, self._refresh_panel)
         self._stats_refresh_id = GLib.timeout_add_seconds(3, self._refresh_stats)
+        self._traffic_refresh_id = GLib.timeout_add_seconds(1, self._refresh_network_traffic)
         return False
 
     # ── UI Helpers ─────────────────────────────────────────────────────────
@@ -530,6 +591,72 @@ class QuickSettings(Gtk.Window):
             status_key="bluetooth",
         )
         parent.pack_start(bt_row, False, False, 0)
+
+    def _build_network_traffic(self, parent: Gtk.Box, traffic: dict) -> None:
+        parent.pack_start(self._section_label("NETWORK TRAFFIC"), False, False, 0)
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        card.get_style_context().add_class("traffic-card")
+
+        self._traffic_status = Gtk.Label(xalign=0)
+        self._traffic_status.get_style_context().add_class("traffic-status")
+        card.pack_start(self._traffic_status, False, False, 0)
+
+        speeds = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self._download_speed = Gtk.Label(xalign=0)
+        self._download_speed.get_style_context().add_class("traffic-speed")
+        self._upload_speed = Gtk.Label(xalign=0)
+        self._upload_speed.get_style_context().add_class("traffic-speed")
+        speeds.pack_start(self._download_speed, True, True, 0)
+        speeds.pack_start(self._upload_speed, True, True, 0)
+        card.pack_start(speeds, False, False, 0)
+
+        totals = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self._download_total = Gtk.Label(xalign=0)
+        self._download_total.get_style_context().add_class("traffic-total")
+        self._upload_total = Gtk.Label(xalign=0)
+        self._upload_total.get_style_context().add_class("traffic-total")
+        totals.pack_start(self._download_total, True, True, 0)
+        totals.pack_start(self._upload_total, True, True, 0)
+        card.pack_start(totals, False, False, 0)
+        parent.pack_start(card, False, False, 0)
+        self._update_network_traffic(traffic)
+
+    @staticmethod
+    def _format_traffic_rate(bytes_per_second: float) -> str:
+        if bytes_per_second >= 1_000_000:
+            return f"{bytes_per_second / 1_000_000:.1f} MB/s"
+        return f"{bytes_per_second / 1_000:.1f} KB/s"
+
+    def _update_network_traffic(self, traffic: dict) -> None:
+        if not traffic.get("available"):
+            self._traffic_status.set_text("Statistics unavailable")
+            self._download_speed.set_text("↓  —")
+            self._upload_speed.set_text("↑  —")
+            self._download_total.set_text("↓  — GB")
+            self._upload_total.set_text("↑  — GB")
+            return
+
+        connected = traffic["connected"] and bool(traffic["interface"])
+        status = f"Connected · {traffic['interface']}" if connected else "Disconnected"
+        self._traffic_status.set_text(status)
+        self._download_speed.set_text(
+            f"↓  {self._format_traffic_rate(traffic['download_bps'])}"
+        )
+        self._upload_speed.set_text(
+            f"↑  {self._format_traffic_rate(traffic['upload_bps'])}"
+        )
+        self._download_total.set_text(
+            f"↓  {traffic['downloaded_bytes'] / 1_000_000_000:.4f} GB"
+        )
+        self._upload_total.set_text(
+            f"↑  {traffic['uploaded_bytes'] / 1_000_000_000:.4f} GB"
+        )
+
+    def _refresh_network_traffic(self) -> bool:
+        if self._closing:
+            return False
+        self._update_network_traffic(get_network_traffic())
+        return not self._closing
 
     def _toggle_wifi(self, active: bool) -> None:
         def _do():
@@ -782,6 +909,7 @@ class QuickSettings(Gtk.Window):
     def _collect_panel_data(self) -> dict:
         getters = {
             "network": get_network,
+            "traffic": get_network_traffic,
             "bluetooth": get_bluetooth,
             "volume": get_volume,
             "mic_muted": get_mic_muted,
@@ -976,6 +1104,8 @@ def already_running() -> bool:
 def main() -> None:
     if already_running():
         sys.exit(0)
+
+    start_network_traffic_monitor()
 
     # Write PID lock
     LOCK_FILE.write_text(str(os.getpid()))

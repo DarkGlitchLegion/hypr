@@ -7,6 +7,9 @@ hl.on("hyprland.start", function ()
     local config = Desktop.config
     local scripts = Desktop.scripts
 
+    -- Continuously sample the active route so traffic totals persist while the popup is closed.
+    hl.exec_cmd(scripts .. "/network-traffic.py --watch")
+
     -- Polkit authentication agent
     hl.exec_cmd("/usr/lib/hyprpolkitagent/hyprpolkitagent")
 

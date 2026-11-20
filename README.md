@@ -141,6 +141,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 * **Open**: Click the combined status cluster on the right side of Waybar. It displays Wi-Fi, speaker, microphone, battery, and optional DND/security indicators.
 * **Control panels**: In the popup, click the Wi-Fi, Bluetooth, speaker, microphone, or battery row's icon/text to open its corresponding manager. Use the row's switch to toggle Wi-Fi, Bluetooth, speaker mute, microphone mute, or DND.
 * **System tiles**: CPU, RAM, CPU temperature, and GPU temperature are shown in the System section; clicking CPU or RAM opens `btop`.
+* **Network traffic**: The popup shows live download/upload speeds and cumulative totals for the active default-route interface. Totals persist across restarts in `~/.local/state/hypr-rice/network-traffic.json`; the session-start monitor tracks traffic while the popup is closed.
 * **Live status**: The popup refreshes device and control state while open. Speaker and microphone icons in Waybar refresh immediately after changes made through Quick Settings or the volume/microphone hotkeys.
 * **Scripts**: `~/.config/hypr/scripts/quick-settings.py` and `quick-settings-status.py`.
 

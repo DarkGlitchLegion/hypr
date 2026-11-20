@@ -1,5 +1,4 @@
-window#waybar,
-window#waybar * {
+* {
     font-family: "JetBrainsMono Nerd Font", monospace;
     font-size: 11px;
     font-weight: 500;
@@ -21,8 +20,8 @@ window#waybar {
 
 #workspaces {
     background-color: #17191F;
-    border: 1px solid #202126;
-    border-radius: 6px;
+    border: 1px solid #2A2B30;
+    border-radius: 8px;
     margin: 3px 4px;
     padding: 0 4px;
 }
@@ -60,9 +59,9 @@ window#waybar {
 /* ── Quick Settings cluster ───────────────────────────────────── */
 #custom-quick-settings {
     background-color: #17191F;
-    border: 1px solid #202126;
-    border-radius: 6px;
-    padding: 2px 12px;
+    border: 1px solid #2A2B30;
+    border-radius: 8px;
+    padding: 5px 12px;
     margin: 3px 2px;
     color: #D5D5D5;
     transition: all 0.2s ease;
@@ -84,9 +83,9 @@ window#waybar {
 #clock,
 #custom-power {
     background-color: #17191F;
-    border: 1px solid #202126;
-    border-radius: 6px;
-    padding: 2px 9px;
+    border: 1px solid #2A2B30;
+    border-radius: 8px;
+    padding: 5px 10px;
     margin: 3px 2px;
     color: #D5D5D5;
     transition: all 0.2s ease;
@@ -316,4 +315,27 @@ window#hypr-quick-settings {
 #qs-root .qs-date {
     color: #666672;
     font-size: 10px;
+}
+
+#qs-root .traffic-card {
+    background-color: #17191F;
+    border: 1px solid #202126;
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+
+#qs-root .traffic-status {
+    color: #888888;
+    font-size: 10px;
+}
+
+#qs-root .traffic-speed {
+    color: #D5D5D5;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+#qs-root .traffic-total {
+    color: #777782;
+    font-size: 9px;
 }
