@@ -21,7 +21,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │   ├── appearance.lua        # Compositor layout, borders, rounding, shadows & blur
 │   ├── animations.lua        # Custom quintic & cubic Bezier animation curves
 │   ├── rules.lua             # Window rules, dialog centering & layer blur rules
-│   ├── app-placement.lua     # App workspace placement (Firefox follows display preference)
+│   ├── app-placement.lua     # Optional app-specific workspace placement rules
 │   └── keybinds.lua          # Keyboard shortcuts & window dispatchers
 ├── waybar/                   # Waybar status bar
 │   ├── config.jsonc          # Modular widgets, PipeWire, power profiles, battery
@@ -113,10 +113,9 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
   * No audio-device names are hardcoded. A connected TV without a PipeWire audio sink is ignored.
 
 ### Application Workspace Placement
-* Firefox opens on the workspace saved by the Display Manager as the external-display workspace.
-* When HDMI is disconnected, that workspace remains usable on the laptop; the placement rule does not require the external monitor to be connected.
-* Change the external workspace in Display Manager, then reload Hyprland for new Firefox windows to use the updated preference. Existing windows are not moved.
-* Add or change app-class-to-workspace rules in [app-placement.lua](./lua/app-placement.lua). Rules use Hyprland's native window matching and workspace assignment; the example chat rule is intentionally commented out.
+* Applications, including Firefox, open on the currently active workspace by default.
+* The saved external workspace preference is used by Display Manager for HDMI layout only; it does not place application windows.
+* Add an app-class-to-workspace rule in [app-placement.lua](./lua/app-placement.lua) only when you want that app forced to a particular workspace.
 
 ### Session Presets
 * Open **Session Presets** from the Display Manager or Control Center's Display menu.
