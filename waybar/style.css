@@ -56,16 +56,30 @@ window#waybar {
     padding: 0 10px;
 }
 
-#cpu,
-#memory,
-#network,
-#pulseaudio,
-#pulseaudio.microphone,
-#custom-bluetooth,
-#custom-hyprsec,
-#battery,
-#power-profiles-daemon,
-#custom-dnd,
+/* ── Quick Settings cluster ───────────────────────────────────── */
+#custom-quick-settings {
+    background-color: #17191F;
+    border: 1px solid #202126;
+    border-radius: 6px;
+    padding: 2px 12px;
+    margin: 3px 2px;
+    color: #D5D5D5;
+    transition: all 0.2s ease;
+    letter-spacing: 2px;   /* breathable icon spacing */
+    font-size: 13px;
+}
+
+#custom-quick-settings:hover {
+    background-color: #202126;
+    border-color: #333333;
+}
+
+/* Security-based accent — class set via alt field in JSON */
+#custom-quick-settings.sec-running {
+    border-color: rgba(163, 190, 140, 0.35);
+}
+
+/* ── Clock & Power (retained) ─────────────────────────────────── */
 #clock,
 #custom-power {
     background-color: #17191F;
@@ -77,94 +91,10 @@ window#waybar {
     transition: all 0.2s ease;
 }
 
-#cpu:hover,
-#memory:hover,
-#network:hover,
-#pulseaudio:hover,
-#pulseaudio.microphone:hover,
-#custom-bluetooth:hover,
-#custom-hyprsec:hover,
-#battery:hover,
-#power-profiles-daemon:hover,
-#custom-dnd:hover,
 #clock:hover,
 #custom-power:hover {
     background-color: #202126;
     border-color: #333333;
-}
-
-#network.disconnected {
-    color: #888888;
-}
-
-#pulseaudio.muted {
-    color: #666666;
-}
-
-#pulseaudio.microphone.source-muted {
-    color: #666666;
-}
-
-#custom-bluetooth.disabled,
-#custom-bluetooth.unavailable {
-    color: #666666;
-}
-
-#custom-bluetooth.connected {
-    color: #AAAAAA;
-}
-
-#custom-hyprsec.running {
-    color: #A3BE8C;
-}
-
-#custom-hyprsec.unavailable {
-    color: #BF616A;
-}
-
-#custom-bluetooth.powered {
-    color: #D5D5D5;
-}
-
-#battery {
-    color: #D5D5D5;
-}
-
-#battery.charging {
-    color: #AAAAAA;
-}
-
-#battery.warning:not(.charging) {
-    color: #EBCB8B;
-    border-color: #EBCB8B;
-}
-
-#battery.critical:not(.charging) {
-    color: #BF616A;
-    border-color: #BF616A;
-}
-
-#power-profiles-daemon.performance {
-    color: #EBCB8B;
-    border-color: rgba(235, 203, 139, 0.4);
-}
-
-#power-profiles-daemon.power-saver {
-    color: #A3BE8C;
-    border-color: rgba(163, 190, 140, 0.4);
-}
-
-#power-profiles-daemon.balanced {
-    color: #AAAAAA;
-}
-
-#custom-dnd.paused {
-    color: #EBCB8B;
-    border-color: rgba(235, 203, 139, 0.4);
-}
-
-#custom-dnd.active {
-    color: #888888;
 }
 
 #clock {
