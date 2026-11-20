@@ -47,4 +47,13 @@ hl.on("hyprland.start", function ()
 
     -- Synchronize GTK dark theme & icons for Thunar and GTK apps
     hl.exec_cmd(scripts .. "/apply-gtk-theme.sh")
+
+    -- Genie Effect plugin — load after Hyprland is fully started.
+    -- Silently skips if the .so is missing (before first build or after a Hyprland update).
+    local genie_so = Desktop.home .. "/.local/share/hypr-genie/genie.so"
+    local f = io.open(genie_so, "r")
+    if f then
+        f:close()
+        hl.exec_cmd("hyprctl plugin load " .. genie_so)
+    end
 end)

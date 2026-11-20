@@ -40,6 +40,16 @@ hl.bind(mainMod .. " + SHIFT + B",      hl.dsp.exec_cmd(scripts .. "/bluetooth-m
 hl.bind(hyprsecKeybind,                 hl.dsp.exec_cmd(scripts .. "/hyprsec-box.sh menu"))
 
 -- -----------------------------------------------------
+-- 1b. Genie Effect — Minimize / Restore
+-- -----------------------------------------------------
+-- Super+M          → genie-minimize active window (warp toward dock/bottom)
+-- Super+Alt+M      → genie-restore last minimized window (reverse warp)
+-- (Super+Shift+M is kept for display-manager.py — unchanged)
+local genie_dir = Desktop.home .. "/.local/share/hypr-genie"
+hl.bind(mainMod .. " + M",         hl.dsp.exec_cmd(genie_dir .. "/minimize.sh"))
+hl.bind(mainMod .. " + ALT + M",   hl.dsp.exec_cmd(genie_dir .. "/restore.sh"))
+
+-- -----------------------------------------------------
 -- 2. Window Management
 -- -----------------------------------------------------
 hl.bind(mainMod .. " + W",       hl.dsp.window.close())
