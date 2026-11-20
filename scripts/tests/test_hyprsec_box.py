@@ -42,10 +42,14 @@ case "$1" in
       --format)
         case "$3" in
           *State.Status*) printf 'created\\n' ;;
-          *State.Running*) printf 'false\\n' ;;
+          *State.Running*)
+            if [[ "${FAKE_RUNNING:-}" == true ]]; then printf 'true\\n'; else printf 'false\\n'; fi
+            ;;
           *NetworkSettings.Networks*)
             if [[ "${FAKE_NETWORKS:-}" == none ]]; then
               printf '{"none":{"NetworkID":"none"}}\\n'
+            elif [[ -n "${FAKE_NETWORKS:-}" ]]; then
+              printf '{"%s":{"NetworkID":"bridge"}}\\n' "$FAKE_NETWORKS"
             else
               printf '{}\\n'
             fi
@@ -58,6 +62,14 @@ case "$1" in
     printf '%s\\n' "$@" >> "$FAKE_LOG"
     exit 0
     ;;
+  exec)
+    printf '%s\\n' "$@" >> "$FAKE_LOG"
+    if [[ "$*" == *apt-get* && "${FAKE_APT_FAIL:-}" == "${@: -1}" ]]; then
+      printf 'simulated APT failure\\n' >&2
+      exit 42
+    fi
+    exit 0
+    ;;
   *) exit 0 ;;
 esac
 """,
@@ -66,7 +78,7 @@ esac
         fake_podman.chmod(0o755)
         fake_rofi = self.bin / "rofi"
         fake_rofi.write_text(
-            "#!/usr/bin/env bash\ncat >/dev/null\nprintf 'Enable network\\n'\n",
+            "#!/usr/bin/env bash\ncat >/dev/null\nprintf '%s\\n' \"${FAKE_ROFI_CHOICE:-Enable network}\"\n",
             encoding="utf-8",
         )
         fake_rofi.chmod(0o755)
@@ -157,6 +169,43 @@ esac
         args = self.log.read_text(encoding="utf-8").splitlines()
         self.assertIn("connect", args)
         self.assertEqual(args[args.index("connect") + 1:], ["test-bridge", "test-kali"])
+
+    def test_tool_install_keeps_apt_inside_container_without_capabilities(self) -> None:
+        self.state.touch()
+        self.env.update(
+            {
+                "WAYLAND_DISPLAY": "wayland-test",
+                "FAKE_ROFI_CHOICE": "Install tool",
+                "FAKE_RUNNING": "true",
+                "FAKE_NETWORKS": "test-bridge",
+            }
+        )
+        result = self.run_manager("install-tool", "iproute2")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        args = self.log.read_text(encoding="utf-8").splitlines()
+        serialized_args = "\n".join(args)
+        self.assertIn("APT::Sandbox::User=root", serialized_args)
+        self.assertIn("Dir::Cache::archives=/tmp/hyprsec-apt-cache", serialized_args)
+        self.assertIn("mkdir -p /tmp/hyprsec-apt-cache", serialized_args)
+        self.assertNotIn("--cap-add", args)
+
+    def test_tool_install_failure_reports_apt_log(self) -> None:
+        self.state.touch()
+        self.env.update(
+            {
+                "WAYLAND_DISPLAY": "wayland-test",
+                "FAKE_ROFI_CHOICE": "Install tool",
+                "FAKE_RUNNING": "true",
+                "FAKE_NETWORKS": "test-bridge",
+                "FAKE_APT_FAIL": "iproute2",
+            }
+        )
+        result = self.run_manager("install-tool", "iproute2")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("See ", result.stderr)
+        self.assertIn("for APT details", result.stderr)
+        manager_log = self.root / "state" / "hyprsec" / "manager.log"
+        self.assertIn("simulated APT failure", manager_log.read_text(encoding="utf-8"))
 
     def test_refuses_non_rootless_engine(self) -> None:
         self.env["FAKE_ROOTLESS"] = "false"
