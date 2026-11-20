@@ -85,7 +85,7 @@ hl.window_rule({
 hl.window_rule({
     name = "opacity-kitty",
     match = { class = "kitty" },
-    opacity = "0.96 0.90",
+    opacity = "0.88 0.70",
 })
 
 hl.window_rule({
