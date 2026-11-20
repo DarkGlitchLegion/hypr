@@ -31,7 +31,7 @@ refresh_waybar_bluetooth() {
 log_event() {
     local severity="$1"
     local description="$2"
-    python3 "${HOME}/.config/hypr/scripts/rice_maintenance.py" event bluetooth "${severity}" "${description}" \
+    python3 "${HOME}/.config/hypr/scripts/core/rice_maintenance.py" event bluetooth "${severity}" "${description}" \
         --category bluetooth >/dev/null 2>&1 || \
         printf 'Bluetooth Manager: could not record activity event: %s\n' "${description}" >&2
 }
@@ -39,10 +39,10 @@ log_event() {
 ensure_agent() {
     if ! pgrep -fa bluetooth-agent.py >/dev/null 2>&1; then
         if command -v hyprctl >/dev/null 2>&1; then
-            hyprctl dispatch 'hl.dsp.exec_cmd("/home/darkglitch/.config/hypr/scripts/bluetooth-agent.py")' >/dev/null 2>&1 || \
-            nohup python3 "${HOME}/.config/hypr/scripts/bluetooth-agent.py" >/dev/null 2>&1 &
+            hyprctl dispatch 'hl.dsp.exec_cmd("/home/darkglitch/.config/hypr/scripts/hardware/bluetooth-agent.py")' >/dev/null 2>&1 || \
+            nohup python3 "${HOME}/.config/hypr/scripts/hardware/bluetooth-agent.py" >/dev/null 2>&1 &
         else
-            nohup python3 "${HOME}/.config/hypr/scripts/bluetooth-agent.py" >/dev/null 2>&1 &
+            nohup python3 "${HOME}/.config/hypr/scripts/hardware/bluetooth-agent.py" >/dev/null 2>&1 &
         fi
     fi
     bluetoothctl pairable on >/dev/null 2>&1 || true

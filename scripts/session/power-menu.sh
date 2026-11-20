@@ -27,7 +27,7 @@ case "${CHOSEN}" in
         hyprctl dispatch exit
         ;;
     *"Reload Desktop"*)
-        "${HOME}/.config/hypr/scripts/restart-waybar.sh" >/dev/null 2>&1
+        "${HOME}/.config/hypr/scripts/desktop/restart-waybar.sh" >/dev/null 2>&1
         hyprctl reload >/dev/null 2>&1
         dunstify -a "System" -u low "Desktop Reloaded" "Hyprland and Waybar have been refreshed." 2>/dev/null || true
         ;;

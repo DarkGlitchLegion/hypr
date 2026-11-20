@@ -86,7 +86,7 @@ case "${CHOSEN}" in
         rofi -show drun -config "${HOME}/.config/hypr/rofi/launcher.rasi" &
         ;;
     *"Super + Alt + Space"*|*"Super + C"*)
-        "${HOME}/.config/hypr/scripts/command-center.sh" &
+        "${HOME}/.config/hypr/scripts/desktop/control-center.sh" &
         ;;
     *"Super + Return"*)
         kitty --config "${HOME}/.config/hypr/kitty/kitty.conf" &
@@ -107,16 +107,16 @@ case "${CHOSEN}" in
         kitty --class fastfetch --title fastfetch --hold --config "${HOME}/.config/hypr/kitty/kitty.conf" -e fastfetch &
         ;;
     *"Super + Shift + M"*)
-        "${HOME}/.config/hypr/scripts/display-manager.py" &
+        "${HOME}/.config/hypr/scripts/hardware/display-manager.py" &
         ;;
     *"Super + Shift + C"*)
-        "${HOME}/.config/hypr/scripts/cmatrix.sh" &
+        "${HOME}/.config/hypr/scripts/desktop/cmatrix.sh" &
         ;;
     *"Super + Shift + S"*)
-        "${HOME}/.config/hypr/scripts/wifi-menu.sh" &
+        "${HOME}/.config/hypr/scripts/hardware/wifi-menu.sh" &
         ;;
     *"Super + Shift + B"*)
-        "${HOME}/.config/hypr/scripts/bluetooth-menu.sh" &
+        "${HOME}/.config/hypr/scripts/hardware/bluetooth-menu.sh" &
         ;;
     *"Super + W"*|*"Super + Q"*)
         hyprctl dispatch killactive
@@ -152,31 +152,31 @@ case "${CHOSEN}" in
         hyprctl dispatch 'hl.dsp.window.resize({ x = 30, y = 30, relative = true })'
         ;;
     *"Super + Escape"*)
-        "${HOME}/.config/hypr/scripts/power-menu.sh" &
+        "${HOME}/.config/hypr/scripts/session/power-menu.sh" &
         ;;
     *"Super + Ctrl + L"*|*"Super + L"*)
         hyprlock -c "${HOME}/.config/hypr/hyprlock/hyprlock.conf" &
         ;;
     *"Super + Shift + R"*)
-        "${HOME}/.config/hypr/scripts/restart-waybar.sh" && hyprctl reload
+        "${HOME}/.config/hypr/scripts/desktop/restart-waybar.sh" && hyprctl reload
         ;;
     *"Super + Ctrl + A"*)
-        "${HOME}/.config/hypr/scripts/audio-menu.sh" &
+        "${HOME}/.config/hypr/scripts/hardware/audio-menu.sh" &
         ;;
     *"Super + Ctrl + Shift + V"*)
-        "${HOME}/.config/hypr/scripts/clipboard-clear.sh" &
+        "${HOME}/.config/hypr/scripts/clipboard/clipboard-clear.sh" &
         ;;
     *"Super + Ctrl + V"*)
-        "${HOME}/.config/hypr/scripts/clipboard-menu.sh" &
+        "${HOME}/.config/hypr/scripts/clipboard/clipboard-menu.sh" &
         ;;
     *"Super + Ctrl + W"*|*"Super + Ctrl + Space"*)
-        "${HOME}/.config/hypr/scripts/wallpaper-selector.sh" &
+        "${HOME}/.config/hypr/scripts/wallpaper/wallpaper-selector.sh" &
         ;;
     *"Super + Shift + D"*)
-        "${HOME}/.config/hypr/scripts/notification-toggle.sh" &
+        "${HOME}/.config/hypr/scripts/session/notification-toggle.sh" &
         ;;
     *"Super + Ctrl + N"*)
-        "${HOME}/.config/hypr/scripts/notification-history.sh" &
+        "${HOME}/.config/hypr/scripts/session/notification-history.sh" &
         ;;
     *"Super + N"*)
         dunstctl history-pop
@@ -186,11 +186,11 @@ case "${CHOSEN}" in
         ;;
     *"Print"*)
         if [[ "${CHOSEN}" == *"Super + Print"* ]]; then
-            "${HOME}/.config/hypr/scripts/screenshot.sh" full &
+            "${HOME}/.config/hypr/scripts/session/screenshot.sh" full &
         elif [[ "${CHOSEN}" == *"Ctrl + C"* ]]; then
-            "${HOME}/.config/hypr/scripts/screenshot.sh" menu &
+            "${HOME}/.config/hypr/scripts/session/screenshot.sh" menu &
         else
-            "${HOME}/.config/hypr/scripts/screenshot.sh" region &
+            "${HOME}/.config/hypr/scripts/session/screenshot.sh" region &
         fi
         ;;
 esac

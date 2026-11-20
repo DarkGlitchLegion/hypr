@@ -3,4 +3,4 @@
 # Hyprland Command Center (Compatibility Bridge)
 # Forwarding directly to the enhanced Control Center
 # =====================================================================
-exec "${HOME}/.config/hypr/scripts/control-center.sh" "$@"
+exec "${HOME}/.config/hypr/scripts/desktop/control-center.sh" "$@"

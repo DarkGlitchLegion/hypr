@@ -4,4 +4,4 @@
 # Delegates directly to the new clipboard-menu.sh
 # =====================================================
 
-exec "${HOME}/.config/hypr/scripts/clipboard-menu.sh" "$@"
+exec "${HOME}/.config/hypr/scripts/clipboard/clipboard-menu.sh" "$@"

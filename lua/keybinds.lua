@@ -34,7 +34,7 @@ hl.bind(mainMod .. " + SHIFT + E",      hl.dsp.exec_cmd("code || " .. terminal .
 hl.bind(mainMod .. " + SHIFT + T",      hl.dsp.exec_cmd("kitty --class btop --title btop --config " .. Desktop.config .. "/kitty/kitty.conf -e btop"))
 hl.bind(mainMod .. " + SHIFT + I",      hl.dsp.exec_cmd("kitty --class fastfetch --title fastfetch --hold --config " .. Desktop.config .. "/kitty/kitty.conf -e fastfetch"))
 hl.bind(mainMod .. " + SHIFT + M",      hl.dsp.exec_cmd(scripts .. "/hardware/display-manager.py"))
-hl.bind(mainMod .. " + SHIFT + C",      hl.dsp.exec_cmd(scripts .. "/cmatrix.sh"))
+hl.bind(mainMod .. " + SHIFT + C",      hl.dsp.exec_cmd(scripts .. "/desktop/cmatrix.sh"))
 hl.bind(mainMod .. " + SHIFT + S",      hl.dsp.exec_cmd(scripts .. "/hardware/wifi-menu.sh"))
 hl.bind(mainMod .. " + SHIFT + B",      hl.dsp.exec_cmd(scripts .. "/hardware/bluetooth-menu.sh"))
 hl.bind(hyprsecKeybind,                 hl.dsp.exec_cmd(scripts .. "/security/hyprsec-box.sh menu"))

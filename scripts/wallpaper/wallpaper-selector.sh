@@ -8,7 +8,7 @@
 
 WALLPAPER_DIR="${HOME}/.config/hypr/wallpapers"
 ROFI_THEME="${HOME}/.config/hypr/rofi/wallpaper.rasi"
-SET_SCRIPT="${HOME}/.config/hypr/scripts/set-wallpaper.sh"
+SET_SCRIPT="${HOME}/.config/hypr/scripts/wallpaper/set-wallpaper.sh"
 
 # Ensure directory exists
 if [ ! -d "${WALLPAPER_DIR}" ]; then

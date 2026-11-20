@@ -8,6 +8,13 @@
 
 ROFI_THEME="${HOME}/.config/hypr/rofi/command-center.rasi"
 SCRIPTS="${HOME}/.config/hypr/scripts"
+CORE_SCRIPTS="${SCRIPTS}/core"
+DESKTOP_SCRIPTS="${SCRIPTS}/desktop"
+HARDWARE_SCRIPTS="${SCRIPTS}/hardware"
+SESSION_SCRIPTS="${SCRIPTS}/session"
+CLIPBOARD_SCRIPTS="${SCRIPTS}/clipboard"
+WALLPAPER_SCRIPTS="${SCRIPTS}/wallpaper"
+SECURITY_SCRIPTS="${SCRIPTS}/security"
 KITTY_CONF="${HOME}/.config/hypr/kitty/kitty.conf"
 LOCK_CONF="${HOME}/.config/hypr/hyprlock/hyprlock.conf"
 LAUNCHER_CONF="${HOME}/.config/hypr/rofi/launcher.rasi"
@@ -208,13 +215,13 @@ handle_action() {
             kitty --config "${KITTY_CONF}" &
             ;;
         *"HyprSec Box"*)
-            "${SCRIPTS}/hyprsec-box.sh" menu &
+            "${SECURITY_SCRIPTS}/hyprsec-box.sh" menu &
             ;;
         *"Display Manager"*)
-            "${SCRIPTS}/display-manager.py" &
+            "${HARDWARE_SCRIPTS}/display-manager.py" &
             ;;
         *"Screen Timeout / Idle Management"*)
-            "${SCRIPTS}/idle-manager.py" --menu &
+            "${SESSION_SCRIPTS}/idle-manager.py" --menu &
             ;;
         *"Rice Diagnostics"*|*"Rice Health &amp; Diagnostics"*)
             "${SCRIPTS}/rice" doctor --ui &
@@ -238,7 +245,7 @@ handle_action() {
             run_rice_terminal "doctor --fix"
             ;;
         *"Session Presets"*)
-            "${SCRIPTS}/session-presets.py" &
+            "${SESSION_SCRIPTS}/session-presets.py" &
             ;;
         *"Rice Health & Diagnostics"*|*"Rice Health &amp; Diagnostics"*)
             "${SCRIPTS}/rice" doctor --ui &
@@ -250,16 +257,16 @@ handle_action() {
             firefox &
             ;;
         *"Wi-Fi Network Manager"*)
-            "${SCRIPTS}/wifi-menu.sh" &
+            "${HARDWARE_SCRIPTS}/wifi-menu.sh" &
             ;;
         *"Bluetooth Device Manager"*)
-            "${SCRIPTS}/bluetooth-menu.sh" &
+            "${HARDWARE_SCRIPTS}/bluetooth-menu.sh" &
             ;;
         *"PipeWire Audio Control Center"*)
-            "${SCRIPTS}/audio-menu.sh" &
+            "${HARDWARE_SCRIPTS}/audio-menu.sh" &
             ;;
         *"Power Profiles & Battery Center"*)
-            "${SCRIPTS}/power-profile-menu.sh" &
+            "${SESSION_SCRIPTS}/power-profile-menu.sh" &
             ;;
         *"Process Monitor"*)
             kitty --class btop --title btop --config "${KITTY_CONF}" -e btop &
@@ -268,10 +275,10 @@ handle_action() {
             kitty --config "${KITTY_CONF}" -e sh -c "df -hT --exclude-type=tmpfs --exclude-type=devtmpfs; echo ''; read -p 'Press Enter to close...' -r" &
             ;;
         *"Wallpaper Selector"*)
-            "${SCRIPTS}/wallpaper-selector.sh" &
+            "${WALLPAPER_SCRIPTS}/wallpaper-selector.sh" &
             ;;
         *"Synchronize GTK Dark Theme"*)
-            "${SCRIPTS}/apply-gtk-theme.sh" &
+            "${DESKTOP_SCRIPTS}/apply-gtk-theme.sh" &
             notify "GTK Theme Synced" "Applied Adwaita-dark theme configuration."
             ;;
         *"Set Brightness to 100%"*)
@@ -293,7 +300,7 @@ handle_action() {
             kitty --config "${KITTY_CONF}" -e lazygit &
             ;;
         *"Matrix Screensaver"*)
-            "${SCRIPTS}/cmatrix.sh" &
+            "${DESKTOP_SCRIPTS}/cmatrix.sh" &
             ;;
         *"Security Tools Directory"*)
             if [ -d "${HOME}/tools" ]; then
@@ -303,43 +310,43 @@ handle_action() {
             fi
             ;;
         *"Clipboard History Manager"*)
-            "${SCRIPTS}/clipboard-menu.sh" &
+            "${CLIPBOARD_SCRIPTS}/clipboard-menu.sh" &
             ;;
         *"Wipe Clipboard History"*)
-            "${SCRIPTS}/clipboard-clear.sh" &
+            "${CLIPBOARD_SCRIPTS}/clipboard-clear.sh" &
             ;;
         *"Region Screenshot"*)
-            "${SCRIPTS}/screenshot.sh" region &
+            "${SESSION_SCRIPTS}/screenshot.sh" region &
             ;;
         *"Fullscreen Screenshot"*)
-            "${SCRIPTS}/screenshot.sh" full &
+            "${SESSION_SCRIPTS}/screenshot.sh" full &
             ;;
         *"Screenshot Menu"*)
-            "${SCRIPTS}/screenshot.sh" menu &
+            "${SESSION_SCRIPTS}/screenshot.sh" menu &
             ;;
         *"Keybindings Reference (Rofi)"*|*"Keybindings Reference"*)
-            "${SCRIPTS}/keybindings-menu.sh" &
+            "${DESKTOP_SCRIPTS}/keybindings-menu.sh" &
             ;;
         *"Keybindings Cheatsheet"*)
-            "${SCRIPTS}/keybindings-window.sh" &
+            "${DESKTOP_SCRIPTS}/keybindings-window.sh" &
             ;;
         *"Toggle Do Not Disturb"*)
-            "${SCRIPTS}/notification-toggle.sh" &
+            "${SESSION_SCRIPTS}/notification-toggle.sh" &
             ;;
         *"Notification History"*)
-            "${SCRIPTS}/notification-history.sh" &
+            "${SESSION_SCRIPTS}/notification-history.sh" &
             ;;
         *"Toggle Audio Mute"*)
-            "${SCRIPTS}/volume.sh" mute &
+            "${HARDWARE_SCRIPTS}/volume.sh" mute &
             ;;
         *"Toggle Microphone Mute"*)
-            "${SCRIPTS}/volume.sh" mic &
+            "${HARDWARE_SCRIPTS}/volume.sh" mic &
             ;;
         *"Advanced Mixer"*)
             pavucontrol &
             ;;
         *"Restart Waybar"*)
-            "${SCRIPTS}/restart-waybar.sh" &
+            "${DESKTOP_SCRIPTS}/restart-waybar.sh" &
             ;;
         *"Reload Hyprland Desktop"*)
             run_rice_terminal "reload"

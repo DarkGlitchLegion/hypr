@@ -7,7 +7,7 @@ WALLPAPER="$1"
 HYPR_DIR="${HOME}/.config/hypr"
 HYPRLOCK_DIR_CONF="${HYPR_DIR}/hyprlock/hyprlock.conf"
 CURRENT_FILE="${HYPR_DIR}/state/current_wallpaper"
-RESTORE_SCRIPT="${HYPR_DIR}/scripts/restore-wallpaper.sh"
+RESTORE_SCRIPT="${HYPR_DIR}/scripts/wallpaper/restore-wallpaper.sh"
 
 if [ -z "${WALLPAPER}" ] || ! WALLPAPER=$(realpath -e -- "${WALLPAPER}" 2>/dev/null) || [ ! -f "${WALLPAPER}" ]; then
     dunstify -a "Wallpaper" -u critical "Wallpaper Error" "File not found: ${WALLPAPER}" 2>/dev/null || true

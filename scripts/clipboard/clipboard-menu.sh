@@ -20,7 +20,7 @@ if [ -f "${CACHE_PID_FILE}" ]; then
 fi
 if [ "${DAEMON_RUNNING}" != "true" ]; then
     rm -f "${CACHE_PID_FILE}"
-    "${HOME}/.config/hypr/scripts/clipboard-daemon.sh" >/dev/null 2>&1 &
+    "${HOME}/.config/hypr/scripts/clipboard/clipboard-daemon.sh" >/dev/null 2>&1 &
 fi
 
 if command -v cliphist >/dev/null 2>&1; then
@@ -36,7 +36,7 @@ if command -v cliphist >/dev/null 2>&1; then
     [ -z "${SELECTED}" ] && exit 0
 
     if [[ "${SELECTED}" == *"${CLEAR_ACTION}"* ]]; then
-        "${HOME}/.config/hypr/scripts/clipboard-clear.sh"
+        "${HOME}/.config/hypr/scripts/clipboard/clipboard-clear.sh"
         exit 0
     fi
 
@@ -64,7 +64,7 @@ else
     [ -z "${SELECTED}" ] && exit 0
 
     if [[ "${SELECTED}" == *"${CLEAR_ACTION}"* ]]; then
-        "${HOME}/.config/hypr/scripts/clipboard-clear.sh"
+        "${HOME}/.config/hypr/scripts/clipboard/clipboard-clear.sh"
         exit 0
     fi
 
