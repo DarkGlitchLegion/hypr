@@ -155,6 +155,24 @@ hl.layer_rule({
     ignore_alpha = 0.1,
 })
 
+hl.window_rule({
+    name = "opacity-firefox",
+    match = { class = "firefox" },
+    opacity = "0.92 0.85",
+})
+
+hl.window_rule({
+    name = "opacity-brave",
+    match = { class = "brave-browser" },
+    opacity = "0.92 0.85",
+})
+
+hl.window_rule({
+    name = "opacity-vscode",
+    match = { class = "com.microsoft.VSCode" },
+    opacity = "0.92 0.85",
+})
+
 -- 6. (macOS layer & floating animation styles are set globally via animations.lua
 --     bezier curves. Per-rule animation overrides require native windowrulev2
 --     syntax which is not supported by the hl.* Lua API in this config engine.)
