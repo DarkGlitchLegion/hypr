@@ -99,7 +99,7 @@ def notify(title: str, message: str, urgency: str = "normal") -> None:
 
 def log_event(description: str, *, severity: str = "info", result: str = "success") -> None:
     try:
-        from rice_events import log_event as write_event
+        from scripts.core.rice_events import log_event as write_event
         write_event(
             "display",
             description,
@@ -602,7 +602,7 @@ def load_profile(records: list[dict[str, Any]] | None = None) -> dict[str, Any] 
 
 def snapshot_before_config_change(label: str, *targets: Path) -> Path | None:
     try:
-        from rice_maintenance import snapshot_before_config_change as snapshot
+        from scripts.core.rice_maintenance import snapshot_before_config_change as snapshot
 
         return snapshot(label, *targets)
     except (ImportError, OSError, RuntimeError) as exc:

@@ -156,7 +156,7 @@ def snapshot_before_change() -> None:
     if not SETTINGS_FILE.exists():
         return
     try:
-        from rice_maintenance import snapshot_before_config_change
+        from scripts.core.rice_maintenance import snapshot_before_config_change
 
         snapshot_before_config_change("idle-settings", SETTINGS_FILE)
     except (ImportError, OSError, RuntimeError) as exc:

@@ -32,7 +32,7 @@ class AudioError(RuntimeError):
 
 def log_event(description: str, *, severity: str = "info", result: str = "success") -> None:
     try:
-        from rice_events import log_event as write_event
+        from scripts.core.rice_events import log_event as write_event
         write_event(
             "audio",
             description,
@@ -83,7 +83,7 @@ def load_preferences() -> dict[str, Any]:
 def save_preferences(preferences: dict[str, Any]) -> None:
     if PREFERENCES.exists():
         try:
-            from rice_maintenance import snapshot_before_config_change
+            from scripts.core.rice_maintenance import snapshot_before_config_change
 
             snapshot_before_config_change("audio-preferences", PREFERENCES)
         except (ImportError, OSError, RuntimeError) as exc:
