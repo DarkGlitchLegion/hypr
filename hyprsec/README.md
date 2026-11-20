@@ -20,9 +20,10 @@ scans automatically.
   Containers made by the earlier `--network=none` implementation must be
   rebuilt before a bridge can be attached. Rebuild resets installed container
   packages but preserves workspace data.
-- The default package catalog focuses on diagnostics, offline analysis,
-  development, and reporting. It intentionally does not bundle exploit,
-  password-auditing, or third-party discovery tools.
+- The package catalog is metadata-driven and separates category coverage from
+  installation-ready packages. Scope-only categories do not contain installable
+  package entries; the default catalog avoids packages that automate attacks
+  against third-party systems.
 - APT runs as root inside the container because all Linux capabilities are
   dropped; APT's default `_apt` sandbox needs `CAP_SETGID`. The manager sets
   `APT::Sandbox::User=root` and uses a root-owned cache in the container's
@@ -93,10 +94,34 @@ name, and optional container capabilities. Keep `NETWORK_PROFILE="none"` and
 bridge or capability is shown/confirmed before the container is created or
 started.
 
-`~/.config/hyprsec/tools.conf` uses `category|APT package|description` rows.
-Use conservative packages and review Kali package documentation before adding
-entries. Package installation is constrained to valid APT package names and
-always runs in the container.
+`~/.config/hyprsec/tools.conf` uses pipe-delimited metadata rows:
+
+```text
+category|tool name|APT package|description|source|method|availability|dependencies|compatibility|documentation URL|risk|usage notes|prerequisites
+```
+
+Three-column legacy rows remain supported. Catalog categories include
+information gathering, assessment, web, wireless, Bluetooth, password auditing,
+exploit research, forensics, incident response, reverse engineering, mobile,
+fuzzing, cryptography, cloud/container, hardware/RFID/SDR, VoIP, operating
+system auditing, malware analysis, databases, recovery, and reporting. A
+category marked `scope-only` is visible but has no installation-ready package
+entries in the default catalog.
+
+The repository catalog is merged with `~/.config/hyprsec/tools.conf`; user
+entries are preserved and take precedence for duplicate package names. The
+installer does not overwrite that file.
+
+The manager supports searching all tools, category filtering, metadata and
+documentation viewing, installed-state checks, and live APT-index availability
+checks. `verified` means the package was checked in the Kali Rolling index;
+availability is rechecked after updating package indexes before installation.
+Package dependencies are resolved by APT. Installation/removal requires explicit
+selection and runs only inside the container. Catalog presence never executes
+a tool. Review tool documentation and use network-facing tools only within an
+authorized lab. Forensic tools operate on supplied workspace files; host disks,
+credentials, radio devices, and host runtime sockets are not mounted by
+default.
 
 ## Troubleshooting
 

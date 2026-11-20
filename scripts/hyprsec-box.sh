@@ -6,6 +6,7 @@ CONFIG_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 USER_CONFIG="${HYPRSEC_CONFIG_FILE:-${XDG_CONFIG_HOME:-${HOME}/.config}/hyprsec/config.sh}"
 USER_CATALOG="${HYPRSEC_TOOL_CATALOG:-${XDG_CONFIG_HOME:-${HOME}/.config}/hyprsec/tools.conf}"
 DEFAULT_CATALOG="${CONFIG_ROOT}/hyprsec/tools.conf"
+CATALOG_HELPER="${SCRIPT_DIR}/hyprsec_catalog.py"
 ROFI_THEME="${CONFIG_ROOT}/rofi/command-center.rasi"
 
 CONTAINER_NAME="hyprsec-kali"
@@ -472,17 +473,27 @@ apt_in_container() {
 
 load_tool_rows() {
     local catalog="${USER_CATALOG}"
+    local -a catalogs=("${DEFAULT_CATALOG}")
     [[ -f "${catalog}" ]] || catalog="${DEFAULT_CATALOG}"
     [[ -r "${catalog}" ]] || {
         fail "Tool catalog is missing or unreadable."
         return 1
     }
-    awk -F'|' '!/^[[:space:]]*#/ && NF >= 3 && $1 != "" && $2 != "" {print $1 "|" $2 "|" $3}' "${catalog}"
+    [[ "${catalog}" == "${DEFAULT_CATALOG}" ]] || catalogs+=("${catalog}")
+    command -v python3 >/dev/null 2>&1 || {
+        fail "Python 3 is required to read the HyprSec tool catalog."
+        return 1
+    }
+    python3 "${CATALOG_HELPER}" list "${catalogs[@]}"
 }
 
 tool_installed() {
     podman exec "${CONTAINER_NAME}" dpkg-query -W -f='${db:Status-Abbrev}' "$1" 2>/dev/null \
         | grep -q '^ii'
+}
+
+tool_available() {
+    podman exec "${CONTAINER_NAME}" apt-cache show "$1" >/dev/null 2>&1
 }
 
 tool_menu() {
@@ -492,46 +503,78 @@ tool_menu() {
         fail "Start the container before opening the tool manager."
         return 1
     }
-    local rows categories category selected package description action
+    local catalog="${USER_CATALOG}" rows categories category selected package description action selected_name
+    local -a catalogs=("${DEFAULT_CATALOG}")
+    local source method catalog_status dependencies compatibility documentation risk notes prerequisites
+    [[ -f "${catalog}" ]] || catalog="${DEFAULT_CATALOG}"
+    [[ "${catalog}" == "${DEFAULT_CATALOG}" ]] || catalogs+=("${catalog}")
     rows="$(load_tool_rows)" || return
-    categories="$(printf '%s\n' "${rows}" | cut -d'|' -f1 | sort -u)"
-    category="$(printf '%s\n' "${categories}" | "${LAUNCHER}" -dmenu -i -no-custom \
+    categories="$(python3 "${CATALOG_HELPER}" categories "${catalogs[@]}")" || return
+    category="$(printf 'Search all tools\n%s\n' "${categories}" | "${LAUNCHER}" -dmenu -i -no-custom \
         -config "${ROFI_THEME}" -p "HyprSec tools")" || return
     [[ -n "${category}" ]] || return
+    if [[ "${category}" != "Search all tools" ]]; then
+        rows="$(python3 "${CATALOG_HELPER}" list \
+            "${catalogs[@]}" --category "${category}")" || return
+    fi
     local -a options=()
-    while IFS='|' read -r row_category package description; do
-        [[ "${row_category}" == "${category}" ]] || continue
+    while IFS='|' read -r row_category name package description source method catalog_status dependencies compatibility documentation risk notes prerequisites; do
         [[ "${package}" =~ ^[a-z0-9][a-z0-9+.-]*$ ]] || continue
         if tool_installed "${package}"; then
-            options+=("${package} | installed | ${description}")
+            options+=("${name} | ${package} | installed | ${description}")
+        elif tool_available "${package}"; then
+            options+=("${name} | ${package} | available | ${description}")
         else
-            options+=("${package} | available | ${description}")
+            options+=("${name} | ${package} | not in current index | ${description}")
         fi
     done <<< "${rows}"
     if ((${#options[@]} == 0)); then
-        notify "HyprSec Box" "No curated packages are configured for ${category}."
+        notify "HyprSec Box" "No installation-ready tools are listed for ${category}."
         return 0
     fi
     selected="$(printf '%s\n' "${options[@]}" | "${LAUNCHER}" -dmenu -i -no-custom \
-        -config "${ROFI_THEME}" -p "${category}")" || return
+        -config "${ROFI_THEME}" -p "${category}" -mesg "Type to search. Select a tool to view metadata and actions.")" || return
     [[ -n "${selected}" ]] || return
-    package="${selected%% | *}"
-    description=""
-    while IFS='|' read -r row_category action description; do
-        [[ "${action}" == "${package}" ]] && break
+    selected_name="${selected%% | *}"
+    package=""
+    while IFS='|' read -r row_category name package description source method catalog_status dependencies compatibility documentation risk notes prerequisites; do
+        [[ "${name}" == "${selected_name}" ]] && break
     done <<< "${rows}"
-    if tool_installed "${package}"; then
-        action="$(printf 'Cancel\nRemove %s\n' "${package}" | "${LAUNCHER}" -dmenu -i -no-custom \
-            -config "${ROFI_THEME}" -p "Installed tool")" || return
-        [[ "${action}" == "Remove ${package}" ]] || return 0
-        confirm "Remove ${package} from the container?" "Remove tool" || return 1
-        apt_in_container remove -y "${package}" || {
-            fail "Could not remove ${package} inside the container."
-            return 1
-        }
+    [[ "${package}" =~ ^[a-z0-9][a-z0-9+.-]*$ ]] || {
+        fail "Selected catalog entry does not have a valid package."
+        return 1
+    }
+    local installed="false"
+    tool_installed "${package}" && installed="true"
+    local -a actions=()
+    if [[ "${installed}" == "true" ]]; then
+        actions+=("Remove ${name}")
     else
-        install_tool "${package}"
+        actions+=("Install ${name}")
     fi
+    [[ -z "${documentation}" ]] || actions+=("Open documentation")
+    actions+=("Cancel")
+    action="$(printf '%s\n' "${actions[@]}" | "${LAUNCHER}" -dmenu -i -no-custom \
+        -config "${ROFI_THEME}" -p "${name}" \
+        -mesg "${description}<br>Package: ${package}<br>Source: ${source}; method: ${method}<br>Availability: ${catalog_status}; dependencies: ${dependencies}<br>Compatibility: ${compatibility}; risk: ${risk}<br>Notes: ${notes}<br>Prerequisites: ${prerequisites}")" || return
+    case "${action}" in
+        "Install ${name}") install_tool "${package}" ;;
+        "Remove ${name}")
+            confirm "Remove ${package} from the container?" "Remove tool" || return 1
+            apt_in_container remove -y "${package}" || {
+                fail "Could not remove ${package} inside the container."
+                return 1
+            }
+            ;;
+        "Open documentation")
+            require_command xdg-open || return
+            xdg-open "${documentation}" || {
+                fail "Could not open tool documentation."
+                return 1
+            }
+            ;;
+        *) return 0 ;;
+    esac
 }
 
 require_network_and_running() {
@@ -552,10 +595,13 @@ install_tool() {
         fail "Invalid package name in tool catalog."
         return 1
     }
-    local catalog_rows row_category row_package row_description found=0
+    local catalog_rows row_category row_name row_package row_description row_source row_method row_status
+    local row_dependencies row_compatibility row_documentation row_risk row_notes row_prerequisites found=0
     catalog_rows="$(load_tool_rows)" || return
-    while IFS='|' read -r row_category row_package row_description; do
+    while IFS='|' read -r row_category row_name row_package row_description row_source row_method row_status \
+        row_dependencies row_compatibility row_documentation row_risk row_notes row_prerequisites; do
         if [[ "${row_package}" == "${package}" ]]; then
+            [[ "${row_status}" != "scope-only" && "${row_method}" == "apt" ]] || continue
             found=1
             break
         fi
