@@ -489,7 +489,7 @@ def missing_config_references() -> list[str]:
                 for item in value:
                     yield from find_paths(item)
             elif isinstance(value, str):
-                yield from re.findall(r"(?:~|/[^\s'\"]+)?/\.config/hypr/[^\s'\"]+", value)
+                yield from re.findall(r"(?:\$\{HOME\}|\$HOME|~|/[^\s'\"]+)?/\.config/hypr/[^\s'\"]+", value)
 
         if data is not None:
             for reference in find_paths(data):

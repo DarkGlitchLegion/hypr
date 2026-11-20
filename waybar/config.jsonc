@@ -19,6 +19,7 @@
         "pulseaudio",
         "pulseaudio#microphone",
         "custom/bluetooth",
+        "custom/hyprsec",
         "battery",
         "power-profiles-daemon",
         "custom/dnd",
@@ -98,6 +99,15 @@
         "signal": 9,
         "format": "{}",
         "on-click": "/home/darkglitch/.config/hypr/scripts/bluetooth-menu.sh"
+    },
+    "custom/hyprsec": {
+        "exec": "$HOME/.config/hypr/scripts/hyprsec-box.sh waybar-status",
+        "return-type": "json",
+        "interval": 15,
+        "format": "{}",
+        "on-click": "$HOME/.config/hypr/scripts/hyprsec-box.sh menu",
+        "on-click-right": "$HOME/.config/hypr/scripts/hyprsec-box.sh waybar-stop",
+        "tooltip": true
     },
     "battery": {
         "states": {

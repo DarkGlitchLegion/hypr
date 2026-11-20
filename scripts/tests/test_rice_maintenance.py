@@ -77,6 +77,25 @@ class ConfigReferenceTests(unittest.TestCase):
                 self.assertTrue(any("Waybar references missing" in item
                                     for item in maintenance.missing_config_references()))
 
+    def test_waybar_home_variable_reference_resolves(self) -> None:
+        from unittest.mock import patch
+
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            config = home / ".config" / "hypr"
+            (config / "waybar").mkdir(parents=True)
+            script = config / "scripts" / "status.sh"
+            script.parent.mkdir()
+            script.write_text("", encoding="utf-8")
+            (config / "waybar" / "config.jsonc").write_text(
+                maintenance.json.dumps({"custom/test": {"exec": "$HOME/.config/hypr/scripts/status.sh"}}),
+                encoding="utf-8",
+            )
+            with patch.object(maintenance, "CONFIG", config), patch.object(
+                maintenance.Path, "home", return_value=home
+            ):
+                self.assertEqual(maintenance.missing_config_references(), [])
+
     def test_validation_file_scan_skips_backups_and_cache(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             config = Path(directory)

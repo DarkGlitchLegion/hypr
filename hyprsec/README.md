@@ -1,0 +1,112 @@
+# HyprSec Box
+
+HyprSec Box is an optional rootless Kali Rolling container integrated with the
+Hyprland rice. It is intended for defensive learning, diagnostics, analysis of
+local files, and authorized lab work. It does not configure a target or run
+scans automatically.
+
+## Safety model
+
+- The manager refuses to run as root and verifies Podman's rootless mode.
+- Containers start with `--network=none`, all Linux capabilities dropped, and
+  `no-new-privileges`; no privileged flag is used.
+- Only `~/HyprSec/workspace/{targets,captures,scans,reports,scripts,projects}`
+  is bind-mounted. Host home, SSH, browser profiles, and credentials are not
+  mounted.
+- Network access is opt-in. The **Enable network** action confirms before
+  attaching a dedicated rootless Podman bridge; disable it after package work.
+- The default package catalog focuses on diagnostics, offline analysis,
+  development, and reporting. It intentionally does not bundle exploit,
+  password-auditing, or third-party discovery tools.
+- Cleanup is interactive and project-scoped; the manager never removes the
+  workspace automatically. Container removal preserves all workspace data.
+
+Rootless containers are an isolation layer, not a substitute for keeping
+Podman and the host kernel patched. Use only systems and data you are
+authorized to assess.
+
+## Installation
+
+From the dotfiles checkout, run as your normal user:
+
+```sh
+~/.config/hypr/scripts/hyprsec-install.sh
+```
+
+The installer asks before installing Podman or pulling/creating the Kali
+container. It creates `~/.config/hyprsec/` configuration files only when they
+do not already exist. Review `~/.config/hyprsec/config.sh` and
+`~/.config/hyprsec/tools.conf` after installation.
+
+For rootless Podman on Arch, the host package is `podman`. The existing rice
+provides Kitty, Rofi, Thunar, and Dunst; the feature does not install Kali
+packages on the host.
+
+## Usage
+
+- **Super + Shift + H** opens the HyprSec menu. Change the key in
+  `~/.config/hyprsec/keybind`, then reload Hyprland.
+- Open it from the Control Center's quick actions or Developer menu.
+- The optional Waybar indicator shows setup/running/stopped state. Left click
+  opens the manager; right click asks before stopping the container.
+- **Container shell** opens an interactive Bash session in Kali.
+- **Workspace** opens the host workspace in Kitty or Thunar. Inside the
+  container the mounted folders are under `/workspace`.
+- Create and list project workspaces from the menu or CLI:
+
+```sh
+~/.config/hypr/scripts/hyprsec-box.sh workspace create-project lab-notes
+~/.config/hypr/scripts/hyprsec-box.sh workspace list-projects
+```
+
+- **Tool manager** shows configured packages by category and whether each is
+  installed. Install/update requires the bridge to be explicitly enabled and
+  confirmed. APT commands run only inside the container.
+- Enable or disable networking from the menu, or use:
+
+```sh
+~/.config/hypr/scripts/hyprsec-box.sh network-status
+~/.config/hypr/scripts/hyprsec-box.sh network-enable
+~/.config/hypr/scripts/hyprsec-box.sh network-disable
+```
+
+The CLI also supports `status`, `create`, `start`, `stop`, `restart`, `shell`,
+`tools`, `update`, `rebuild`, and `remove`. Destructive actions require
+confirmation. `stop --yes` is intended for explicit scripted shutdown.
+
+## Configuration
+
+`~/.config/hyprsec/config.sh` controls the container name/image, workspace,
+terminal, launcher, file manager, Waybar visibility, network profile, bridge
+name, and optional container capabilities. Keep `NETWORK_PROFILE="none"` and
+`CONTAINER_CAPABILITIES=()` for the strongest default isolation. A configured
+bridge or capability is shown/confirmed before the container is created or
+started.
+
+`~/.config/hyprsec/tools.conf` uses `category|APT package|description` rows.
+Use conservative packages and review Kali package documentation before adding
+entries. Package installation is constrained to valid APT package names and
+always runs in the container.
+
+## Troubleshooting
+
+- **Podman missing:** run the installer or `sudo pacman -S podman`.
+- **Rootless setup not ready:** verify `/etc/subuid` and `/etc/subgid` entries
+  for your user, then check `podman info --format
+  '{{.Host.Security.Rootless}}'`. Do not run this manager with `sudo`.
+- **Image pull fails:** check host connectivity and image name in
+  `config.sh`; the container has no network until explicitly enabled.
+- **APT/update fails:** confirm the bridge from the menu, check
+  `network-status`, retry, then disable networking when done.
+- **Workspace permission error:** check that `WORKSPACE_ROOT` is absolute and
+  writable by your user. Only that directory's named subfolders are mounted.
+- **Waybar module absent:** ensure `WAYBAR_ENABLED=1`, restart Waybar, and
+  verify the configured scripts path is valid.
+- **Inspect logs:** `~/.local/state/hyprsec/manager.log`.
+
+## Removal
+
+Run `~/.config/hypr/scripts/hyprsec-uninstall.sh`. It confirms removal of the
+container and keeps workspace files, config, the Podman image, and host
+packages. To remove the image separately, inspect it with `podman images`
+first and remove only the reviewed image with `podman rmi`.
