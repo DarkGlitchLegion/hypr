@@ -14,8 +14,9 @@ window#waybar {
     border: 1px solid #333333;
     border-radius: 8px;
     color: #D5D5D5;
-    transition-property: background-color;
-    transition-duration: 0.3s;
+    transition-property: background-color, border-color, opacity;
+    transition-duration: 0.25s;
+    transition-timing-function: cubic-bezier(0.25, 1.0, 0.5, 1.0);
 }
 
 #workspaces {
@@ -31,7 +32,7 @@ window#waybar {
     color: #888888;
     background-color: transparent;
     border-radius: 4px;
-    transition: all 0.2s ease;
+    transition: all 0.18s cubic-bezier(0.25, 1.0, 0.5, 1.0);
 }
 
 #workspaces button:hover {
@@ -64,7 +65,7 @@ window#waybar {
     padding: 5px 12px;
     margin: 3px 2px;
     color: #D5D5D5;
-    transition: all 0.2s ease;
+    transition: all 0.18s cubic-bezier(0.25, 1.0, 0.5, 1.0);
     letter-spacing: 2px;   /* breathable icon spacing */
     font-size: 13px;
 }
@@ -88,7 +89,7 @@ window#waybar {
     padding: 5px 10px;
     margin: 3px 2px;
     color: #D5D5D5;
-    transition: all 0.2s ease;
+    transition: all 0.18s cubic-bezier(0.25, 1.0, 0.5, 1.0);
 }
 
 #clock:hover,
@@ -162,7 +163,7 @@ window#hypr-quick-settings {
     border-radius: 8px;
     padding: 6px 10px;
     margin: 2px 0;
-    transition: all 0.15s ease;
+    transition: all 0.18s cubic-bezier(0.25, 1.0, 0.5, 1.0);
 }
 
 #qs-root .toggle-row:hover {
@@ -188,7 +189,7 @@ window#hypr-quick-settings {
     border: none;
     outline: none;
     box-shadow: none;
-    transition: background-color 0.2s ease;
+    transition: background-color 0.18s cubic-bezier(0.25, 1.0, 0.5, 1.0);
 }
 
 #qs-root switch:checked {
@@ -261,7 +262,7 @@ window#hypr-quick-settings {
     padding: 8px 10px;
     margin: 2px;
     min-width: 70px;
-    transition: all 0.15s ease;
+    transition: all 0.18s cubic-bezier(0.25, 1.0, 0.5, 1.0);
 }
 
 #qs-root .stat-tile:hover {

@@ -21,22 +21,31 @@ hl.config({
     },
 
     decoration = {
-        rounding       = 8,
+        rounding         = 10,       -- slightly rounder, closer to macOS 11+ window corners
         active_opacity   = 0.98,
         inactive_opacity = 0.92,
 
+        -- macOS-quality drop shadow: soft, deep, offset slightly downward
         shadow = {
             enabled      = true,
-            range        = 15,
-            render_power = 2,
-            color        = 0xaa0c0d10,
+            range        = 24,       -- larger penumbra like macOS shadows
+            render_power = 3,        -- smoother gradient falloff
+            color        = "rgba(0c0d10cc)",   -- #0C0D10 at ~80% — dark charcoal
+            offset       = "0 4",    -- subtle downward cast matching macOS light model
         },
 
+        -- Enhanced blur: vivid, layered, low noise — matches macOS vibrancy feel
         blur = {
-            enabled   = true,
-            size      = 5,
-            passes    = 2,
-            vibrancy  = 0.1696,
+            enabled        = true,
+            size           = 8,      -- larger kernel for smoother frosted-glass look
+            passes         = 3,      -- extra pass adds depth without banding
+            vibrancy       = 0.20,   -- slightly richer colour pop behind translucent surfaces
+            vibrancy_darkness = 0.1,
+            noise          = 0.012,  -- fine grain exactly like macOS material noise
+            contrast       = 1.05,   -- marginal contrast lift keeps dark palette punchy
+            brightness     = 0.95,   -- slight dim so blurred content doesn't wash out
+            new_optimizations = true,
+            xray           = false,
         },
     },
 
@@ -54,9 +63,19 @@ hl.config({
     },
 
     misc = {
-        force_default_wallpaper = 0,
-        disable_hyprland_logo = true,
-        disable_splash_rendering = true,
+        force_default_wallpaper    = 0,
+        disable_hyprland_logo      = true,
+        disable_splash_rendering   = true,
+        -- Animate window content while resizing (macOS live-resize feel)
+        animate_manual_resizes     = true,
+        -- Smooth mouse-driven moves
+        animate_mouse_windowdragging = true,
+        -- Snap focus change to monitor (prevents ghost trails on quick WS switches)
+        focus_on_activate          = false,
+        -- VFX cursor warping only within current workspace
+        mouse_move_enables_dpms    = true,
+        -- Prevent flicker when a fullscreen app starts
+        enable_swallow             = false,
     },
 
     input = {
