@@ -8,13 +8,18 @@ scans automatically.
 ## Safety model
 
 - The manager refuses to run as root and verifies Podman's rootless mode.
-- Containers start with `--network=none`, all Linux capabilities dropped, and
-  `no-new-privileges`; no privileged flag is used.
+- Containers start on a dedicated Podman `--internal` network with no external
+  route, all Linux capabilities dropped, and `no-new-privileges`; no privileged
+  flag is used. This permits a separate, explicitly enabled egress bridge to be
+  attached later.
 - Only `~/HyprSec/workspace/{targets,captures,scans,reports,scripts,projects}`
   is bind-mounted. Host home, SSH, browser profiles, and credentials are not
   mounted.
 - Network access is opt-in. The **Enable network** action confirms before
   attaching a dedicated rootless Podman bridge; disable it after package work.
+  Containers made by the earlier `--network=none` implementation must be
+  rebuilt before a bridge can be attached. Rebuild resets installed container
+  packages but preserves workspace data.
 - The default package catalog focuses on diagnostics, offline analysis,
   development, and reporting. It intentionally does not bundle exploit,
   password-auditing, or third-party discovery tools.
@@ -78,10 +83,10 @@ confirmation. `stop --yes` is intended for explicit scripted shutdown.
 
 `~/.config/hyprsec/config.sh` controls the container name/image, workspace,
 terminal, launcher, file manager, Waybar visibility, network profile, bridge
-name, and optional container capabilities. Keep `NETWORK_PROFILE="none"` and
-`CONTAINER_CAPABILITIES=()` for the strongest default isolation. A configured
-bridge or capability is shown/confirmed before the container is created or
-started.
+and internal network names, and optional container capabilities. Keep
+`NETWORK_PROFILE="none"` and `CONTAINER_CAPABILITIES=()` for the strongest
+default isolation. The optional bridge profile is confirmed before connecting
+it when the container starts.
 
 `~/.config/hyprsec/tools.conf` uses `category|APT package|description` rows.
 Use conservative packages and review Kali package documentation before adding
@@ -96,6 +101,10 @@ always runs in the container.
   '{{.Host.Security.Rootless}}'`. Do not run this manager with `sudo`.
 - **Image pull fails:** check host connectivity and image name in
   `config.sh`; the container has no network until explicitly enabled.
+- **An older container cannot enable networking:** choose **Rebuild container**.
+  Podman cannot attach a bridge to its special `none` network mode. Rebuild
+  preserves `~/HyprSec/workspace` but resets packages installed in that
+  container.
 - **APT/update fails:** confirm the bridge from the menu, check
   `network-status`, retry, then disable networking when done.
 - **Workspace permission error:** check that `WORKSPACE_ROOT` is absolute and

@@ -80,7 +80,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 ### HyprSec Box — Rootless Security Workspace
 * **Open**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd>, or Control Center → HyprSec Box. Change the key in `~/.config/hyprsec/keybind`, then reload Hyprland.
 * **Install**: Run `~/.config/hypr/scripts/hyprsec-install.sh` as your regular user. It asks before installing Podman or pulling the Kali Rolling image and preserves existing HyprSec configuration.
-* **Isolation**: Rootless Podman, no privileged mode, no host-wide mounts, dropped capabilities, and `--network=none` by default. Only `~/HyprSec/workspace` subdirectories are mounted.
+* **Isolation**: Rootless Podman, no privileged mode, no host-wide mounts, dropped capabilities, and an internal-only network by default. Only `~/HyprSec/workspace` subdirectories are mounted.
 * **Network**: Enable the named rootless bridge explicitly from the menu when package downloads are needed; it requires confirmation. Disable it afterward. The Waybar indicator shows container state; left-click opens the manager and right-click confirms before stopping.
 * **Tools and projects**: Manage the curated APT catalog in `~/.config/hyprsec/tools.conf`; package actions happen inside Kali. Create projects under `~/HyprSec/workspace/projects/`. Cleanup is project-scoped and interactive; removing the container preserves workspace files.
 * **Configuration and full guide**: See [hyprsec/README.md](./hyprsec/README.md). The default catalog is limited to diagnostics, analysis, development, and reporting tools.
