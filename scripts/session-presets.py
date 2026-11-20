@@ -15,7 +15,7 @@ from typing import Any
 
 CONFIG = Path.home() / ".config" / "hypr"
 DISPLAY_MANAGER = CONFIG / "scripts" / "display-manager.py"
-PRESETS_FILE = CONFIG / "session-presets.json"
+PRESETS_FILE = CONFIG / "state" / "session-presets.json"
 IDLE_MANAGER = CONFIG / "scripts" / "idle-manager.py"
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
 RUNTIME_STATE = RUNTIME_DIR / "hypr-session-preset.json"

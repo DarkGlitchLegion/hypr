@@ -5,9 +5,8 @@
 
 WALLPAPER="$1"
 HYPR_DIR="${HOME}/.config/hypr"
-HYPRLOCK_CONF="${HYPR_DIR}/hyprlock.conf"
 HYPRLOCK_DIR_CONF="${HYPR_DIR}/hyprlock/hyprlock.conf"
-CURRENT_FILE="${HYPR_DIR}/current_wallpaper"
+CURRENT_FILE="${HYPR_DIR}/state/current_wallpaper"
 RESTORE_SCRIPT="${HYPR_DIR}/scripts/restore-wallpaper.sh"
 
 if [ -z "${WALLPAPER}" ] || ! WALLPAPER=$(realpath -e -- "${WALLPAPER}" 2>/dev/null) || [ ! -f "${WALLPAPER}" ]; then
@@ -29,9 +28,6 @@ mv -f -- "${state_tmp}" "${CURRENT_FILE}" || exit 1
 trap - EXIT
 
 # Keep the lock screen background in sync with the selected desktop wallpaper.
-if [ -f "${HYPRLOCK_CONF}" ]; then
-    sed -i "s|path = .*|path = ${WALLPAPER}|" "${HYPRLOCK_CONF}"
-fi
 if [ -f "${HYPRLOCK_DIR_CONF}" ]; then
     sed -i "s|path = .*|path = ${WALLPAPER}|" "${HYPRLOCK_DIR_CONF}"
 fi

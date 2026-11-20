@@ -3,8 +3,8 @@
 set -euo pipefail
 
 HYPR_DIR="${HOME}/.config/hypr"
-CURRENT_FILE="${HYPR_DIR}/current_wallpaper"
-HYPRPAPER_CONF="${HYPR_DIR}/hyprpaper.conf"
+CURRENT_FILE="${HYPR_DIR}/state/current_wallpaper"
+HYPRPAPER_CONF="${HYPR_DIR}/hyprpaper/hyprpaper.conf"
 DEFAULT_WALLPAPER="${HYPR_DIR}/wallpapers/spiderman.png"
 
 save_wallpaper() {

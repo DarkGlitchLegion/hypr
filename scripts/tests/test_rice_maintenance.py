@@ -210,6 +210,47 @@ class SnapshotTests(unittest.TestCase):
                 maintenance.SNAPSHOT_SETTINGS = old_settings
                 maintenance.log_event = original_logger
 
+    def test_legacy_snapshot_path_restores_through_compatibility_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root / "config"
+            snapshot_dir = root / "snapshots"
+            config.mkdir()
+            snapshot_dir.mkdir()
+            legacy_file = config / "display-preferences.json"
+            legacy_file.write_text('{"workspace":"HDMI-A-1"}\n', encoding="utf-8")
+
+            old_config = maintenance.CONFIG
+            old_snapshot_dir = maintenance.SNAPSHOT_DIR
+            old_settings = maintenance.SNAPSHOT_SETTINGS
+            original_logger = maintenance.log_event
+            maintenance.CONFIG = config
+            maintenance.SNAPSHOT_DIR = snapshot_dir
+            maintenance.SNAPSHOT_SETTINGS = root / "settings.json"
+            maintenance.log_event = lambda *args, **kwargs: None
+            try:
+                archive = maintenance.create_snapshot("before-reorganization")
+                state_dir = config / "state"
+                state_dir.mkdir()
+                state_file = state_dir / "display-preferences.json"
+                legacy_file.rename(state_file)
+                legacy_file.symlink_to(Path("state") / state_file.name)
+                state_file.write_text('{"workspace":"eDP-1"}\n', encoding="utf-8")
+
+                with unittest.mock.patch.object(
+                    maintenance, "validate_current_config", return_value=[]
+                ):
+                    changes = maintenance.restore_snapshot(archive, confirm=True)
+
+                self.assertEqual(changes, ["REPLACE display-preferences.json"])
+                self.assertEqual(state_file.read_text(encoding="utf-8"), '{"workspace":"HDMI-A-1"}\n')
+                self.assertTrue(legacy_file.is_symlink())
+            finally:
+                maintenance.CONFIG = old_config
+                maintenance.SNAPSHOT_DIR = old_snapshot_dir
+                maintenance.SNAPSHOT_SETTINGS = old_settings
+                maintenance.log_event = original_logger
+
     def test_empty_component_selection_has_no_changes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             config = Path(directory) / "config"

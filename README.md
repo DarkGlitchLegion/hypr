@@ -14,6 +14,12 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 ~/.config/hypr/
 ├── hyprland.lua              # Master entrypoint & shared desktop context
 ├── hyprland.conf             # Compatibility bridge for Hyprland
+├── hyprland/                  # Inactive static configs retained for reference
+│   └── legacy/
+│       ├── animations.conf
+│       ├── hypridle.conf
+│       ├── keybinds.conf
+│       └── windowrules.conf
 ├── lua/                      # Modular Lua configuration subsystem
 │   ├── monitors.lua          # 1:1 native display setup (prevents fractional scaling)
 │   ├── autostart.lua         # Background daemons, Polkit, Waybar, Dunst, etc.
@@ -69,11 +75,28 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 ├── kitty/                    # Kitty terminal emulator configuration
 ├── dunst/                    # Dunst notification daemon configuration
 ├── hyprlock/                 # Hyprlock minimalist lockscreen
+├── hyprpaper/                # Hyprpaper configuration
+│   └── hyprpaper.conf
+├── hyprclock/                # Hyprclock configuration
+│   └── hyprclock.conf
 ├── hyprsec/                  # HyprSec defaults, tool catalog, and guide
-├── hypridle.conf             # Legacy static idle config; generated runtime config is active
-├── current_wallpaper         # File storing active wallpaper path
+├── state/                    # Persistent display, idle, session, and wallpaper state
+│   ├── current_wallpaper
+│   ├── display-preferences.json
+│   ├── display-profiles.json
+│   ├── idle-settings.json
+│   └── session-presets.json
 └── wallpapers/               # Curated wallpaper library
 ```
+
+Root-level compatibility symlinks preserve established paths for legacy configs, Hyprpaper, Hyprclock, and persisted state. The Hyprland entrypoint, scripts, and active Lua modules remain at their established paths.
+
+### Locating and debugging configuration
+* **Hyprland startup**: `hyprland.conf` loads `hyprland.lua`, which loads the active modules in `lua/`.
+* **Active behavior**: Edit `lua/keybinds.lua`, `lua/appearance.lua`, `lua/animations.lua`, `lua/monitors.lua`, `lua/rules.lua`, or `lua/autostart.lua` for their respective settings. The similarly named files in `hyprland/legacy/` are retained static configs, not the active Lua modules.
+* **Bar and menus**: Waybar files are in `waybar/`; Rofi themes are in `rofi/`; automation and tests are in `scripts/` and `scripts/tests/`.
+* **Persisted settings**: Display profiles/preferences, idle settings, session presets, and the saved wallpaper path are in `state/`. Root-level compatibility symlinks keep older references working.
+* **Validation**: Run `scripts/rice validate` for config references and syntax checks, or `scripts/rice doctor --full` for broader diagnostics.
 
 ---
 
@@ -145,13 +168,13 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 * Open **Session Presets** from the Display Manager or Control Center's Display menu.
 * Choose **Save current session…** and save a `Work`, `Presentation`, or custom-named preset. A preset records the current connected-monitor layout, each active monitor's workspace, DND state when Dunst is available, and whether a rice-managed idle inhibitor is active.
 * Apply a saved preset to switch to that combination. Display changes use the Display Manager's existing confirmation and rollback flow; disconnected or changed monitor setups are rejected rather than partially applied.
-* **Restore previous session** returns to the layout, monitor workspaces, notification state, and idle behavior from before the active session preset. Preset definitions persist in `~/.config/hypr/session-presets.json`; the temporary restore snapshot lasts for the current login session.
+* **Restore previous session** returns to the layout, monitor workspaces, notification state, and idle behavior from before the active session preset. Preset definitions persist in `~/.config/hypr/state/session-presets.json`; the temporary restore snapshot lasts for the current login session.
 * Session presets and Presentation Mode are mutually exclusive because Presentation Mode already owns a separate reversible display/DND/idle state.
 
 ### Screen Timeout and Idle Management
 * **Open**: Control Center → **Screen Timeout / Idle Management**. One menu provides timeout presets, the idle toggle, Keep Awake, and detailed action settings.
 * **CLI**: `~/.config/hypr/scripts/idle-manager.py --menu` (`--quick` remains an alias), `--status`, `--validate`, `--preset "Power Saving"`, `--master off`, `--keep-awake`, or `--resume-idle`.
-* **Saved settings**: `~/.config/hypr/idle-settings.json`; the idle manager snapshots the previous rice config before changing an existing settings file. Runtime Hypridle config and manager state are generated under `$XDG_RUNTIME_DIR/hypr-rice-idle/`.
+* **Saved settings**: `~/.config/hypr/state/idle-settings.json`; the idle manager snapshots the previous rice config before changing an existing settings file. Runtime Hypridle config and manager state are generated under `$XDG_RUNTIME_DIR/hypr-rice-idle/`.
 * **Profiles**: Balanced (default), Power Saving, Security Focused, Relaxed, Never, and fixed 5–60 minute lock-time profiles. Individual actions can be toggled and set from 15 seconds to 24 hours.
 * **Defaults**: Balanced dims at 2 minutes, blanks at 5, locks at 10, powers displays off at 15, and leaves suspend disabled. Power Saving enables suspend at 15 minutes; no other preset enables suspend.
 * **Application**: Changes restart only the managed Hypridle process, not Hyprland. The supervisor ensures the rice has only one Hypridle instance and retries/logs daemon failures.
@@ -211,7 +234,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 * **What it does**:
   * Displays a visual grid of all wallpapers in `~/.config/hypr/wallpapers/` (PNG, JPG, WEBP).
   * Automatically applies the selected image to Hyprpaper via IPC without restarting the daemon.
-  * Persists the choice in `~/.config/hypr/current_wallpaper` and updates `hyprpaper.conf`.
+  * Persists the choice in `~/.config/hypr/state/current_wallpaper` and updates `hyprpaper/hyprpaper.conf`.
   * Automatically synchronizes the lockscreen background in [hyprlock.conf](file:///home/darkglitch/.config/hypr/hyprlock/hyprlock.conf) so lock screen and desktop wallpapers stay consistent.
 
 ---
@@ -256,7 +279,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 * **What it does**:
   * Uses a clean 2D charcoal layout with custom date/time fonts and smooth input dots animations.
   * Idle profiles, individual action timers, and temporary keep-awake controls are available from the Control Center. Balanced is the default; suspend is opt-in.
-  * Settings persist in `~/.config/hypr/idle-settings.json`. Hypridle is reconfigured without restarting Hyprland.
+  * Settings persist in `~/.config/hypr/state/idle-settings.json`. Hypridle is reconfigured without restarting Hyprland.
   * The former `hypridle.conf` is no longer launched directly; the idle manager generates the active Hypridle config in the runtime directory.
 
 ---
@@ -280,13 +303,13 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
   * Reads monitor modes, resolution, refresh rate, scaling, position, and orientation from Hyprland. Detects connector plug/unplug state through the kernel DRM status files without hardcoding individual connector names.
   * Offers Laptop only, External display only, Extend (left/right/above/below), Mirror, and Presentation layouts.
   * Per-monitor controls enable/disable outputs, select a reported resolution/refresh rate, adjust scale and orientation, position relative to another display, or move a display to the top-left primary position.
-  * Every manual layout change has a 20-second confirmation window; choosing Keep saves it to `~/.config/hypr/display-profiles.json`, while canceling or letting the timer expire restores the previous layout. Presentation layouts are session-only and never overwrite saved normal layouts.
+  * Every manual layout change has a 20-second confirmation window; choosing Keep saves it to `~/.config/hypr/state/display-profiles.json`, while canceling or letting the timer expire restores the previous layout. Presentation layouts are session-only and never overwrite saved normal layouts.
   * Use **Reapply saved layout** to choose and reload a saved profile on demand after changing display settings.
   * A singleton startup watcher listens to Hyprland's monitor IPC events and debounces rapid connect/disconnect events. New displays trigger a Dunst notification with layout choices. It only auto-applies a layout when you explicitly saved that exact connected-monitor combination.
   * Every layout apply is serialized, re-detects connectors before each rule, enables target displays before disabling others, and verifies the resulting state. An unconfirmed change rolls back; a hotplug during confirmation cancels it and restores a safe connected display.
   * On disconnection, the watcher refreshes connector state, enables the internal display if no output remains active, and moves workspaces off unavailable monitors where needed. A singleton lock prevents duplicate listeners and conflicting operations.
   * **Preset-transition root cause fixed**: `hl.monitor` updates an existing monitor rule. The old runtime rule omitted `disabled = false`, so an output disabled by Laptop only remained disabled when later presets tried to re-enable it. The updated rule explicitly sets both `disabled` and `mirror`, clearing inherited state.
-  * **External workspace selection**: Extend prompts for a numbered workspace (1–10), an existing named workspace, or a new named workspace. The preference is stored once in `display-preferences.json`, applied when extending, and reapplied on reconnect/restart only when both the laptop and an external output are active. The manager does not define a fixed Workspace 3 rule. If the selected workspace is currently active on the laptop, it asks before moving it; creating or activating a workspace on the external monitor restores the previously focused monitor.
+  * **External workspace selection**: Extend prompts for a numbered workspace (1–10), an existing named workspace, or a new named workspace. The preference is stored once in `state/display-preferences.json`, applied when extending, and reapplied on reconnect/restart only when both the laptop and an external output are active. The manager does not define a fixed Workspace 3 rule. If the selected workspace is currently active on the laptop, it asks before moving it; creating or activating a workspace on the external monitor restores the previously focused monitor.
   * Workspace selection and recovery invoke Lua dispatchers through `hyprctl dispatch`; `hyprctl eval` only evaluates Lua and does not execute a returned dispatcher. This prevents a false-success response from leaving the selected workspace unchanged.
   * **External-only overlap fix**: The old apply order enabled the external panel at `(0, 0)` while the laptop panel was still active at `(0, 0)`, and only disabled the laptop afterward. Layouts are now overlap-validated and applied in safe steps: outputs that would collide are temporarily staged beside active monitors, unwanted outputs are disabled while a desired output stays active, then outputs move to their final positions. Each step is re-queried and verified, allowing safe transitions between single-display and extended layouts.
   * Workspace 3 was observed active on HDMI, but the audit found no Workspace 3 rule or command in the active Lua configuration, keybindings, or display scripts. This is Hyprland's runtime workspace-to-monitor association; the original event that created it is not recoverable from the current configuration. Extend now explicitly creates or moves the selected workspace instead of relying on that association.

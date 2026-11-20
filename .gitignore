@@ -1,12 +1,12 @@
 # Local configuration backups and runtime state
 .backup/
 *.log
-/display-preferences.json
-/display-profiles.json
 /audio-preferences.json
 /session-presets.json
 /snapshot-settings.json
 /idle-settings.json
+/state/session-presets.json
+/state/idle-settings.json
 
 # Python-generated files
 __pycache__/

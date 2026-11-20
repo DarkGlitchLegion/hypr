@@ -12,7 +12,7 @@ from pathlib import Path
 
 CONFIG = Path.home() / ".config" / "hypr"
 DISPLAY_MANAGER = CONFIG / "scripts" / "display-manager.py"
-DISPLAY_PREFERENCES = CONFIG / "display-preferences.json"
+DISPLAY_PREFERENCES = CONFIG / "state" / "display-preferences.json"
 ROFI_THEME = CONFIG / "rofi" / "command-center.rasi"
 
 REQUIRED_TOOLS = ("hyprctl", "rofi")

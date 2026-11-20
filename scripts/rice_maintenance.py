@@ -26,6 +26,19 @@ from typing import Any, Iterable
 
 CONFIG = Path.home() / ".config" / "hypr"
 SCRIPTS = CONFIG / "scripts"
+SNAPSHOT_COMPAT_PATHS = {
+    "animations.conf": "hyprland/legacy/animations.conf",
+    "keybinds.conf": "hyprland/legacy/keybinds.conf",
+    "windowrules.conf": "hyprland/legacy/windowrules.conf",
+    "hypridle.conf": "hyprland/legacy/hypridle.conf",
+    "hyprpaper.conf": "hyprpaper/hyprpaper.conf",
+    "hyprclock.conf": "hyprclock/hyprclock.conf",
+    "current_wallpaper": "state/current_wallpaper",
+    "display-preferences.json": "state/display-preferences.json",
+    "display-profiles.json": "state/display-profiles.json",
+    "idle-settings.json": "state/idle-settings.json",
+    "session-presets.json": "state/session-presets.json",
+}
 SNAPSHOT_DIR = Path.home() / ".local" / "share" / "hypr-rice" / "snapshots"
 SNAPSHOT_SETTINGS = CONFIG / "snapshot-settings.json"
 REPORT_DIR = Path.home() / ".local" / "state" / "hypr-rice" / "reports"
@@ -287,7 +300,7 @@ def build_diagnostics(*, full: bool = False, module: str | None = None) -> list[
         add("session", "Session Presets", "Healthy" if script.is_file() and os.access(script, os.X_OK) else "Failed",
             "CLI entry point is present." if script.is_file() and os.access(script, os.X_OK)
             else "Session preset entry point missing or not executable.")
-        preset_file = CONFIG / "session-presets.json"
+        preset_file = CONFIG / "state" / "session-presets.json"
         if preset_file.exists():
             try:
                 data = json.loads(preset_file.read_text(encoding="utf-8"))
@@ -751,7 +764,7 @@ def compare_to_current(archive: Path, contents: dict[str, bytes], components: se
             component = path_parts[0] if len(path_parts) > 1 else "root"
             if component not in components:
                 continue
-        live = CONFIG / relative
+        live = safe_config_path(relative)
         if not live.exists():
             changes.append(f"ADD     {relative}")
         elif not live.is_file() or live.read_bytes() != saved:
@@ -769,6 +782,8 @@ def safe_config_path(relative: str) -> Path:
     if parsed.is_absolute() or ".." in parsed.parts or not parsed.parts:
         raise MaintenanceError(f"Unsafe config path: {relative}")
     target = CONFIG.joinpath(*parsed.parts)
+    if relative in SNAPSHOT_COMPAT_PATHS and target.is_symlink():
+        target = CONFIG / SNAPSHOT_COMPAT_PATHS[relative]
     if CONFIG.resolve() not in target.resolve().parents and target.resolve() != CONFIG.resolve():
         raise MaintenanceError(f"Config path escapes rice directory: {relative}")
     return target
@@ -797,6 +812,9 @@ def restore_snapshot(archive: Path, components: set[str] | None = None, *, confi
         if components is None
         or (Path(relative).parts[0] if len(Path(relative).parts) > 1 else "root") in components
     }
+    targets = [safe_config_path(relative) for relative in selected]
+    if len(targets) != len(set(targets)):
+        raise MaintenanceError("Snapshot contains multiple paths for the same compatibility target.")
     changes = compare_to_current(archive, selected)
     if not changes:
         return []

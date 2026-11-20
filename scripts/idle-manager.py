@@ -21,7 +21,7 @@ from typing import Any
 
 CONFIG = Path.home() / ".config" / "hypr"
 SCRIPTS = CONFIG / "scripts"
-SETTINGS_FILE = CONFIG / "idle-settings.json"
+SETTINGS_FILE = CONFIG / "state" / "idle-settings.json"
 LOCK_CONFIG = CONFIG / "hyprlock" / "hyprlock.conf"
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "hypr-rice-idle"
 RUNTIME_CONFIG = RUNTIME_DIR / "hypridle.conf"

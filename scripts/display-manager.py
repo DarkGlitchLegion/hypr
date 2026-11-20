@@ -22,8 +22,8 @@ from typing import Any
 
 CONFIG = Path.home() / ".config" / "hypr"
 ROFI_THEME = CONFIG / "rofi" / "command-center.rasi"
-STATE_FILE = CONFIG / "display-profiles.json"
-DISPLAY_PREFERENCES = CONFIG / "display-preferences.json"
+STATE_FILE = CONFIG / "state" / "display-profiles.json"
+DISPLAY_PREFERENCES = CONFIG / "state" / "display-preferences.json"
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
 WATCH_LOCK = RUNTIME_DIR / "hypr-display-manager.lock"
 APPLY_LOCK = RUNTIME_DIR / "hypr-display-manager-apply.lock"

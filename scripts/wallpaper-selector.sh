@@ -8,7 +8,7 @@
 
 WALLPAPER_DIR="${HOME}/.config/hypr/wallpapers"
 ROFI_THEME="${HOME}/.config/hypr/rofi/wallpaper.rasi"
-CURRENT_FILE="${HOME}/.config/hypr/current_wallpaper"
+CURRENT_FILE="${HOME}/.config/hypr/state/current_wallpaper"
 SET_SCRIPT="${HOME}/.config/hypr/scripts/set-wallpaper.sh"
 
 # Ensure directory exists
@@ -21,8 +21,8 @@ CURRENT_WALL=""
 if [ -f "${CURRENT_FILE}" ]; then
     CURRENT_WALL=$(cat "${CURRENT_FILE}" 2>/dev/null)
 fi
-if [ -z "${CURRENT_WALL}" ] && [ -f "${HOME}/.config/hypr/hyprpaper.conf" ]; then
-    CURRENT_WALL=$(grep -E "^wallpaper\s*=" "${HOME}/.config/hypr/hyprpaper.conf" | awk -F, '{print $2}' | xargs)
+if [ -z "${CURRENT_WALL}" ] && [ -f "${HOME}/.config/hypr/hyprpaper/hyprpaper.conf" ]; then
+    CURRENT_WALL=$(grep -E "^wallpaper\s*=" "${HOME}/.config/hypr/hyprpaper/hyprpaper.conf" | awk -F, '{print $2}' | xargs)
 fi
 
 # Collect supported image files (jpg, jpeg, png, webp)
