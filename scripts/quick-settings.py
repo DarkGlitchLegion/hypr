@@ -15,6 +15,7 @@ import sys
 import tempfile
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional
 
@@ -479,16 +480,10 @@ class QuickSettings(Gtk.Window):
         self.add(root)
 
         self._build_header(root)
-        self._add_divider(root)
-        self._build_connectivity(root)
-        self._add_divider(root)
-        self._build_audio(root)
-        self._add_divider(root)
-        self._build_power(root)
-        self._add_divider(root)
-        self._build_system(root)
-        self._add_divider(root)
-        self._build_actions(root)
+        self._loading_label = Gtk.Label(label="Loading quick settings…")
+        self._loading_label.set_margin_top(18)
+        self._loading_label.set_margin_bottom(18)
+        root.pack_start(self._loading_label, False, False, 0)
 
         self.show_all()
 
@@ -496,8 +491,8 @@ class QuickSettings(Gtk.Window):
         self.present()
         GLib.timeout_add(50, self._grab_focus)
 
-        # Refresh stats every 3 s while visible
-        self._refresh_id = GLib.timeout_add_seconds(3, self._refresh_stats)
+        self._refresh_id = 0
+        threading.Thread(target=self._load_panel_data, daemon=True).start()
 
     # ── Focus ──────────────────────────────────────────────────────────────
 
@@ -527,6 +522,59 @@ class QuickSettings(Gtk.Window):
     def _on_close(self, *_args) -> bool:
         self._close()
         return True
+
+    def _load_panel_data(self) -> None:
+        try:
+            with ThreadPoolExecutor(max_workers=12) as executor:
+                tasks = {
+                    "network": executor.submit(get_network),
+                    "bluetooth": executor.submit(get_bluetooth),
+                    "volume": executor.submit(get_volume),
+                    "mic_muted": executor.submit(get_mic_muted),
+                    "brightness": executor.submit(get_brightness),
+                    "dnd": executor.submit(get_dnd),
+                    "battery": executor.submit(get_battery),
+                    "profile": executor.submit(get_power_profile),
+                    "cpu": executor.submit(get_cpu_usage),
+                    "ram": executor.submit(get_ram_usage),
+                    "cpu_temp": executor.submit(get_cpu_temp),
+                    "gpu_temp": executor.submit(get_gpu_temp),
+                    "security": executor.submit(get_hyprsec),
+                }
+                data = {name: task.result() for name, task in tasks.items()}
+        except Exception as exc:
+            print(f"Failed to load quick settings: {exc}", file=sys.stderr)
+            GLib.idle_add(self._show_load_error, str(exc))
+            return
+
+        GLib.idle_add(self._populate_panel, data)
+
+    def _show_load_error(self, message: str) -> bool:
+        if not self._closing:
+            self._loading_label.set_text(f"Unable to load quick settings: {message}")
+        return False
+
+    def _populate_panel(self, data: dict) -> bool:
+        if self._closing:
+            return False
+
+        root = self.get_child()
+        root.remove(self._loading_label)
+        self._add_divider(root)
+        self._build_connectivity(root, data["network"], data["bluetooth"])
+        self._add_divider(root)
+        self._build_audio(root, data["volume"], data["mic_muted"],
+                          data["brightness"], data["dnd"])
+        self._add_divider(root)
+        self._build_power(root, data["battery"], data["profile"])
+        self._add_divider(root)
+        self._build_system(root, data["cpu"], data["ram"], data["cpu_temp"],
+                           data["gpu_temp"], data["security"])
+        self._add_divider(root)
+        self._build_actions(root)
+        self.show_all()
+        self._refresh_id = GLib.timeout_add_seconds(3, self._refresh_stats)
+        return False
 
     # ── UI Helpers ─────────────────────────────────────────────────────────
 
@@ -624,11 +672,9 @@ class QuickSettings(Gtk.Window):
 
     # ── Connectivity ───────────────────────────────────────────────────────
 
-    def _build_connectivity(self, parent: Gtk.Box) -> None:
+    def _build_connectivity(self, parent: Gtk.Box, net: dict,
+                            bt: dict) -> None:
         parent.pack_start(self._section_label("CONNECTIVITY"), False, False, 0)
-
-        net = get_network()
-        bt = get_bluetooth()
 
         # Wi-Fi row
         if net["connected"]:
@@ -690,13 +736,11 @@ class QuickSettings(Gtk.Window):
 
     # ── Audio ──────────────────────────────────────────────────────────────
 
-    def _build_audio(self, parent: Gtk.Box) -> None:
+    def _build_audio(self, parent: Gtk.Box, volume: tuple[int, bool],
+                     mic_muted: bool, brightness: int, dnd: bool) -> None:
         parent.pack_start(self._section_label("AUDIO"), False, False, 0)
 
-        vol, muted = get_volume()
-        mic_muted = get_mic_muted()
-        brightness = get_brightness()
-        dnd = get_dnd()
+        vol, muted = volume
 
         # Volume slider
         vol_icon = "󰝟" if muted else ("󰕿" if vol < 33 else ("󰖀" if vol < 66 else "󰕾"))
@@ -779,11 +823,8 @@ class QuickSettings(Gtk.Window):
 
     # ── Power & Battery ────────────────────────────────────────────────────
 
-    def _build_power(self, parent: Gtk.Box) -> None:
+    def _build_power(self, parent: Gtk.Box, bat: dict, profile: str) -> None:
         parent.pack_start(self._section_label("POWER & BATTERY"), False, False, 0)
-
-        bat = get_battery()
-        profile = get_power_profile()
 
         # Battery status
         if bat["present"]:
@@ -837,7 +878,10 @@ class QuickSettings(Gtk.Window):
 
     # ── System Monitor tiles ───────────────────────────────────────────────
 
-    def _build_system(self, parent: Gtk.Box) -> None:
+    def _build_system(self, parent: Gtk.Box, cpu: int,
+                      ram: tuple[int, float, float],
+                      cpu_t: Optional[float], gpu_t: Optional[float],
+                      sec: dict) -> None:
         parent.pack_start(self._section_label("SYSTEM"), False, False, 0)
 
         grid = Gtk.FlowBox()
@@ -867,11 +911,7 @@ class QuickSettings(Gtk.Window):
                 eb.set_tooltip_text(tooltip)
             return eb
 
-        # Collect stats in background to keep UI snappy
-        cpu = get_cpu_usage()
-        ram_pct, ram_used, ram_total = get_ram_usage()
-        cpu_t = get_cpu_temp()
-        gpu_t = get_gpu_temp()
+        ram_pct, ram_used, ram_total = ram
 
         cpu_tile = _tile("", f"{cpu}%", "CPU",
                           f"CPU: {cpu}%\nClick to open btop")
@@ -899,7 +939,6 @@ class QuickSettings(Gtk.Window):
         parent.pack_start(grid, False, False, 0)
 
         # Security row
-        sec = get_hyprsec()
         sec_text = sec.get("text", "󰒃 Sec")
         sec_class = sec.get("class", "unavailable")
         sec_tip = sec.get("tooltip", "")
