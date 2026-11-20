@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-exec python3 "${HOME}/.config/hypr/scripts/rice_maintenance.py" "$@"
+exec python3 "${HOME}/.config/hypr/scripts/core/rice_maintenance.py" "$@"

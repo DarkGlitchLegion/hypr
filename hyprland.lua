@@ -15,7 +15,7 @@ Desktop = {
     terminal      = "kitty --config " .. configDir .. "/kitty/kitty.conf",
     fileManager   = "thunar",
     menu          = "rofi -show drun -config " .. configDir .. "/rofi/launcher.rasi",
-    controlCenter = configDir .. "/scripts/control-center.sh",
+    controlCenter = configDir .. "/scripts/desktop/control-center.sh",
     lockscreen    = "hyprlock -c " .. configDir .. "/hyprlock/hyprlock.conf",
     mainMod       = "SUPER",
 }

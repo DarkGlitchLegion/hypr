@@ -33,11 +33,11 @@ hl.bind(mainMod .. " + SHIFT + F",      hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + SHIFT + E",      hl.dsp.exec_cmd("code || " .. terminal .. " -e nano"))
 hl.bind(mainMod .. " + SHIFT + T",      hl.dsp.exec_cmd("kitty --class btop --title btop --config " .. Desktop.config .. "/kitty/kitty.conf -e btop"))
 hl.bind(mainMod .. " + SHIFT + I",      hl.dsp.exec_cmd("kitty --class fastfetch --title fastfetch --hold --config " .. Desktop.config .. "/kitty/kitty.conf -e fastfetch"))
-hl.bind(mainMod .. " + SHIFT + M",      hl.dsp.exec_cmd(scripts .. "/display-manager.py"))
+hl.bind(mainMod .. " + SHIFT + M",      hl.dsp.exec_cmd(scripts .. "/hardware/display-manager.py"))
 hl.bind(mainMod .. " + SHIFT + C",      hl.dsp.exec_cmd(scripts .. "/cmatrix.sh"))
-hl.bind(mainMod .. " + SHIFT + S",      hl.dsp.exec_cmd(scripts .. "/wifi-menu.sh"))
-hl.bind(mainMod .. " + SHIFT + B",      hl.dsp.exec_cmd(scripts .. "/bluetooth-menu.sh"))
-hl.bind(hyprsecKeybind,                 hl.dsp.exec_cmd(scripts .. "/hyprsec-box.sh menu"))
+hl.bind(mainMod .. " + SHIFT + S",      hl.dsp.exec_cmd(scripts .. "/hardware/wifi-menu.sh"))
+hl.bind(mainMod .. " + SHIFT + B",      hl.dsp.exec_cmd(scripts .. "/hardware/bluetooth-menu.sh"))
+hl.bind(hyprsecKeybind,                 hl.dsp.exec_cmd(scripts .. "/security/hyprsec-box.sh menu"))
 
 -- -----------------------------------------------------
 -- 1b. Genie Effect — Minimize / Restore
@@ -106,44 +106,44 @@ hl.bind(mainMod .. " + mouse_up",    hl.dsp.focus({ workspace = "e-1" }))
 -- -----------------------------------------------------
 -- 4. System Controls & Hardware
 -- -----------------------------------------------------
-hl.bind(mainMod .. " + ESCAPE",           hl.dsp.exec_cmd(scripts .. "/power-menu.sh"))
+hl.bind(mainMod .. " + ESCAPE",           hl.dsp.exec_cmd(scripts .. "/session/power-menu.sh"))
 hl.bind(mainMod .. " + CTRL + L",         hl.dsp.exec_cmd(lockscreen))
 hl.bind(mainMod .. " + L",                hl.dsp.exec_cmd(lockscreen))
-hl.bind(mainMod .. " + SHIFT + R",        hl.dsp.exec_cmd(scripts .. "/restart-waybar.sh && hyprctl reload"))
-hl.bind(mainMod .. " + CTRL + A",         hl.dsp.exec_cmd(scripts .. "/audio-menu.sh"))
-hl.bind(mainMod .. " + SHIFT + D",        hl.dsp.exec_cmd(scripts .. "/notification-toggle.sh"))
-hl.bind(mainMod .. " + CTRL + N",         hl.dsp.exec_cmd(scripts .. "/notification-history.sh"))
+hl.bind(mainMod .. " + SHIFT + R",        hl.dsp.exec_cmd(scripts .. "/desktop/restart-waybar.sh && hyprctl reload"))
+hl.bind(mainMod .. " + CTRL + A",         hl.dsp.exec_cmd(scripts .. "/hardware/audio-menu.sh"))
+hl.bind(mainMod .. " + SHIFT + D",        hl.dsp.exec_cmd(scripts .. "/session/notification-toggle.sh"))
+hl.bind(mainMod .. " + CTRL + N",         hl.dsp.exec_cmd(scripts .. "/session/notification-history.sh"))
 hl.bind(mainMod .. " + N",                hl.dsp.exec_cmd("dunstctl history-pop"))
 hl.bind(mainMod .. " + SHIFT + N",        hl.dsp.exec_cmd("dunstctl close-all"))
 
 -- -----------------------------------------------------
 -- 5. Productivity & Capture
 -- -----------------------------------------------------
-hl.bind(mainMod .. " + K",                  hl.dsp.exec_cmd(scripts .. "/keybindings-menu.sh"))
-hl.bind(mainMod .. " + SHIFT + K",          hl.dsp.exec_cmd(scripts .. "/keybindings-window.sh"))
-hl.bind(mainMod .. " + CTRL + W",           hl.dsp.exec_cmd(scripts .. "/wallpaper-selector.sh"))
-hl.bind(mainMod .. " + CTRL + SPACE",       hl.dsp.exec_cmd(scripts .. "/wallpaper-selector.sh"))
-hl.bind(mainMod .. " + CTRL + V",           hl.dsp.exec_cmd(scripts .. "/clipboard-menu.sh"))
-hl.bind(mainMod .. " + CTRL + SHIFT + V",   hl.dsp.exec_cmd(scripts .. "/clipboard-clear.sh"))
-hl.bind("Print",                            hl.dsp.exec_cmd(scripts .. "/screenshot.sh region"))
-hl.bind(mainMod .. " + Print",              hl.dsp.exec_cmd(scripts .. "/screenshot.sh full"))
-hl.bind(mainMod .. " + CTRL + C",           hl.dsp.exec_cmd(scripts .. "/screenshot.sh menu"))
+hl.bind(mainMod .. " + K",                  hl.dsp.exec_cmd(scripts .. "/desktop/keybindings-menu.sh"))
+hl.bind(mainMod .. " + SHIFT + K",          hl.dsp.exec_cmd(scripts .. "/desktop/keybindings-window.sh"))
+hl.bind(mainMod .. " + CTRL + W",           hl.dsp.exec_cmd(scripts .. "/wallpaper/wallpaper-selector.sh"))
+hl.bind(mainMod .. " + CTRL + SPACE",       hl.dsp.exec_cmd(scripts .. "/wallpaper/wallpaper-selector.sh"))
+hl.bind(mainMod .. " + CTRL + V",           hl.dsp.exec_cmd(scripts .. "/clipboard/clipboard-menu.sh"))
+hl.bind(mainMod .. " + CTRL + SHIFT + V",   hl.dsp.exec_cmd(scripts .. "/clipboard/clipboard-clear.sh"))
+hl.bind("Print",                            hl.dsp.exec_cmd(scripts .. "/session/screenshot.sh region"))
+hl.bind(mainMod .. " + Print",              hl.dsp.exec_cmd(scripts .. "/session/screenshot.sh full"))
+hl.bind(mainMod .. " + CTRL + C",           hl.dsp.exec_cmd(scripts .. "/session/screenshot.sh menu"))
 
 -- -----------------------------------------------------
 -- 6. Hardware & Multimedia Controls
 -- -----------------------------------------------------
 -- Volume Controls
-hl.bind("XF86AudioRaiseVolume",       hl.dsp.exec_cmd(scripts .. "/volume.sh up 5"),   { locked = true, repeating = true })
-hl.bind("XF86AudioLowerVolume",       hl.dsp.exec_cmd(scripts .. "/volume.sh down 5"), { locked = true, repeating = true })
-hl.bind("ALT + XF86AudioRaiseVolume", hl.dsp.exec_cmd(scripts .. "/volume.sh up 1"),   { locked = true, repeating = true })
-hl.bind("ALT + XF86AudioLowerVolume", hl.dsp.exec_cmd(scripts .. "/volume.sh down 1"), { locked = true, repeating = true })
-hl.bind("XF86AudioMute",              hl.dsp.exec_cmd(scripts .. "/volume.sh mute"),   { locked = true, repeating = true })
-hl.bind("XF86AudioMicMute",           hl.dsp.exec_cmd(scripts .. "/volume.sh mic"),    { locked = true, repeating = true })
+hl.bind("XF86AudioRaiseVolume",       hl.dsp.exec_cmd(scripts .. "/hardware/volume.sh up 5"),   { locked = true, repeating = true })
+hl.bind("XF86AudioLowerVolume",       hl.dsp.exec_cmd(scripts .. "/hardware/volume.sh down 5"), { locked = true, repeating = true })
+hl.bind("ALT + XF86AudioRaiseVolume", hl.dsp.exec_cmd(scripts .. "/hardware/volume.sh up 1"),   { locked = true, repeating = true })
+hl.bind("ALT + XF86AudioLowerVolume", hl.dsp.exec_cmd(scripts .. "/hardware/volume.sh down 1"), { locked = true, repeating = true })
+hl.bind("XF86AudioMute",              hl.dsp.exec_cmd(scripts .. "/hardware/volume.sh mute"),   { locked = true, repeating = true })
+hl.bind("XF86AudioMicMute",           hl.dsp.exec_cmd(scripts .. "/hardware/volume.sh mic"),    { locked = true, repeating = true })
 
 -- Brightness Controls
-hl.bind("XF86MonBrightnessUp",         hl.dsp.exec_cmd(scripts .. "/brightness.sh up 5"),   { locked = true, repeating = true })
-hl.bind("XF86MonBrightnessDown",       hl.dsp.exec_cmd(scripts .. "/brightness.sh down 5"), { locked = true, repeating = true })
-hl.bind("ALT + XF86MonBrightnessUp",   hl.dsp.exec_cmd(scripts .. "/brightness.sh up 1"),   { locked = true, repeating = true })
-hl.bind("ALT + XF86MonBrightnessDown", hl.dsp.exec_cmd(scripts .. "/brightness.sh down 1"), { locked = true, repeating = true })
-hl.bind("SHIFT + XF86MonBrightnessUp",   hl.dsp.exec_cmd(scripts .. "/brightness.sh max"),  { locked = true, repeating = true })
-hl.bind("SHIFT + XF86MonBrightnessDown", hl.dsp.exec_cmd(scripts .. "/brightness.sh min"),  { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessUp",         hl.dsp.exec_cmd(scripts .. "/hardware/brightness.sh up 5"),   { locked = true, repeating = true })
+hl.bind("XF86MonBrightnessDown",       hl.dsp.exec_cmd(scripts .. "/hardware/brightness.sh down 5"), { locked = true, repeating = true })
+hl.bind("ALT + XF86MonBrightnessUp",   hl.dsp.exec_cmd(scripts .. "/hardware/brightness.sh up 1"),   { locked = true, repeating = true })
+hl.bind("ALT + XF86MonBrightnessDown", hl.dsp.exec_cmd(scripts .. "/hardware/brightness.sh down 1"), { locked = true, repeating = true })
+hl.bind("SHIFT + XF86MonBrightnessUp",   hl.dsp.exec_cmd(scripts .. "/hardware/brightness.sh max"),  { locked = true, repeating = true })
+hl.bind("SHIFT + XF86MonBrightnessDown", hl.dsp.exec_cmd(scripts .. "/hardware/brightness.sh min"),  { locked = true, repeating = true })

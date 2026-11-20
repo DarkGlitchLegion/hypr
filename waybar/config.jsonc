@@ -32,12 +32,12 @@
         }
     },
     "custom/quick-settings": {
-        "exec": "$HOME/.config/hypr/scripts/quick-settings-status.py",
+        "exec": "$HOME/.config/hypr/scripts/desktop/quick-settings-status.py",
         "return-type": "json",
         "interval": 5,
         "signal": 7,
         "format": "{}",
-        "on-click": "$HOME/.config/hypr/scripts/quick-settings.py",
+        "on-click": "$HOME/.config/hypr/scripts/desktop/quick-settings.py",
         "tooltip": true
     },
     "clock": {
@@ -63,6 +63,6 @@
         "format": "󰐥",
         "tooltip": true,
         "tooltip-format": "Power Menu (Super + Escape)",
-        "on-click": "$HOME/.config/hypr/scripts/power-menu.sh"
+        "on-click": "$HOME/.config/hypr/scripts/session/power-menu.sh"
     }
 }

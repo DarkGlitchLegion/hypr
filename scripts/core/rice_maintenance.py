@@ -87,7 +87,7 @@ class MaintenanceError(RuntimeError):
 
 
 def event_logger():
-    path = SCRIPTS / "rice_events.py"
+    path = SCRIPTS / "core" / "rice_events.py"
     spec = importlib.util.spec_from_file_location("rice_events", path)
     if spec is None or spec.loader is None:
         raise MaintenanceError("The rice event logger could not be loaded.")
@@ -276,11 +276,11 @@ def build_diagnostics(*, full: bool = False, module: str | None = None) -> list[
                             f"{len(active)} active monitor(s); no overlaps detected.")
                 except (json.JSONDecodeError, TypeError, ValueError) as exc:
                     add("display", "Display state", "Failed", f"Invalid monitor response: {exc}")
-        manager = SCRIPTS / "display-manager.py"
+        manager = SCRIPTS / "hardware" / "display-manager.py"
         add("display", "Display Manager", "Healthy" if manager.is_file() and os.access(manager, os.X_OK) else "Failed",
             "Script exists and is executable." if manager.is_file() and os.access(manager, os.X_OK)
             else "Display Manager script missing or not executable.")
-        control_center = SCRIPTS / "control-center.sh"
+        control_center = SCRIPTS / "desktop" / "control-center.sh"
         control_center_ok = control_center.is_file() and os.access(control_center, os.X_OK)
         add("display", "Quick Settings / Control Center",
             "Healthy" if control_center_ok else "Failed",
@@ -296,7 +296,7 @@ def build_diagnostics(*, full: bool = False, module: str | None = None) -> list[
             "" if launcher_ok else "Run `rice dependencies --full` for package guidance.")
 
     if module in (None, "session"):
-        script = SCRIPTS / "session-presets.py"
+        script = SCRIPTS / "session" / "session-presets.py"
         add("session", "Session Presets", "Healthy" if script.is_file() and os.access(script, os.X_OK) else "Failed",
             "CLI entry point is present." if script.is_file() and os.access(script, os.X_OK)
             else "Session preset entry point missing or not executable.")
@@ -331,7 +331,7 @@ def build_diagnostics(*, full: bool = False, module: str | None = None) -> list[
                     "Powered on." if powered else "Powered off by choice; not treated as an error.")
 
     if module in (None, "idle"):
-        idle_script = SCRIPTS / "idle-manager.py"
+        idle_script = SCRIPTS / "session" / "idle-manager.py"
         if not idle_script.is_file():
             add("idle", "Idle manager", "Failed", "scripts/idle-manager.py is missing.")
         else:
@@ -369,7 +369,7 @@ def build_diagnostics(*, full: bool = False, module: str | None = None) -> list[
                 inhibitor.stderr.strip() or "Could not query systemd idle inhibitors.")
 
     if module in (None, "scripts"):
-        script_paths = sorted([*SCRIPTS.glob("*.sh"), *SCRIPTS.glob("*.py")])
+        script_paths = sorted([*SCRIPTS.rglob("*.sh"), *SCRIPTS.rglob("*.py")])
         missing_exec = [
             path.name for path in script_paths
             if path.read_bytes().startswith(b"#!") and not os.access(path, os.X_OK)
@@ -543,18 +543,18 @@ def validate_configs() -> list[Check]:
                                 result.stderr.strip() or "Syntax is valid.",
                                 "" if result.returncode == 0 else "Correct Lua syntax before reloading."))
 
-    for path in sorted(SCRIPTS.glob("*.sh")):
+    for path in sorted(SCRIPTS.rglob("*.sh")):
         result = run(["bash", "-n", str(path)])
         checks.append(Check("scripts", f"Shell: {path.name}",
                             "Healthy" if result.returncode == 0 else "Failed",
                             result.stderr.strip() or "Syntax is valid."))
-    for path in sorted(SCRIPTS.glob("*.py")):
+    for path in sorted(SCRIPTS.rglob("*.py")):
         try:
             ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             checks.append(Check("scripts", f"Python: {path.name}", "Healthy", "Syntax is valid."))
         except (OSError, SyntaxError) as exc:
             checks.append(Check("scripts", f"Python: {path.name}", "Failed", str(exc)))
-    idle_script = SCRIPTS / "idle-manager.py"
+    idle_script = SCRIPTS / "session" / "idle-manager.py"
     if not idle_script.is_file():
         checks.append(Check("idle", "Idle settings", "Failed", "scripts/idle-manager.py is missing."))
     else:

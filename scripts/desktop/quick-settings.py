@@ -62,7 +62,7 @@ def refresh_waybar() -> None:
 def start_network_traffic_monitor() -> None:
     try:
         subprocess.Popen(
-            [str(SCRIPTS / "network-traffic.py"), "--watch"],
+            [str(SCRIPTS / "hardware" / "network-traffic.py"), "--watch"],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -271,7 +271,7 @@ def get_power_profile() -> str:
 
 def get_hyprsec() -> dict:
     out = run_out(
-        [str(SCRIPTS / "hyprsec-box.sh"), "waybar-status"], timeout=5
+        [str(SCRIPTS / "security" / "hyprsec-box.sh"), "waybar-status"], timeout=5
     )
     try:
         d = json.loads(out)
@@ -567,7 +567,7 @@ class QuickSettings(Gtk.Window):
         wifi_row = self._toggle_row(
             wifi_icon, "Wi-Fi", wifi_sub, net["enabled"],
             on_toggle=self._toggle_wifi,
-            on_click=lambda: self._launch(str(SCRIPTS / "wifi-menu.sh")),
+            on_click=lambda: self._launch(str(SCRIPTS / "hardware" / "wifi-menu.sh")),
             status_key="wifi",
         )
         wifi_row.set_tooltip_text("Click switch to toggle • Click label to manage networks")
@@ -587,7 +587,7 @@ class QuickSettings(Gtk.Window):
         bt_row = self._toggle_row(
             bt_icon, "Bluetooth", bt_sub, bt["powered"],
             on_toggle=self._toggle_bluetooth,
-            on_click=lambda: self._launch(str(SCRIPTS / "bluetooth-menu.sh")),
+            on_click=lambda: self._launch(str(SCRIPTS / "hardware" / "bluetooth-menu.sh")),
             status_key="bluetooth",
         )
         parent.pack_start(bt_row, False, False, 0)
@@ -699,7 +699,7 @@ class QuickSettings(Gtk.Window):
             "󰝟" if muted else "󰕾", "Speaker",
             "Muted" if muted else f"{vol}%",
             not muted, on_toggle=self._toggle_mute,
-            on_click=lambda: self._launch(str(SCRIPTS / "audio-menu.sh")),
+            on_click=lambda: self._launch(str(SCRIPTS / "hardware" / "audio-menu.sh")),
             status_key="speaker",
         )
         parent.pack_start(mute_row, False, False, 0)
@@ -708,7 +708,7 @@ class QuickSettings(Gtk.Window):
             "󰍭" if mic_muted else "󰍬", "Microphone",
             "Muted" if mic_muted else "Active",
             not mic_muted, on_toggle=self._toggle_mic,
-            on_click=lambda: self._launch(str(SCRIPTS / "audio-menu.sh")),
+            on_click=lambda: self._launch(str(SCRIPTS / "hardware" / "audio-menu.sh")),
             status_key="microphone",
         )
         parent.pack_start(mic_row, False, False, 0)
@@ -793,7 +793,7 @@ class QuickSettings(Gtk.Window):
 
         bat_row = self._toggle_row(
             icon, "Battery", bat_sub, False,
-            on_click=lambda: self._launch(str(SCRIPTS / "power-profile-menu.sh")),
+            on_click=lambda: self._launch(str(SCRIPTS / "session" / "power-profile-menu.sh")),
             status_key="battery",
         )
         bat_row.set_tooltip_text("Click to open power profile menu")
@@ -814,7 +814,7 @@ class QuickSettings(Gtk.Window):
 
     def _cycle_profile(self) -> None:
         def _do():
-            subprocess.run([str(SCRIPTS / "power-profile-menu.sh"), "cycle"],
+            subprocess.run([str(SCRIPTS / "session" / "power-profile-menu.sh"), "cycle"],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         threading.Thread(target=_do, daemon=True).start()
 
@@ -892,7 +892,7 @@ class QuickSettings(Gtk.Window):
         sec_row.add(sec_inner)
         sec_row.set_tooltip_text(sec_tip or sec_text)
         sec_row.connect("button-press-event",
-                        lambda w, e: self._launch(str(SCRIPTS / "hyprsec-box.sh"), "menu")
+                        lambda w, e: self._launch(str(SCRIPTS / "security" / "hyprsec-box.sh"), "menu")
                         if e.button == 1 else None)
         # Colour the sublabel based on class
         # (the label is the 3rd child: icon_lbl, text_box, [switch])

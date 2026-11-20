@@ -117,7 +117,7 @@ def battery_pct() -> str:
 
 # ── Security ─────────────────────────────────────────────────────────────────
 def sec_class() -> str:
-    out = run([str(SCRIPTS / "hyprsec-box.sh"), "waybar-status"], timeout=5)
+    out = run([str(SCRIPTS / "security" / "hyprsec-box.sh"), "waybar-status"], timeout=5)
     try:
         return json.loads(out).get("class", "unavailable")
     except Exception:
