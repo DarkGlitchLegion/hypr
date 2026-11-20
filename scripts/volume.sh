@@ -37,18 +37,25 @@ notify_volume() {
     fi
 }
 
+refresh_waybar() {
+    pkill -RTMIN+7 waybar 2>/dev/null || true
+}
+
 case "$1" in
     up)
         wpctl set-volume -l 1.5 @DEFAULT_AUDIO_SINK@ "${STEP}%+"
         notify_volume
+        refresh_waybar
         ;;
     down)
         wpctl set-volume @DEFAULT_AUDIO_SINK@ "${STEP}%-"
         notify_volume
+        refresh_waybar
         ;;
     mute)
         wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
         notify_volume
+        refresh_waybar
         ;;
     mic)
         wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
@@ -58,6 +65,7 @@ case "$1" in
         else
             dunstify -a "Microphone" -u low -r 9992 -i "microphone-sensitivity-high" "Microphone Active"
         fi
+        refresh_waybar
         ;;
     *)
         echo "Usage: $0 {up [step]|down [step]|mute|mic}"

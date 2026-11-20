@@ -32,28 +32,33 @@ def _read(path: str) -> str:
 
 # ── Network ─────────────────────────────────────────────────────────────────
 def net_icon() -> str:
-    out = run(["nmcli", "-t", "-f", "ACTIVE,SIGNAL", "dev", "wifi"])
-    for line in out.splitlines():
-        parts = line.split(":")
-        if len(parts) >= 2 and parts[0] == "yes":
-            try:
-                sig = int(parts[1])
-            except ValueError:
-                sig = 50
-            if sig >= 75:
-                return "󰤨"
-            elif sig >= 50:
-                return "󰤥"
-            elif sig >= 25:
-                return "󰤢"
-            else:
-                return "󰤟"
+    wifi_enabled = run(["nmcli", "radio", "wifi"]) == "enabled"
+    if wifi_enabled:
+        out = run(["nmcli", "-t", "-f", "ACTIVE,SIGNAL", "dev", "wifi"])
+        for line in out.splitlines():
+            parts = line.split(":")
+            if len(parts) >= 2 and parts[0] == "yes":
+                try:
+                    sig = int(parts[1])
+                except ValueError:
+                    sig = 50
+                if sig >= 75:
+                    return "󰤨"
+                elif sig >= 50:
+                    return "󰤥"
+                elif sig >= 25:
+                    return "󰤢"
+                else:
+                    return "󰤟"
+
     # Ethernet?
     eth = run(["nmcli", "-t", "-f", "TYPE,STATE", "dev"])
     for line in eth.splitlines():
         if "ethernet" in line.lower() and "connected" in line.lower():
             return "󰈀"
-    return "󰤭"
+
+    # Keep radio state separate from whether it currently has an active connection.
+    return "󰤨" if wifi_enabled else "󰤭"
 
 
 # ── Audio ────────────────────────────────────────────────────────────────────
@@ -74,6 +79,11 @@ def audio_icon() -> str:
     elif vol < 66:
         return "󰖀"
     return "󰕾"
+
+
+def microphone_icon() -> str:
+    out = run(["wpctl", "get-volume", "@DEFAULT_AUDIO_SOURCE@"])
+    return "󰍭" if "[MUTED]" in out else "󰍬"
 
 
 # ── Battery ──────────────────────────────────────────────────────────────────
@@ -123,6 +133,7 @@ def dnd_icon() -> str:
 # ── Compose ──────────────────────────────────────────────────────────────────
 n_icon = net_icon()
 a_icon = audio_icon()
+m_icon = microphone_icon()
 b_icon = battery_icon()
 b_pct = battery_pct()
 d_icon = dnd_icon()
@@ -135,7 +146,7 @@ if s_cls == "running":
 elif s_cls == "unavailable":
     sec_dot = ""  # don't show if podman not available
 
-parts = [n_icon, a_icon, f"{b_icon} {b_pct}".strip()]
+parts = [n_icon, a_icon, m_icon, f"{b_icon} {b_pct}".strip()]
 if d_icon:
     parts.append(d_icon)
 if sec_dot:
