@@ -45,9 +45,9 @@ hl.bind(hyprsecKeybind,                 hl.dsp.exec_cmd(scripts .. "/hyprsec-box
 -- Super+M          → genie-minimize active window (warp toward dock/bottom)
 -- Super+Alt+M      → genie-restore last minimized window (reverse warp)
 -- (Super+Shift+M is kept for display-manager.py — unchanged)
-local genie_dir = Desktop.home .. "/.local/share/hypr-genie"
-hl.bind(mainMod .. " + M",         hl.dsp.exec_cmd(genie_dir .. "/minimize.sh"))
-hl.bind(mainMod .. " + ALT + M",   hl.dsp.exec_cmd(genie_dir .. "/restore.sh"))
+local genie_bin = Desktop.home .. "/.local/bin"
+hl.bind(mainMod .. " + M",         hl.dsp.exec_cmd(genie_bin .. "/genie-minimize"))
+hl.bind(mainMod .. " + ALT + M",   hl.dsp.exec_cmd(genie_bin .. "/genie-restore"))
 
 -- -----------------------------------------------------
 -- 2. Window Management
