@@ -49,8 +49,10 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │   ├── power-profile-menu.sh # AMD P-State power profile switcher & battery health
 │   ├── wifi-menu.sh          # Non-blocking network manager
 │   ├── bluetooth-menu.sh     # Peripheral management & pairing
-│   ├── bluetooth-status.py   # Live Bluetooth power/connection icon for Waybar
+│   ├── bluetooth-status.py   # Bluetooth power/connection status helper
 │   ├── bluetooth-agent.py    # D-Bus pairing & authentication agent
+│   ├── quick-settings.py     # GTK quick-settings popup and live system controls
+│   ├── quick-settings-status.py # Combined Waybar connectivity/audio/battery status
 │   ├── hyprsec-box.sh        # Rootless Kali container and workspace manager
 │   ├── hyprsec-install.sh    # Idempotent HyprSec setup
 │   ├── hyprsec-uninstall.sh  # Confirmed container removal; preserves user data
@@ -112,9 +114,19 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 
   ---
 
+### Waybar Quick Settings
+* **Open**: Click the combined status cluster on the right side of Waybar. It displays Wi-Fi, speaker, microphone, battery, and optional DND/security indicators.
+* **Control panels**: In the popup, click the Wi-Fi, Bluetooth, speaker, microphone, or battery row's icon/text to open its corresponding manager. Use the row's switch to toggle Wi-Fi, Bluetooth, speaker mute, microphone mute, or DND.
+* **Quick Actions**: Lock, suspend, Wi-Fi, Bluetooth, and power-menu actions are available at the bottom of the popup.
+* **System tiles**: CPU, RAM, CPU temperature, and GPU temperature are shown in the System section; clicking CPU or RAM opens `btop`.
+* **Live status**: The popup refreshes device and control state while open. Speaker and microphone icons in Waybar refresh immediately after changes made through Quick Settings or the volume/microphone hotkeys.
+* **Scripts**: `~/.config/hypr/scripts/quick-settings.py` and `quick-settings-status.py`.
+
+---
+
 ### 2. PipeWire Audio Control Center
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>A</kbd>
-* **Waybar Trigger**: Click the **Audio** (`󰕾`) or **Microphone** (`󰍬`) icon in Waybar.
+* **Waybar Trigger**: Click the combined Quick Settings cluster, then click the Speaker or Microphone row's icon/text to open the audio manager. The switches toggle mute.
 * **Script**: `~/.config/hypr/scripts/audio-menu.sh`
 * **What it does**:
   * Enumerates current PipeWire-Pulse outputs and inputs from JSON, including built-in speakers, HDMI/DisplayPort, Bluetooth, and headsets when exposed by PipeWire.
@@ -170,7 +182,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 
 ### 4. Graphical Wi-Fi Manager
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>
-* **Waybar Trigger**: Click the **Network** (`󰤨`) widget in Waybar.
+* **Waybar Trigger**: Click the combined Quick Settings cluster, then click the Wi-Fi row's icon/text to open the network manager. The switch toggles the Wi-Fi radio.
 * **Script**: `~/.config/hypr/scripts/wifi-menu.sh`
 * **What it does**:
   * Scans nearby Wi-Fi networks in the background (`nmcli --rescan no`) for fast response times.
@@ -182,10 +194,10 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 
 ### 5. Graphical Bluetooth Manager & Pairing Agent
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd>
-* **Waybar Trigger**: Click the Bluetooth widget to open the manager. Its icon distinguishes powered off (`󰂲`), powered on (`󰂯`), and connected (`󰂱`) states.
+* **Waybar Trigger**: Click the combined Quick Settings cluster, then click the Bluetooth row's icon/text to open the manager. The switch toggles Bluetooth power.
 * **Scripts**: `~/.config/hypr/scripts/bluetooth-menu.sh`, `bluetooth-status.py`, and `bluetooth-agent.py`
 * **What it does**:
-  * Waybar refreshes Bluetooth power and connection status every two seconds; manager actions also trigger an immediate refresh.
+  * The Quick Settings popup shows whether Bluetooth is powered off (`󰂲`), powered on (`󰂯`), or connected (`󰂱`), and refreshes the state while open.
   * Connects to BlueZ via D-Bus and `bluetoothctl`.
   * Runs a dedicated background agent (`bluetooth-agent.py`) for automatic pairing, PIN handling, and Dunst notifications.
   * Lists paired and discovered devices with battery status percentages.
@@ -388,21 +400,15 @@ Workspace shortcuts now cover 1–10 to match the Display Manager; use <kbd>Supe
 
 ## Interactive Waybar Modules
 
-The Waybar status bar at the top of the screen provides direct mouse interactions:
+The Waybar status bar at the top of the screen provides these mouse interactions:
 
 | Module | Left-Click | Right-Click | Scroll Wheel |
 | :--- | :--- | :--- | :--- |
-| **Workspaces** | Switch to workspace | — | Switch workspace |
-| **CPU (``)** | Open Btop monitor | — | — |
-| **Memory (``)** | Open Btop monitor | — | — |
-| **Network (`󰤨`)** | Open Wi-Fi Manager | — | — |
-| **Audio (`󰕾`)** | Open Audio Switcher | Mute / Unmute | Volume +/- |
-| **Mic (`󰍬`)** | Open Microphone Selector | Mute / Unmute Mic | Volume +/- |
-| **Bluetooth (`󰂯`)** | Open Bluetooth Manager | — | — |
-| **Battery (`󰁹`)** | Open Power & Battery Center | Cycle Power Profile | — |
-| **Power Profile (`󰓅`/`󰾆`/`󰌪`)** | Shows current active profile | — | — |
-| **DND (`󰂚`)** | Toggle Do Not Disturb | — | — |
-| **Clock (`󰸗`)** | Show Calendar | Toggle 24h Seconds | Scroll calendar |
+| **Workspaces** | Activate workspace | — | Disabled |
+| **Window title** | — | — | — |
+| **Quick Settings cluster** | Open Quick Settings popup | — | — |
+| **Quick Settings rows** | Open the row's manager from its icon/text; switches toggle Wi-Fi, Bluetooth, speaker/mic mute, or DND | — | — |
+| **Clock (`󰸗`)** | Show calendar | Toggle alternate time format | Change calendar month |
 | **Power (`󰐥`)** | Open System Power Menu | — | — |
 
 ---
