@@ -471,7 +471,6 @@ class QuickSettings(Gtk.Window):
 
         # Connect events
         self.connect("key-press-event", self._on_key_press)
-        self.connect("focus-out-event", self._on_focus_out)
         self.connect("delete-event", self._on_close)
 
         # Build UI
@@ -523,16 +522,6 @@ class QuickSettings(Gtk.Window):
         if event.keyval == Gdk.KEY_Escape:
             self._close()
             return True
-        return False
-
-    def _on_focus_out(self, _widget, _event) -> bool:
-        # Close when focus leaves the window
-        GLib.timeout_add(100, self._check_focus)
-        return False
-
-    def _check_focus(self) -> bool:
-        if not self.has_toplevel_focus():
-            self._close()
         return False
 
     def _on_close(self, *_args) -> bool:
