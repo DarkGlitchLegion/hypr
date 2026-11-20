@@ -154,3 +154,7 @@ hl.layer_rule({
     blur = true,
     ignore_alpha = 0.1,
 })
+
+-- 6. (macOS layer & floating animation styles are set globally via animations.lua
+--     bezier curves. Per-rule animation overrides require native windowrulev2
+--     syntax which is not supported by the hl.* Lua API in this config engine.)
