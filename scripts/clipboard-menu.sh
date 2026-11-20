@@ -7,10 +7,19 @@
 ROFI_CONFIG="${HOME}/.config/hypr/rofi/clipboard.rasi"
 CACHE_DIR="${HOME}/.cache/hypr_clipboard"
 HISTORY_FILE="${CACHE_DIR}/history.txt"
+CACHE_PID_FILE="${CACHE_DIR}/daemon.pid"
 CLEAR_ACTION="󰆴  Clear All Clipboard History"
 
 # Ensure daemon is running in background if not already active
-if ! pgrep -f "clipboard-daemon.sh" >/dev/null 2>&1; then
+DAEMON_RUNNING=false
+if [ -f "${CACHE_PID_FILE}" ]; then
+    DAEMON_PID=$(cat "${CACHE_PID_FILE}" 2>/dev/null)
+    if [ -n "${DAEMON_PID}" ] && ps -p "${DAEMON_PID}" -o args= 2>/dev/null | grep -Fq "clipboard-daemon.sh"; then
+        DAEMON_RUNNING=true
+    fi
+fi
+if [ "${DAEMON_RUNNING}" != "true" ]; then
+    rm -f "${CACHE_PID_FILE}"
     "${HOME}/.config/hypr/scripts/clipboard-daemon.sh" >/dev/null 2>&1 &
 fi
 
@@ -46,7 +55,7 @@ else
 
     ENTRIES=$(awk -F'|' '{print $2}' "${HISTORY_FILE}" 2>/dev/null)
     if [ -z "${ENTRIES}" ]; then
-        MENU_ENTRIES="${CLEAR_ACTION}\n<i>(Clipboard history is empty. Install cliphist for rich history: sudo pacman -S cliphist)</i>"
+        MENU_ENTRIES="${CLEAR_ACTION}\n<i>(Clipboard history is empty. Built-in history fallback is active)</i>"
     else
         MENU_ENTRIES="${CLEAR_ACTION}\n${ENTRIES}"
     fi

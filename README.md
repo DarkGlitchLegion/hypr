@@ -244,7 +244,8 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 * **Clear History**: <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd>
 * **Scripts**: `~/.config/hypr/scripts/clipboard-menu.sh` & `clipboard-daemon.sh`
 * **What it does**:
-  * Runs a lightweight `wl-paste` listener storing clipboard text and images via `cliphist`.
+  * Runs a lightweight `wl-paste` listener.
+  * Uses `cliphist` when available; otherwise it uses the built-in cache and works without extra packages.
   * Pressing <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>V</kbd> opens a fuzzy-searchable history list in Rofi.
   * Selecting an entry copies it back to the active clipboard buffer ready for pasting.
 

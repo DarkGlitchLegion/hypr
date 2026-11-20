@@ -12,10 +12,11 @@ mkdir -p "${CACHE_DIR}"
 
 # Check for single instance
 if [ -f "${PID_FILE}" ]; then
-    OLD_PID=$(cat "${PID_FILE}")
-    if ps -p "${OLD_PID}" >/dev/null 2>&1; then
+    OLD_PID=$(cat "${PID_FILE}" 2>/dev/null)
+    if [ -n "${OLD_PID}" ] && ps -p "${OLD_PID}" -o args= 2>/dev/null | grep -Fq "clipboard-daemon.sh"; then
         exit 0
     fi
+    rm -f "${PID_FILE}"
 fi
 echo "$$" > "${PID_FILE}"
 
