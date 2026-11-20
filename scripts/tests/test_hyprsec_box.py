@@ -64,6 +64,9 @@ case "$1" in
     ;;
   exec)
     printf '%s\\n' "$@" >> "$FAKE_LOG"
+    if [[ "$*" == *"apt-cache show"* && "${FAKE_PACKAGE_UNAVAILABLE:-}" == true ]]; then
+      exit 1
+    fi
     if [[ "$*" == *apt-get* && "${FAKE_APT_FAIL:-}" == "${@: -1}" ]]; then
       printf 'simulated APT failure\\n' >&2
       exit 42
@@ -187,7 +190,27 @@ esac
         self.assertIn("APT::Sandbox::User=root", serialized_args)
         self.assertIn("Dir::Cache::archives=/tmp/hyprsec-apt-cache", serialized_args)
         self.assertIn("mkdir -p /tmp/hyprsec-apt-cache", serialized_args)
+        self.assertEqual(args[args.index("apt-cache") + 1], "show")
+        self.assertIn("install", args)
+        self.assertIn("iproute2", args)
         self.assertNotIn("--cap-add", args)
+
+    def test_tool_install_reports_unavailable_package_after_index_update(self) -> None:
+        self.state.touch()
+        self.env.update(
+            {
+                "WAYLAND_DISPLAY": "wayland-test",
+                "FAKE_ROFI_CHOICE": "Install tool",
+                "FAKE_RUNNING": "true",
+                "FAKE_NETWORKS": "test-bridge",
+                "FAKE_PACKAGE_UNAVAILABLE": "true",
+            }
+        )
+        result = self.run_manager("install-tool", "iproute2")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unavailable from the configured APT repositories", result.stderr)
+        args = self.log.read_text(encoding="utf-8").splitlines()
+        self.assertNotIn("install", args)
 
     def test_tool_install_failure_reports_apt_log(self) -> None:
         self.state.touch()
