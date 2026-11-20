@@ -36,6 +36,7 @@ show_main_hub() {
 <span color="#888888">── Quick Actions ─────────────────────────────────────────────────────────────</span>
 <span color="#AAAAAA"><b>󰄲  Application Launcher                  </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Search and launch desktop applications</span>
 <span color="#AAAAAA"><b>󰞷  Terminal (Kitty)                      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Open Kitty terminal emulator</span>
+<span color="#AAAAAA"><b>󰒃  HyprSec Box                           </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Rootless, isolated Kali security workspace</span>
 <span color="#AAAAAA"><b>󰍹  Display Manager                       </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Manage connected displays and layouts</span>
 <span color="#AAAAAA"><b>󰃠  Screen Timeout / Idle Management      </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Timeout profiles, actions, and temporary keep-awake</span>
 <span color="#AAAAAA"><b>󰐥  Session Presets                       </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Save or restore display, workspace, DND, and idle settings</span>
@@ -126,6 +127,7 @@ show_dev_menu() {
     cat << 'EOF'
 <span color="#EBCB8B"><b>󰌍  [Back to Control Center]              </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Return to top-level menu</span>
 <span color="#AAAAAA"><b>󰞷  Open Terminal (Kitty)                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Spawn primary GPU-accelerated terminal</span>
+<span color="#AAAAAA"><b>󰒃  HyprSec Box                           </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Manage isolated Kali container and workspace</span>
 <span color="#AAAAAA"><b>󰨞  Visual Studio Code                    </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Launch code editor</span>
 <span color="#AAAAAA"><b>󰊢  Git TUI (Lazygit)                     </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Launch Lazygit in floating terminal</span>
 <span color="#AAAAAA"><b>󰉋  File Manager (Thunar)                 </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Browse filesystem and project trees</span>
@@ -204,6 +206,9 @@ handle_action() {
             ;;
         *"Terminal (Kitty)"*)
             kitty --config "${KITTY_CONF}" &
+            ;;
+        *"HyprSec Box"*)
+            "${SCRIPTS}/hyprsec-box.sh" menu &
             ;;
         *"Display Manager"*)
             "${SCRIPTS}/display-manager.py" &

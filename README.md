@@ -51,6 +51,9 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │   ├── bluetooth-menu.sh     # Peripheral management & pairing
 │   ├── bluetooth-status.py   # Live Bluetooth power/connection icon for Waybar
 │   ├── bluetooth-agent.py    # D-Bus pairing & authentication agent
+│   ├── hyprsec-box.sh        # Rootless Kali container and workspace manager
+│   ├── hyprsec-install.sh    # Idempotent HyprSec setup
+│   ├── hyprsec-uninstall.sh  # Confirmed container removal; preserves user data
 │   ├── wallpaper-selector.sh # Rofi wallpaper thumbnail chooser
 │   ├── set-wallpaper.sh      # Hyprpaper IPC reload & Hyprlock persistence
 │   ├── clipboard-menu.sh     # Cliphist history browser
@@ -64,6 +67,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 ├── kitty/                    # Kitty terminal emulator configuration
 ├── dunst/                    # Dunst notification daemon configuration
 ├── hyprlock/                 # Hyprlock minimalist lockscreen
+├── hyprsec/                  # HyprSec defaults, tool catalog, and guide
 ├── hypridle.conf             # Legacy static idle config; generated runtime config is active
 ├── current_wallpaper         # File storing active wallpaper path
 └── wallpapers/               # Curated wallpaper library
@@ -72,6 +76,14 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 ---
 
 ## Core Features & How to Use Them
+
+### HyprSec Box — Rootless Security Workspace
+* **Open**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd>, or Control Center → HyprSec Box. Change the key in `~/.config/hyprsec/keybind`, then reload Hyprland.
+* **Install**: Run `~/.config/hypr/scripts/hyprsec-install.sh` as your regular user. It asks before installing Podman or pulling the Kali Rolling image and preserves existing HyprSec configuration.
+* **Isolation**: Rootless Podman, no privileged mode, no host-wide mounts, dropped capabilities, and `--network=none` by default. Only `~/HyprSec/workspace` subdirectories are mounted.
+* **Network**: Enable the named rootless bridge explicitly from the menu when package downloads are needed; it requires confirmation. Disable it afterward. The Waybar indicator shows container state; left-click opens the manager and right-click confirms before stopping.
+* **Tools and projects**: Manage the curated APT catalog in `~/.config/hyprsec/tools.conf`; package actions happen inside Kali. Create projects under `~/HyprSec/workspace/projects/`. Cleanup is project-scoped and interactive; removing the container preserves workspace files.
+* **Configuration and full guide**: See [hyprsec/README.md](./hyprsec/README.md). The default catalog is limited to diagnostics, analysis, development, and reporting tools.
 
 ### 1. Rice Control Center (Unified Super-Hub)
 * **Hotkey**: <kbd>Super</kbd> + <kbd>C</kbd> or <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>Space</kbd>
@@ -82,7 +94,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
     * `󰒓 System & Performance`: Rice health diagnostics, process monitor (`btop`), power center, disk usage, desktop/Waybar reload.
     * `󰤨 Hardware & Connectivity`: Wi-Fi, Bluetooth, PipeWire audio switcher, battery diagnostics.
     * `󰍹 Display & Personalization`: Wallpaper selector, GTK theme synchronization, display info.
-    * `󰲋 Developer & Workstation`: VS Code, Kitty, Lazygit, tools folder, CMatrix.
+    * `󰲋 Developer & Workstation`: VS Code, Kitty, Lazygit, HyprSec Box, tools folder, CMatrix.
     * `󰅇 Productivity & Capture`: Clipboard history, screenshot suite, shortcuts cheatsheet.
     * `󰐥 Session & Power`: Lock screen (Hyprlock), suspend, reboot, poweroff, logout.
   * **Direct Fuzzy Search**: You don't need to navigate submenus—simply type keywords like `wifi`, `audio`, `btop`, `lock`, or `screenshot` to trigger actions immediately from the first screen.
