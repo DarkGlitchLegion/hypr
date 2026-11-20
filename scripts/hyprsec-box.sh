@@ -463,6 +463,13 @@ network_disable() {
     notify "HyprSec Box" "Container network disabled."
 }
 
+apt_in_container() {
+    log "Running APT in '${CONTAINER_NAME}': $*"
+    podman exec "${CONTAINER_NAME}" sh -c \
+        'mkdir -p /tmp/hyprsec-apt-cache && exec apt-get -o APT::Sandbox::User=root -o Dir::Cache::archives=/tmp/hyprsec-apt-cache "$@"' \
+        hyprsec-apt "$@" 2>&1 | tee -a "${LOG_FILE}"
+}
+
 load_tool_rows() {
     local catalog="${USER_CATALOG}"
     [[ -f "${catalog}" ]] || catalog="${DEFAULT_CATALOG}"
@@ -518,7 +525,7 @@ tool_menu() {
             -config "${ROFI_THEME}" -p "Installed tool")" || return
         [[ "${action}" == "Remove ${package}" ]] || return 0
         confirm "Remove ${package} from the container?" "Remove tool" || return 1
-        podman exec "${CONTAINER_NAME}" apt-get remove -y "${package}" || {
+        apt_in_container remove -y "${package}" || {
             fail "Could not remove ${package} inside the container."
             return 1
         }
@@ -557,21 +564,9 @@ install_tool() {
         fail "Package '${package}' is not in the configured HyprSec tool catalog."
         return 1
     }
-    local catalog_rows row_category row_package row_description found=0
-    catalog_rows="$(load_tool_rows)" || return
-    while IFS='|' read -r row_category row_package row_description; do
-        if [[ "${row_package}" == "${package}" ]]; then
-            found=1
-            break
-        fi
-    done <<< "${catalog_rows}"
-    ((found)) || {
-        fail "Package '${package}' is not in the configured HyprSec tool catalog."
-        return 1
-    }
     require_network_and_running || return
     confirm "Install '${package}' inside the container only? Network access is enabled." "Install tool" || return 1
-    podman exec "${CONTAINER_NAME}" apt-get update || {
+    apt_in_container update || {
         fail "APT index update failed inside the container."
         return 1
     }
@@ -579,11 +574,11 @@ install_tool() {
         fail "Package '${package}' is unavailable from the configured APT repositories."
         return 1
     }
-    if podman exec "${CONTAINER_NAME}" apt-get install -y --no-install-recommends "${package}"; then
+    if apt_in_container install -y --no-install-recommends "${package}"; then
         log "Installed package '${package}' inside '${CONTAINER_NAME}'."
         notify "HyprSec Box" "Installed ${package} in the container."
     else
-        fail "Package installation failed inside the container: ${package}"
+        fail "Package installation failed inside the container: ${package}. See ${LOG_FILE} for APT details."
         return 1
     fi
 }
@@ -591,11 +586,11 @@ install_tool() {
 update_container() {
     require_network_and_running || return
     confirm "Update APT packages inside the container? Network access is enabled." "Update packages" || return 1
-    podman exec "${CONTAINER_NAME}" apt-get update || {
+    apt_in_container update || {
         fail "APT index update failed inside the container."
         return 1
     }
-    podman exec "${CONTAINER_NAME}" apt-get upgrade -y || {
+    apt_in_container upgrade -y || {
         fail "Package upgrade failed inside the container."
         return 1
     }

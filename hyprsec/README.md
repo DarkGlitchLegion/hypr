@@ -23,6 +23,11 @@ scans automatically.
 - The default package catalog focuses on diagnostics, offline analysis,
   development, and reporting. It intentionally does not bundle exploit,
   password-auditing, or third-party discovery tools.
+- APT runs as root inside the container because all Linux capabilities are
+  dropped; APT's default `_apt` sandbox needs `CAP_SETGID`. The manager sets
+  `APT::Sandbox::User=root` and uses a root-owned cache in the container's
+  `/tmp` instead of adding capabilities or changing the image's `_apt` cache
+  ownership. Host isolation defaults remain unchanged.
 - Cleanup is interactive and project-scoped; the manager never removes the
   workspace automatically. Container removal preserves all workspace data.
 
@@ -83,10 +88,10 @@ confirmation. `stop --yes` is intended for explicit scripted shutdown.
 
 `~/.config/hyprsec/config.sh` controls the container name/image, workspace,
 terminal, launcher, file manager, Waybar visibility, network profile, bridge
-and internal network names, and optional container capabilities. Keep
-`NETWORK_PROFILE="none"` and `CONTAINER_CAPABILITIES=()` for the strongest
-default isolation. The optional bridge profile is confirmed before connecting
-it when the container starts.
+name, and optional container capabilities. Keep `NETWORK_PROFILE="none"` and
+`CONTAINER_CAPABILITIES=()` for the strongest default isolation. A configured
+bridge or capability is shown/confirmed before the container is created or
+started.
 
 `~/.config/hyprsec/tools.conf` uses `category|APT package|description` rows.
 Use conservative packages and review Kali package documentation before adding
@@ -106,7 +111,10 @@ always runs in the container.
   preserves `~/HyprSec/workspace` but resets packages installed in that
   container.
 - **APT/update fails:** confirm the bridge from the menu, check
-  `network-status`, retry, then disable networking when done.
+  `network-status`, then review `~/.local/state/hyprsec/manager.log` for APT
+  output and the underlying error. The manager keeps container capabilities
+  dropped and uses a container-local writable download cache. Disable
+  networking when finished.
 - **Workspace permission error:** check that `WORKSPACE_ROOT` is absolute and
   writable by your user. Only that directory's named subfolders are mounted.
 - **Waybar module absent:** ensure `WAYBAR_ENABLED=1`, restart Waybar, and
