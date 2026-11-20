@@ -1,4 +1,5 @@
-* {
+window#waybar,
+window#waybar * {
     font-family: "JetBrainsMono Nerd Font", monospace;
     font-size: 11px;
     font-weight: 500;
@@ -124,4 +125,195 @@ tooltip label {
     color: #D5D5D5;
     font-size: 11px;
     padding: 6px;
+}
+
+/* ── Quick Settings popup ─────────────────────────────────────── */
+window#hypr-quick-settings {
+    background: transparent;
+}
+
+#qs-root,
+#qs-root * {
+    font-family: "JetBrainsMono Nerd Font", monospace;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+#qs-root {
+    background-color: rgba(12, 13, 16, 0.96);
+    border: 1px solid #2a2b30;
+    border-radius: 12px;
+    padding: 14px;
+    min-width: 320px;
+}
+
+#qs-root .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #555560;
+    letter-spacing: 1px;
+    margin-top: 10px;
+    margin-bottom: 4px;
+    padding-left: 2px;
+}
+
+#qs-root .toggle-row {
+    background-color: #17191F;
+    border: 1px solid #202126;
+    border-radius: 8px;
+    padding: 6px 10px;
+    margin: 2px 0;
+    transition: all 0.15s ease;
+}
+
+#qs-root .toggle-row:hover {
+    background-color: #202126;
+    border-color: #333340;
+}
+
+#qs-root .toggle-label {
+    color: #D5D5D5;
+    font-size: 11px;
+}
+
+#qs-root .toggle-sub {
+    color: #666672;
+    font-size: 10px;
+}
+
+#qs-root switch {
+    min-height: 18px;
+    min-width: 36px;
+    border-radius: 9px;
+    background-color: #333340;
+    border: none;
+    outline: none;
+    box-shadow: none;
+    transition: background-color 0.2s ease;
+}
+
+#qs-root switch:checked {
+    background-color: #AAAAAA;
+}
+
+#qs-root switch slider {
+    min-height: 14px;
+    min-width: 14px;
+    border-radius: 7px;
+    background-color: #D5D5D5;
+    border: none;
+    box-shadow: none;
+    margin: 2px;
+}
+
+#qs-root switch:checked slider {
+    background-color: #0C0D10;
+}
+
+#qs-root .slider-row {
+    padding: 4px 10px;
+    margin: 2px 0;
+}
+
+#qs-root .slider-icon {
+    color: #888888;
+    font-size: 13px;
+    min-width: 20px;
+}
+
+#qs-root scale {
+    min-height: 20px;
+}
+
+#qs-root scale trough {
+    background-color: #202126;
+    border-radius: 4px;
+    min-height: 4px;
+}
+
+#qs-root scale trough highlight {
+    background-color: #AAAAAA;
+    border-radius: 4px;
+}
+
+#qs-root scale slider {
+    background-color: #D5D5D5;
+    border-radius: 50%;
+    min-height: 14px;
+    min-width: 14px;
+    border: none;
+    box-shadow: none;
+    margin: -5px;
+    transition: background-color 0.1s ease;
+}
+
+#qs-root scale slider:hover {
+    background-color: #FFFFFF;
+}
+
+#qs-root .stat-grid {
+    margin: 4px 0;
+}
+
+#qs-root .stat-tile {
+    background-color: #17191F;
+    border: 1px solid #202126;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin: 2px;
+    min-width: 70px;
+    transition: all 0.15s ease;
+}
+
+#qs-root .stat-tile:hover {
+    background-color: #202126;
+    border-color: #333340;
+}
+
+#qs-root .stat-icon {
+    color: #AAAAAA;
+    font-size: 14px;
+    font-weight: 400;
+}
+
+#qs-root .stat-value {
+    color: #D5D5D5;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+#qs-root .stat-name {
+    color: #555560;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+#qs-root .sec-running {
+    color: #A3BE8C;
+}
+
+#qs-root .sec-stopped {
+    color: #888888;
+}
+
+#qs-root .sec-unavailable {
+    color: #BF616A;
+}
+
+#qs-root .qs-divider {
+    background-color: #202126;
+    min-height: 1px;
+    margin: 8px 0;
+}
+
+#qs-root .qs-clock {
+    color: #D5D5D5;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+#qs-root .qs-date {
+    color: #666672;
+    font-size: 10px;
 }

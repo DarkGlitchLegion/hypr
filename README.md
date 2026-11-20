@@ -140,7 +140,6 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 ### Waybar Quick Settings
 * **Open**: Click the combined status cluster on the right side of Waybar. It displays Wi-Fi, speaker, microphone, battery, and optional DND/security indicators.
 * **Control panels**: In the popup, click the Wi-Fi, Bluetooth, speaker, microphone, or battery row's icon/text to open its corresponding manager. Use the row's switch to toggle Wi-Fi, Bluetooth, speaker mute, microphone mute, or DND.
-* **Quick Actions**: Lock, suspend, Wi-Fi, Bluetooth, and power-menu actions are available at the bottom of the popup.
 * **System tiles**: CPU, RAM, CPU temperature, and GPU temperature are shown in the System section; clicking CPU or RAM opens `btop`.
 * **Live status**: The popup refreshes device and control state while open. Speaker and microphone icons in Waybar refresh immediately after changes made through Quick Settings or the volume/microphone hotkeys.
 * **Scripts**: `~/.config/hypr/scripts/quick-settings.py` and `quick-settings-status.py`.

@@ -28,247 +28,8 @@ from gi.repository import GLib, Gtk, GtkLayerShell, Pango  # noqa: E402
 # ── Paths ──────────────────────────────────────────────────────────────────────
 HOME = Path.home()
 SCRIPTS = HOME / ".config" / "hypr" / "scripts"
+STYLESHEET = HOME / ".config" / "hypr" / "waybar" / "style.css"
 LOCK_FILE = Path(tempfile.gettempdir()) / "hypr-quick-settings.lock"
-
-# ── Colour palette (matches existing rice) ────────────────────────────────────
-CSS = """
-* {
-    font-family: "JetBrainsMono Nerd Font", monospace;
-    font-size: 11px;
-    font-weight: 500;
-}
-
-window {
-    background: transparent;
-}
-
-#qs-root {
-    background-color: rgba(12, 13, 16, 0.96);
-    border: 1px solid #2a2b30;
-    border-radius: 12px;
-    padding: 14px;
-    min-width: 320px;
-}
-
-/* ── Section headers ── */
-.section-label {
-    font-size: 10px;
-    font-weight: 700;
-    color: #555560;
-    letter-spacing: 1px;
-    margin-top: 10px;
-    margin-bottom: 4px;
-    padding-left: 2px;
-}
-
-/* ── Toggle rows ── */
-.toggle-row {
-    background-color: #17191F;
-    border: 1px solid #202126;
-    border-radius: 8px;
-    padding: 6px 10px;
-    margin: 2px 0;
-    transition: all 0.15s ease;
-}
-
-.toggle-row:hover {
-    background-color: #202126;
-    border-color: #333340;
-}
-
-.toggle-label {
-    color: #D5D5D5;
-    font-size: 11px;
-}
-
-.toggle-sub {
-    color: #666672;
-    font-size: 10px;
-}
-
-/* ── GTK Switch ── */
-switch {
-    min-height: 18px;
-    min-width: 36px;
-    border-radius: 9px;
-    background-color: #333340;
-    border: none;
-    outline: none;
-    box-shadow: none;
-    transition: background-color 0.2s ease;
-}
-
-switch:checked {
-    background-color: #AAAAAA;
-}
-
-switch slider {
-    min-height: 14px;
-    min-width: 14px;
-    border-radius: 7px;
-    background-color: #D5D5D5;
-    border: none;
-    box-shadow: none;
-    margin: 2px;
-}
-
-switch:checked slider {
-    background-color: #0C0D10;
-}
-
-/* ── Sliders ── */
-.slider-row {
-    padding: 4px 10px;
-    margin: 2px 0;
-}
-
-.slider-icon {
-    color: #888888;
-    font-size: 13px;
-    min-width: 20px;
-}
-
-scale {
-    min-height: 20px;
-}
-
-scale trough {
-    background-color: #202126;
-    border-radius: 4px;
-    min-height: 4px;
-}
-
-scale trough highlight {
-    background-color: #AAAAAA;
-    border-radius: 4px;
-}
-
-scale slider {
-    background-color: #D5D5D5;
-    border-radius: 50%;
-    min-height: 14px;
-    min-width: 14px;
-    border: none;
-    box-shadow: none;
-    margin: -5px;
-    transition: background-color 0.1s ease;
-}
-
-scale slider:hover {
-    background-color: #FFFFFF;
-}
-
-/* ── Stat tiles ── */
-.stat-grid {
-    margin: 4px 0;
-}
-
-.stat-tile {
-    background-color: #17191F;
-    border: 1px solid #202126;
-    border-radius: 8px;
-    padding: 8px 10px;
-    margin: 2px;
-    min-width: 70px;
-    transition: all 0.15s ease;
-}
-
-.stat-tile:hover {
-    background-color: #202126;
-    border-color: #333340;
-}
-
-.stat-icon {
-    color: #AAAAAA;
-    font-size: 14px;
-    font-weight: 400;
-}
-
-.stat-value {
-    color: #D5D5D5;
-    font-size: 12px;
-    font-weight: 600;
-}
-
-.stat-name {
-    color: #555560;
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-}
-
-/* ── Action buttons ── */
-button.action-btn {
-    background-image: none;
-    background-color: #17191F;
-    border: 1px solid #202126;
-    border-radius: 8px;
-    color: #D5D5D5;
-    font-size: 11px;
-    padding: 8px 10px;
-    margin: 2px;
-    transition: all 0.15s ease;
-    outline: none;
-    box-shadow: none;
-}
-
-button.action-btn label.action-label {
-    color: #D5D5D5;
-}
-
-.action-icon {
-    color: #AAAAAA;
-    font-size: 14px;
-}
-
-button.action-btn:hover {
-    background-image: none;
-    background-color: #202126;
-    border-color: #333340;
-}
-
-button.action-btn:hover label.action-label {
-    color: #D5D5D5;
-}
-
-button.action-btn:active {
-    background-image: none;
-    background-color: #202126;
-}
-
-/* ── Security badge ── */
-.sec-running {
-    color: #A3BE8C;
-}
-
-.sec-stopped {
-    color: #888888;
-}
-
-.sec-unavailable {
-    color: #BF616A;
-}
-
-/* ── Divider ── */
-.qs-divider {
-    background-color: #202126;
-    min-height: 1px;
-    margin: 8px 0;
-}
-
-/* ── Clock in header ── */
-.qs-clock {
-    color: #D5D5D5;
-    font-size: 20px;
-    font-weight: 600;
-}
-
-.qs-date {
-    color: #666672;
-    font-size: 10px;
-}
-"""
-
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -474,7 +235,7 @@ class QuickSettings(Gtk.Window):
 
         # Apply CSS
         provider = Gtk.CssProvider()
-        provider.load_from_data(CSS.encode())
+        provider.load_from_path(str(STYLESHEET))
         Gtk.StyleContext.add_provider_for_screen(
             self.get_screen(),
             provider,
@@ -494,6 +255,7 @@ class QuickSettings(Gtk.Window):
         self.set_decorated(False)
         self.set_resizable(False)
         self.set_app_paintable(True)
+        self.set_name("hypr-quick-settings")
 
         # Transparent background support
         screen = self.get_screen()
@@ -591,8 +353,6 @@ class QuickSettings(Gtk.Window):
         self._add_divider(root)
         self._build_system(root, data["cpu"], data["ram"], data["cpu_temp"],
                            data["gpu_temp"], data["security"])
-        self._add_divider(root)
-        self._build_actions(root)
         self.show_all()
         self._refresh_id = GLib.timeout_add_seconds(1, self._refresh_panel)
         self._stats_refresh_id = GLib.timeout_add_seconds(3, self._refresh_stats)
@@ -1016,47 +776,6 @@ class QuickSettings(Gtk.Window):
         self._launch("kitty", "--class", "btop", "--title", "btop",
                      "--config", str(HOME / ".config/hypr/kitty/kitty.conf"),
                      "-e", "btop")
-
-    # ── Action buttons ─────────────────────────────────────────────────────
-
-    def _build_actions(self, parent: Gtk.Box) -> None:
-        parent.pack_start(self._section_label("ACTIONS"), False, False, 0)
-
-        btn_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-
-        actions = [
-            ("󰌾", "Lock", self._lock),
-            ("󰤄", "Sleep", self._sleep),
-            ("󰑓", "Wi-Fi", lambda: self._launch(str(SCRIPTS / "wifi-menu.sh"))),
-            ("󰂯", "BT", lambda: self._launch(str(SCRIPTS / "bluetooth-menu.sh"))),
-            ("󰐥", "Power", lambda: self._launch(str(SCRIPTS / "power-menu.sh"))),
-        ]
-
-        for icon, label, cb in actions:
-            btn_content = Gtk.Box(
-                orientation=Gtk.Orientation.VERTICAL, spacing=3
-            )
-            icon_label = Gtk.Label(label=icon)
-            icon_label.get_style_context().add_class("action-icon")
-            text_label = Gtk.Label(label=label)
-            text_label.get_style_context().add_class("action-label")
-            btn_content.pack_start(icon_label, False, False, 0)
-            btn_content.pack_start(text_label, False, False, 0)
-
-            btn = Gtk.Button()
-            btn.add(btn_content)
-            btn.get_style_context().add_class("action-btn")
-            btn.connect("clicked", lambda _, c=cb: (self._close(), c()))
-            btn_box.pack_start(btn, True, True, 0)
-
-        parent.pack_start(btn_box, False, False, 0)
-
-    def _lock(self) -> None:
-        lock_conf = str(HOME / ".config/hypr/hyprlock/hyprlock.conf")
-        run_bg(["hyprlock", "-c", lock_conf])
-
-    def _sleep(self) -> None:
-        run_bg(["systemctl", "suspend"])
 
     # ── Stat refresh ───────────────────────────────────────────────────────
 
