@@ -155,32 +155,6 @@ hl.layer_rule({
     ignore_alpha = 0.1,
 })
 
--- 6. macOS-inspired layer animations
---    Rofi launcher: slides in from center with fade (Spotlight-like)
-hl.layer_rule({
-    name  = "anim-rofi",
-    match = { namespace = "rofi" },
-    animation = "fade",
-})
-
---    Dunst notifications: gentle slide from top-right edge
-hl.layer_rule({
-    name  = "anim-dunst",
-    match = { namespace = "dunst" },
-    animation = "slide",
-})
-
---    Quick Settings panel: slide down from top (macOS Control Centre)
-hl.layer_rule({
-    name  = "anim-quick-settings",
-    match = { namespace = "hypr-quick-settings" },
-    animation = "slide",
-})
-
--- 7. macOS-style floating window animation overrides
---    Dialogs & utility floats: scale-pop entry, clean fade exit
-hl.window_rule({
-    name  = "anim-float-dialogs",
-    match = { floating = true },
-    animation = "popin 85%",
-})
+-- 6. (macOS layer & floating animation styles are set globally via animations.lua
+--     bezier curves. Per-rule animation overrides require native windowrulev2
+--     syntax which is not supported by the hl.* Lua API in this config engine.)
