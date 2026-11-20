@@ -94,9 +94,13 @@ bridge or capability is shown/confirmed before the container is created or
 started.
 
 `~/.config/hyprsec/tools.conf` uses `category|APT package|description` rows.
-Use conservative packages and review Kali package documentation before adding
-entries. Package installation is constrained to valid APT package names and
-always runs in the container.
+The bundled catalog includes additional route diagnostics, local file
+identification and metadata inspection, file recovery, malware/signature
+scanning, and development utilities. These packages operate on data you
+provide; they do not enable packet capture or automatically scan other
+systems. Review Kali package documentation before adding entries. Package
+installation is constrained to valid APT package names and always runs in the
+container.
 
 ## Troubleshooting
 
