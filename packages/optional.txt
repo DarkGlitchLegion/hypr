@@ -1,0 +1,7 @@
+# Optional convenience tools; never includes security penetration-testing tools
+cliphist
+btop
+fastfetch
+firefox
+code
+lazygit
