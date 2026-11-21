@@ -1,0 +1,12 @@
+# Desktop integration and common management tools
+network-manager
+pipewire
+wireplumber
+pipewire-pulse
+pavucontrol
+wl-clipboard
+bluez
+thunar
+psutil
+pygobject
+gtk-layer-shell

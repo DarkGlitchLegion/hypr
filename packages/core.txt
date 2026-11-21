@@ -1,0 +1,10 @@
+# Essential Hyprland rice components
+hyprland
+waybar
+dunst
+rofi
+kitty
+hyprpaper
+hyprlock
+hypridle
+polkit-agent

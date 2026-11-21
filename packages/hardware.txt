@@ -1,0 +1,4 @@
+# Device and capture utilities
+grim
+slurp
+brightnessctl
