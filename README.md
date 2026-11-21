@@ -280,7 +280,8 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 * **What it does**:
   * The Quick Settings popup shows whether Bluetooth is powered off (`󰂲`), powered on (`󰂯`), or connected (`󰂱`), and refreshes the state while open.
   * Connects to BlueZ via D-Bus and `bluetoothctl`.
-  * Runs a dedicated background agent (`bluetooth-agent.py`) for automatic pairing, PIN handling, and Dunst notifications.
+  * Runs a default `KeyboardDisplay` agent and asks for explicit approval on the laptop for pairing and Bluetooth service requests.
+  * Approval dialogs use the matching charcoal Rofi theme; pairing mode is visible for three minutes, and agent registration/errors are logged to `~/.local/state/hypr/bluetooth-agent.log`.
   * Lists paired and discovered devices with battery status percentages.
   * Allows connecting, disconnecting, pairing, and unpairing peripherals without launching external GUI tools.
 

@@ -6,6 +6,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -126,6 +127,43 @@ class CategorizedScriptTests(unittest.TestCase):
         self.assertNotIn("Auto-confirmed pairing", source)
         self.assertIn("ask_user(", source)
         self.assertIn("PairableTimeout\", dbus.UInt32(PAIRABLE_TIMEOUT_SECONDS)", source)
+        self.assertIn('manager.RequestDefaultAgent(AGENT_PATH)', source)
+
+    def test_bluetooth_approval_uses_the_rice_theme_and_rejects_cancel(self) -> None:
+        script = SCRIPTS / "hardware" / "bluetooth-agent.py"
+        spec = importlib.util.spec_from_file_location("bluetooth_agent_test", script)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        agent = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(agent)
+
+        with (
+            mock.patch.object(agent, "log"),
+            mock.patch.object(agent, "notify"),
+            mock.patch.object(
+                agent.subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess([], 0, stdout="Approve\n", stderr=""),
+            ) as run,
+        ):
+            self.assertTrue(agent.ask_user("Pairing request", "Phone <request>"))
+
+        args, kwargs = run.call_args
+        self.assertEqual(args[0][args[0].index("-config") + 1], str(ROOT / "rofi" / "bluetooth-approval.rasi"))
+        self.assertEqual(args[0][args[0].index("-mesg") + 1], "Pairing request\nPhone ‹request›")
+        self.assertNotIn("<b>", script.read_text(encoding="utf-8"))
+        self.assertEqual(kwargs["input"], "Approve\nReject")
+
+        with (
+            mock.patch.object(agent, "log"),
+            mock.patch.object(agent, "notify"),
+            mock.patch.object(
+                agent.subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess([], 1, stdout="", stderr=""),
+            ),
+        ):
+            self.assertFalse(agent.ask_user("Pairing request", "Phone"))
 
     def test_hyprsec_rejects_mutable_images(self) -> None:
         source = (SCRIPTS / "security" / "hyprsec-box.sh").read_text(encoding="utf-8")

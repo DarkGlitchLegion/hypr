@@ -115,18 +115,22 @@ device_actions() {
         *"Connect to"*|*"Pair & Connect"*)
             ensure_agent
             bluetoothctl pairable on >/dev/null 2>&1 || true
-            bluetoothctl trust "${mac}" >/dev/null 2>&1 || true
 
             if [ "${is_paired}" != "true" ]; then
                 notify "normal" "Pairing..." "Initiating pairing with ${name}...\nPlease confirm pairing on your device if prompted."
-                # Allow up to 15 seconds for device discovery / PIN / passkey confirmation
-                if ! timeout 15 bluetoothctl pair "${mac}" >/dev/null 2>&1; then
+                # Leave time for the laptop approval dialog and the phone's confirmation.
+                if ! timeout 60 bluetoothctl pair "${mac}" >/dev/null 2>&1; then
                     if ! bluetoothctl info "${mac}" 2>/dev/null | grep -q "Paired: yes"; then
                         notify "critical" "Pairing Failed" "Could not complete pairing with ${name}.\nPlease ensure the device is in pairing mode."
                         return 1
                     fi
                 fi
                 notify "low" "Paired" "Successfully paired with ${name}."
+            fi
+
+            if ! bluetoothctl trust "${mac}" >/dev/null 2>&1; then
+                notify "critical" "Trust Failed" "Could not authorize future connections from ${name}."
+                return 1
             fi
 
             notify "low" "Connecting..." "Connecting to ${name}..."
