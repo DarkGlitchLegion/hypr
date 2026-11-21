@@ -1,6 +1,6 @@
 # Copy to ~/.config/hyprsec/config.sh; the installer never overwrites it.
 CONTAINER_NAME="hyprsec-kali"
-CONTAINER_IMAGE="docker.io/kalilinux/kali-rolling:latest"
+CONTAINER_IMAGE="docker.io/kalilinux/kali-rolling@sha256:12e581978942a815b35ab2406725c274a4f28825650595d2ec2b7fb7668b039d"
 WORKSPACE_ROOT="${HOME}/HyprSec/workspace"
 TERMINAL="kitty"
 LAUNCHER="rofi"

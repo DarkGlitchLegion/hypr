@@ -75,6 +75,40 @@ class BackupTests(unittest.TestCase):
             second, _ = manager.create("second")
             self.assertNotEqual(first, second)
 
+    def test_restore_rejects_destination_outside_rice_roots(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            source = home / ".config" / "hypr"
+            source.mkdir(parents=True)
+            (source / "setting.conf").write_text("safe\n", encoding="utf-8")
+            manager = backup_module.BackupManager(home)
+            backup_directory, manifest = manager.backup_paths([("hypr", source)], "test")
+            manifest_path = backup_directory / "manifest.json"
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            data["items"][0]["destination"] = str(home / "outside" / "target")
+            manifest_path.write_text(json.dumps(data), encoding="utf-8")
+            ok, message = manager.restore(backup_directory)
+            self.assertFalse(ok)
+            self.assertIn("outside allowed rice directories", message)
+
+    def test_restore_rejects_symlinked_destination_parent(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            source = home / ".config" / "hypr"
+            source.mkdir(parents=True)
+            (source / "setting.conf").write_text("safe\n", encoding="utf-8")
+            manager = backup_module.BackupManager(home)
+            backup_directory, _ = manager.backup_paths([("hypr", source)], "test")
+            symlink_parent = home / ".config" / "symlinked"
+            symlink_parent.symlink_to(home / "outside", target_is_directory=True)
+            manifest_path = backup_directory / "manifest.json"
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            data["items"][0]["destination"] = str(symlink_parent / "target")
+            manifest_path.write_text(json.dumps(data), encoding="utf-8")
+            ok, message = manager.restore(backup_directory)
+            self.assertFalse(ok)
+            self.assertIn("outside allowed rice directories", message)
+
 
 class ConfigDeployerTests(unittest.TestCase):
     def test_copy_deployment_personalizes_absolute_paths_and_preserves_state(self) -> None:

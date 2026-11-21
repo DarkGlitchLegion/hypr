@@ -36,6 +36,12 @@ Safety and maintenance options:
 
 Package installation is displayed before execution. Unsupported package managers are reported instead of using blind install commands. Package managers currently implemented for missing-package detection and installation are `pacman`, `apt`, and `dnf`; `apt` and `dnf` mappings vary by distribution and repository availability. GPU drivers, kernel settings, bootloaders, and root-level system configuration are never changed automatically.
 
+### Security behavior
+
+- Bluetooth pairing and service authorization require an on-screen Rofi approval from the laptop user. The adapter is pairable/discoverable only for a bounded 120-second window.
+- HyprSec container configuration requires an immutable `@sha256:<digest>` image reference. Tag-only references such as `:latest` are rejected.
+- Installer restore operations validate backup manifests and destinations, reject symlinks and paths outside rice-owned configuration roots, and display a restore preview before applying changes.
+
 ### Updating
 
 Pull repository changes, review the diff, and run `./setup.sh --dry-run` before applying an update. Use `./setup.sh` to merge deployable components into `~/.config/hypr` while preserving existing state JSON files and unrelated files.

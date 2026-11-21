@@ -10,13 +10,49 @@ import sys
 import os
 import signal
 import subprocess
+import secrets
+from pathlib import Path
 import dbus
 import dbus.service
+import dbus.exceptions
 from dbus.mainloop.glib import DBusGMainLoop
 from gi.repository import GLib
 
 AGENT_PATH = "/org/hyprland/bluetooth/agent"
-PID_FILE = "/tmp/hypr_bt_agent.pid"
+RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
+PID_FILE = RUNTIME_DIR / "hypr-rice" / "hypr_bt_agent.pid"
+PAIRABLE_TIMEOUT_SECONDS = 120
+
+
+def reject_request():
+    raise dbus.exceptions.DBusException(
+        "org.bluez.Error.Rejected",
+        "Rejected by the laptop user.",
+    )
+
+
+def ask_user(title: str, message: str) -> bool:
+    choices = "Approve\nReject"
+    try:
+        result = subprocess.run(
+            [
+                "rofi",
+                "-dmenu",
+                "-p",
+                "Bluetooth Approval",
+                "-mesg",
+                f"<b>{title}</b>\n{message}",
+            ],
+            input=choices,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+            env=os.environ,
+        )
+        return result.returncode == 0 and result.stdout.strip() == "Approve"
+    except (OSError, subprocess.TimeoutExpired):
+        return False
 
 def notify(title, msg, urgency="low", icon="bluetooth"):
     try:
@@ -49,18 +85,37 @@ class BluetoothAgent(dbus.service.Object):
 
     @dbus.service.method("org.bluez.Agent1", in_signature="os", out_signature="")
     def AuthorizeService(self, device, uuid):
-        # Automatically authorize connecting Bluetooth services (A2DP, HFP, HID, OBEX)
-        return
+        name = get_device_name(self.bus, device)
+        if not ask_user(
+            "Authorize Bluetooth Service",
+            f"Allow <b>{name}</b> to use Bluetooth service <b>{uuid}</b>?",
+        ):
+            reject_request()
+        notify("Bluetooth Service Authorized", f"Allowed {name} to use {uuid}.", "low")
 
     @dbus.service.method("org.bluez.Agent1", in_signature="o", out_signature="s")
     def RequestPinCode(self, device):
         name = get_device_name(self.bus, device)
-        notify("Pairing Requested", f"Using default PIN 0000 for <b>{name}</b>", "normal")
-        return "0000"
+        if not ask_user(
+            "Approve Bluetooth Pairing",
+            f"Allow <b>{name}</b> to pair using a PIN?",
+        ):
+            reject_request()
+        pin = f"{secrets.randbelow(1000000):06d}"
+        notify("Bluetooth PIN", f"Enter PIN <b>{pin}</b> on <b>{name}</b>", "normal")
+        return pin
 
     @dbus.service.method("org.bluez.Agent1", in_signature="o", out_signature="u")
     def RequestPasskey(self, device):
-        return dbus.UInt32(0)
+        name = get_device_name(self.bus, device)
+        if not ask_user(
+            "Approve Bluetooth Pairing",
+            f"Allow <b>{name}</b> to pair using a passkey?",
+        ):
+            reject_request()
+        passkey = secrets.randbelow(1000000)
+        notify("Bluetooth Passkey", f"Enter passkey <b>{passkey:06d}</b> on <b>{name}</b>", "normal")
+        return dbus.UInt32(passkey)
 
     @dbus.service.method("org.bluez.Agent1", in_signature="ouq", out_signature="")
     def DisplayPasskey(self, device, passkey, entered):
@@ -70,14 +125,22 @@ class BluetoothAgent(dbus.service.Object):
     @dbus.service.method("org.bluez.Agent1", in_signature="ou", out_signature="")
     def RequestConfirmation(self, device, passkey):
         name = get_device_name(self.bus, device)
-        notify("Bluetooth Pairing", f"Auto-confirmed pairing with <b>{name}</b>\nPasskey: <b>{passkey:06d}</b>", "normal")
-        return
+        if not ask_user(
+            "Confirm Bluetooth Passkey",
+            f"<b>{name}</b> is requesting to pair.\nDoes it show passkey <b>{passkey:06d}</b>?",
+        ):
+            reject_request()
+        notify("Bluetooth Pairing", f"Confirmed pairing with {name}.", "low")
 
     @dbus.service.method("org.bluez.Agent1", in_signature="o", out_signature="")
     def RequestAuthorization(self, device):
         name = get_device_name(self.bus, device)
-        notify("Pairing Authorized", f"Accepted incoming pairing from <b>{name}</b>", "low")
-        return
+        if not ask_user(
+            "Approve Incoming Pairing",
+            f"Allow <b>{name}</b> to pair with this laptop?",
+        ):
+            reject_request()
+        notify("Pairing Authorized", f"Accepted incoming pairing from {name}.", "low")
 
     @dbus.service.method("org.bluez.Agent1", in_signature="", out_signature="")
     def Cancel(self):
@@ -91,32 +154,56 @@ def ensure_adapter_pairable(bus):
             if "org.bluez.Adapter1" in interfaces:
                 adapter_props = dbus.Interface(bus.get_object("org.bluez", path), "org.freedesktop.DBus.Properties")
                 adapter_props.Set("org.bluez.Adapter1", "Pairable", dbus.Boolean(True))
-                # Set pairable timeout to 0 (unlimited)
-                adapter_props.Set("org.bluez.Adapter1", "PairableTimeout", dbus.UInt32(0))
+                adapter_props.Set("org.bluez.Adapter1", "PairableTimeout", dbus.UInt32(PAIRABLE_TIMEOUT_SECONDS))
+                adapter_props.Set("org.bluez.Adapter1", "Discoverable", dbus.Boolean(True))
+                adapter_props.Set("org.bluez.Adapter1", "DiscoverableTimeout", dbus.UInt32(PAIRABLE_TIMEOUT_SECONDS))
+    except Exception:
+        pass
+
+
+def disable_adapter_pairable(bus):
+    try:
+        manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.freedesktop.DBus.ObjectManager")
+        objects = manager.GetManagedObjects()
+        for path, interfaces in objects.items():
+            if "org.bluez.Adapter1" in interfaces:
+                adapter_props = dbus.Interface(bus.get_object("org.bluez", path), "org.freedesktop.DBus.Properties")
+                adapter_props.Set("org.bluez.Adapter1", "Pairable", dbus.Boolean(False))
+                adapter_props.Set("org.bluez.Adapter1", "Discoverable", dbus.Boolean(False))
     except Exception:
         pass
 
 def main():
+    bus = None
     # Single instance enforcement
-    if os.path.exists(PID_FILE):
+    PID_FILE.parent.mkdir(parents=True, exist_ok=True)
+    os.chmod(PID_FILE.parent, 0o700)
+    if PID_FILE.exists() or PID_FILE.is_symlink():
         try:
-            with open(PID_FILE, "r") as f:
+            if PID_FILE.is_symlink():
+                PID_FILE.unlink(missing_ok=True)
+            with PID_FILE.open("r", encoding="ascii") as f:
                 old_pid = int(f.read().strip())
             os.kill(old_pid, 0)
             sys.exit(0)
         except (ValueError, OSError):
             pass
-
-    with open(PID_FILE, "w") as f:
-        f.write(str(os.getpid()))
+    try:
+        fd = os.open(PID_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(fd, "w", encoding="ascii") as file:
+            file.write(str(os.getpid()))
+    except OSError as exc:
+        print(f"Could not create secure Bluetooth agent PID file: {exc}", file=sys.stderr)
+        return
 
     def cleanup(*args):
+        if bus is not None:
+            disable_adapter_pairable(bus)
         try:
-            if os.path.exists(PID_FILE):
-                os.remove(PID_FILE)
+            PID_FILE.unlink(missing_ok=True)
         except Exception:
             pass
-        sys.exit(0)
+        raise SystemExit(0)
 
     signal.signal(signal.SIGINT, cleanup)
     signal.signal(signal.SIGTERM, cleanup)
@@ -133,6 +220,10 @@ def main():
     manager.RequestDefaultAgent(AGENT_PATH)
 
     ensure_adapter_pairable(bus)
+    GLib.timeout_add_seconds(
+        PAIRABLE_TIMEOUT_SECONDS,
+        lambda: (disable_adapter_pairable(bus), False)[1],
+    )
 
     loop = GLib.MainLoop()
     try:
