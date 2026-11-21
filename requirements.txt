@@ -1,5 +1,10 @@
-psutil
-dbus-python
-PyGObject
-requests
-python-dotenv
+# Python dependencies used by the rice scripts and installer.
+#
+# Core runtime
+psutil>=5.9
+requests>=2.28
+python-dotenv>=1.0
+
+# Desktop / DBus integration
+dbus-python>=1.3
+PyGObject>=3.42
