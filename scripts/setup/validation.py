@@ -47,6 +47,7 @@ def validate(target: Path) -> ValidationResult:
         target / "hyprland.conf",
         target / "hyprland.lua",
         target / "lua",
+        target / "quickshell",
         target / "waybar",
         target / "rofi",
         target / "scripts",
@@ -72,7 +73,7 @@ def validate(target: Path) -> ValidationResult:
             result.passed.append("Hyprland configuration verification passed")
     else:
         result.warnings.append("Hyprland is not installed or not in PATH")
-    for utility in ("waybar", "dunst", "rofi", "kitty", "hyprpaper", "hyprlock", "hypridle"):
+    for utility in ("qs", "waybar", "dunst", "rofi", "kitty", "hyprpaper", "hyprlock", "hypridle"):
         if shutil.which(utility) is None:
             result.warnings.append(f"Utility not found in PATH: {utility}")
     return result

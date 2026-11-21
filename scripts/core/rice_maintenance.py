@@ -69,7 +69,7 @@ OPTIONAL_BINARIES = {
     "network": ["nmcli", "bluetoothctl"],
     "applications": ["kitty", "firefox", "thunar", "code", "btop", "fastfetch"],
 }
-MODULES = ("core", "display", "waybar", "audio", "bluetooth", "idle", "session", "scripts")
+MODULES = ("core", "display", "quickshell", "waybar", "audio", "bluetooth", "idle", "session", "scripts")
 VALIDATION_MODULES = ("core", "waybar", "idle", "scripts")
 
 
@@ -168,6 +168,16 @@ def check_status(status: str, checks: list[Check]) -> None:
 
 def build_diagnostics(*, full: bool = False, module: str | None = None) -> list[Check]:
     checks: list[Check] = []
+    bar_state_root = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local" / "state")))
+    bar_mode_file = bar_state_root / "hypr-rice" / "bar-mode"
+    bar_mode = "quickshell"
+    bar_mode_error = ""
+    try:
+        if bar_mode_file.is_file():
+            bar_mode = bar_mode_file.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        bar_mode = "unknown"
+        bar_mode_error = str(exc)
 
     def add(module_name: str, name: str, status: str, details: str, suggestion: str = "") -> None:
         check_status(status, [Check(module_name, name, status, details, suggestion)])
@@ -202,6 +212,32 @@ def build_diagnostics(*, full: bool = False, module: str | None = None) -> list[
             else runtime.stderr.strip() or "Not connected to an active Hyprland session.",
             "" if runtime.returncode == 0 else "Run from the active Hyprland session for IPC diagnostics.")
 
+    if module in (None, "quickshell"):
+        shell_config = CONFIG / "quickshell" / "shell.qml"
+        add("quickshell", "Quickshell configuration", "Healthy" if shell_config.is_file() else "Failed",
+            "Present." if shell_config.is_file() else "shell.qml is missing.",
+            "" if shell_config.is_file() else "Restore the deployed Quickshell configuration.")
+        if bar_mode_error:
+            add("quickshell", "Bar selection state", "Warning", bar_mode_error,
+                "Check the permissions of the rice bar-mode state file.")
+        if bar_mode == "waybar":
+            add("quickshell", "Quickshell runtime", "Not Applicable",
+                f"Waybar is selected in {bar_mode_file}.")
+        elif bar_mode != "quickshell":
+            add("quickshell", "Quickshell runtime", "Warning",
+                f"Unknown bar mode in {bar_mode_file}: {bar_mode or '(empty)'}.",
+                "Run scripts/desktop/rollback-to-waybar.sh or correct the invalid state file.")
+        elif shutil.which("qs") is None:
+            add("quickshell", "Quickshell runtime", "Not Installed", "The qs executable is unavailable.",
+                "Install the quickshell package from the Arch repositories.")
+        else:
+            runtime = run(["qs", "list", "--all"])
+            active_config = f"Config path: {shell_config}"
+            active = runtime.returncode == 0 and active_config in runtime.stdout
+            add("quickshell", "Quickshell runtime", "Healthy" if active else "Warning",
+                "The primary QML shell is running." if active else "No running Quickshell instance uses the rice config.",
+                "" if active else "Start the shell from the active Hyprland session or use the Waybar rollback.")
+
     if module in (None, "waybar"):
         config_path = CONFIG / "waybar" / "config.jsonc"
         style_path = CONFIG / "waybar" / "style.css"
@@ -222,9 +258,11 @@ def build_diagnostics(*, full: bool = False, module: str | None = None) -> list[
         add("waybar", "Waybar stylesheet", "Healthy" if style_path.is_file() else "Failed",
             "Present." if style_path.is_file() else "Stylesheet missing.")
         pids = process_pids("waybar")
-        add("waybar", "Waybar runtime", "Healthy" if pids else "Warning",
-            f"Running process(es): {', '.join(pids)}" if pids else "Waybar is not running.",
-            "" if pids else "Start Waybar from the Control Center or reload the desktop.")
+        fallback_inactive = not pids and bar_mode == "quickshell"
+        add("waybar", "Waybar runtime", "Not Applicable" if fallback_inactive else "Healthy" if pids else "Warning",
+            "Inactive fallback while Quickshell is selected." if fallback_inactive
+            else f"Running process(es): {', '.join(pids)}" if pids else "Waybar is not running.",
+            "" if pids or fallback_inactive else "Run scripts/desktop/rollback-to-waybar.sh to select the fallback.")
         for binary in REQUIRED_BINARIES["waybar"]:
             add("waybar", f"Dependency: {binary}", "Healthy" if shutil.which(binary) else "Not Installed",
                 "Available." if shutil.which(binary) else "Waybar package is not installed.")

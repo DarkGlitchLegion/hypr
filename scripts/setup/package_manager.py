@@ -18,6 +18,7 @@ PACKAGE_MAP: dict[str, dict[str, list[str]]] = {
     "hypridle": {"pacman": ["hypridle"], "apt": ["hypridle"], "dnf": ["hypridle"]},
     "polkit-agent": {"pacman": ["hyprpolkitagent"], "apt": ["polkitd"], "dnf": ["hyprpolkitagent"]},
     "network-manager": {"pacman": ["networkmanager"], "apt": ["network-manager"], "dnf": ["NetworkManager"]},
+    "quickshell": {"pacman": ["quickshell"], "apt": [], "dnf": []},
     "pipewire": {"pacman": ["pipewire"], "apt": ["pipewire"], "dnf": ["pipewire"]},
     "wireplumber": {"pacman": ["wireplumber"], "apt": ["wireplumber"], "dnf": ["wireplumber"]},
     "pipewire-pulse": {"pacman": ["pipewire-pulse"], "apt": ["pipewire-pulse"], "dnf": ["pipewire-pulseaudio"]},
