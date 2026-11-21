@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import os
 import subprocess
 import sys
 import tempfile
@@ -48,7 +49,7 @@ class CategorizedScriptTests(unittest.TestCase):
             "/hardware/bluetooth-menu.sh",
             "/security/hyprsec-box.sh",
             "/session/power-menu.sh",
-            "/desktop/restart-waybar.sh",
+            "/desktop/restart-bar.sh",
             "/hardware/audio-menu.sh",
             "/session/notification-toggle.sh",
             "/session/notification-history.sh",
@@ -66,6 +67,53 @@ class CategorizedScriptTests(unittest.TestCase):
                 self.assertIn(suffix, keybinds)
                 self.assertTrue((SCRIPTS / suffix.lstrip("/")).exists(), suffix)
 
+    def test_quickshell_is_the_primary_autostart_with_a_waybar_rollback(self) -> None:
+        autostart = (ROOT / "lua" / "autostart.lua").read_text(encoding="utf-8")
+        launcher = (SCRIPTS / "desktop" / "start-bar.sh").read_text(encoding="utf-8")
+        rollback = SCRIPTS / "desktop" / "rollback-to-waybar.sh"
+        self.assertIn("/desktop/start-bar.sh", autostart)
+        self.assertNotIn("waybar -c ", autostart)
+        self.assertIn('MODE="quickshell"', launcher)
+        self.assertIn("--no-duplicate", launcher)
+        self.assertTrue(rollback.is_file())
+
+    def test_bar_launcher_defaults_to_quickshell_and_honors_waybar_rollback(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fake_bin = root / "bin"
+            fake_bin.mkdir()
+            output_file = root / "invocation.txt"
+            for name in ("qs", "waybar"):
+                executable = fake_bin / name
+                executable.write_text(
+                    "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"$BAR_TEST_OUTPUT\"\n",
+                    encoding="utf-8",
+                )
+                executable.chmod(0o755)
+            state_root = root / "state"
+            config_root = root / "config"
+            environment = os.environ.copy()
+            environment.update({
+                "PATH": f"{fake_bin}:{environment['PATH']}",
+                "HOME": str(root / "home"),
+                "XDG_CONFIG_HOME": str(config_root),
+                "XDG_STATE_HOME": str(state_root),
+                "BAR_TEST_OUTPUT": str(output_file),
+            })
+            launcher = SCRIPTS / "desktop" / "start-bar.sh"
+
+            result = subprocess.run([str(launcher)], env=environment, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("--no-duplicate", output_file.read_text(encoding="utf-8"))
+            self.assertIn(str(config_root / "hypr" / "quickshell" / "shell.qml"), output_file.read_text(encoding="utf-8"))
+
+            mode_file = state_root / "hypr-rice" / "bar-mode"
+            mode_file.parent.mkdir(parents=True)
+            mode_file.write_text("waybar\n", encoding="utf-8")
+            result = subprocess.run([str(launcher)], env=environment, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("waybar/config.jsonc", output_file.read_text(encoding="utf-8"))
+
     def test_quick_settings_status_is_valid_json(self) -> None:
         result = subprocess.run(
             [sys.executable, str(SCRIPTS / "desktop" / "quick-settings-status.py")],
@@ -79,6 +127,8 @@ class CategorizedScriptTests(unittest.TestCase):
         self.assertIn("text", data)
         self.assertIn("tooltip", data)
         self.assertIn("class", data)
+        self.assertIn("notifications", data)
+        self.assertGreaterEqual(data["notifications"], 0)
 
     def test_idle_manager_status_and_validation(self) -> None:
         script = SCRIPTS / "session" / "idle-manager.py"

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Quick Settings Cluster Status for Waybar (custom/quick-settings)
+Quick Settings Cluster Status for Quickshell and Waybar
 Outputs a compact JSON status line showing: network · audio · battery · security
 """
 from __future__ import annotations
@@ -130,6 +130,14 @@ def dnd_icon() -> str:
     return "󰂛" if out == "true" else ""  # only show when active
 
 
+def displayed_notification_count() -> int:
+    out = run(["dunstctl", "count", "displayed"])
+    try:
+        return max(0, int(out))
+    except ValueError:
+        return 0
+
+
 # ── Compose ──────────────────────────────────────────────────────────────────
 n_icon = net_icon()
 a_icon = audio_icon()
@@ -137,6 +145,7 @@ m_icon = microphone_icon()
 b_icon = battery_icon()
 b_pct = battery_pct()
 d_icon = dnd_icon()
+n_count = displayed_notification_count()
 s_cls = sec_class()
 
 # Security indicator dot
@@ -166,6 +175,7 @@ if bats:
 tooltip_parts = [
     "Quick Settings",
     bat_tooltip,
+    f"Notifications: {n_count} displayed",
     f"Security: {s_cls}",
 ]
 tooltip = "\n".join(p for p in tooltip_parts if p)
@@ -175,4 +185,5 @@ print(json.dumps({
     "tooltip": tooltip,
     "class": f"cluster sec-{s_cls}",
     "alt": s_cls,
+    "notifications": n_count,
 }))

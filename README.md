@@ -1,6 +1,6 @@
 # Arch Linux Hyprland Rice — Minimal Dark Ecosystem
 
-A developer-focused personal workstation environment built on **Arch Linux**, **Hyprland 0.57.2+ (native Lua engine)**, **Waybar**, **Rofi Wayland**, and **Dunst**.
+A developer-focused personal workstation environment built on **Arch Linux**, **Hyprland 0.57.2+ (native Lua engine)**, **Quickshell/QML**, **Rofi Wayland**, and **Dunst**. Waybar is retained as a fallback shell.
 
 Designed around the **Minimal Dark Charcoal palette** (`#0C0D10` background, `#17191F` surface, `#202126` card hover, `#AAAAAA` accent), this ecosystem emphasizes keyboard-driven workflows, zero bloat, and fast hardware integration.
 
@@ -80,14 +80,15 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │       └── windowrules.conf
 ├── lua/                      # Modular Lua configuration subsystem
 │   ├── monitors.lua          # 1:1 native display setup (prevents fractional scaling)
-│   ├── autostart.lua         # Background daemons, Polkit, Waybar, Dunst, etc.
+│   ├── autostart.lua         # Background daemons, Polkit, Quickshell, Dunst, etc.
 │   ├── env.lua               # Wayland environment variables & cursor synchronization
 │   ├── appearance.lua        # Compositor layout, borders, rounding, shadows & blur
 │   ├── animations.lua        # Custom quintic & cubic Bezier animation curves
 │   ├── rules.lua             # Window rules, dialog centering & layer blur rules
 │   ├── app-placement.lua     # Optional app-specific workspace placement rules
 │   └── keybinds.lua          # Keyboard shortcuts & window dispatchers
-├── waybar/                   # Waybar status bar
+├── quickshell/               # Primary modular Quickshell/QML bar
+├── waybar/                   # Retained Waybar fallback
 │   ├── config.jsonc          # Modular widgets, PipeWire, power profiles, battery
 │   └── style.css             # Minimalist charcoal stylesheet with hover transitions
 ├── rofi/                     # Rofi Wayland application & control menus
@@ -116,7 +117,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │   ├── bluetooth-status.py   # Bluetooth power/connection status helper
 │   ├── bluetooth-agent.py    # D-Bus pairing & authentication agent
 │   ├── quick-settings.py     # GTK quick-settings popup and live system controls
-│   ├── quick-settings-status.py # Combined Waybar connectivity/audio/battery status
+│   ├── quick-settings-status.py # Shared Quickshell/Waybar connectivity/audio/battery status
 │   ├── hyprsec-box.sh        # Rootless Kali container and workspace manager
 │   ├── hyprsec-install.sh    # Idempotent HyprSec setup
 │   ├── hyprsec-uninstall.sh  # Confirmed container removal; preserves user data
@@ -127,9 +128,11 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │   ├── screenshot.sh         # Grim + Slurp region, window & full capture
 │   ├── volume.sh             # PipeWire volume & microphone controller
 │   ├── brightness.sh         # Display backlight controller (brightnessctl)
-│   ├── notification-toggle.sh# Do Not Disturb toggle & Waybar sync
+│   ├── notification-toggle.sh# Do Not Disturb toggle
 │   ├── apply-gtk-theme.sh    # GTK3/4 Adwaita-dark theme synchronizer
-│   └── restart-waybar.sh     # Clean Waybar restarter
+│   ├── start-bar.sh          # Quickshell primary, selectable Waybar fallback
+│   ├── restart-bar.sh        # Restart the currently selected shell
+│   └── rollback-to-waybar.sh # Switch current/future sessions to Waybar
 ├── kitty/                    # Kitty terminal emulator configuration
 ├── dunst/                    # Dunst notification daemon configuration
 ├── hyprlock/                 # Hyprlock minimalist lockscreen
@@ -152,9 +155,14 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 ### Locating and debugging configuration
 * **Hyprland startup**: `hyprland.conf` loads `hyprland.lua`, which loads the active modules in `lua/`.
 * **Active behavior**: Edit `lua/keybinds.lua`, `lua/appearance.lua`, `lua/animations.lua`, `lua/monitors.lua`, `lua/rules.lua`, or `lua/autostart.lua` for their respective settings. The similarly named files in `hyprland/legacy/` are retained static configs, not the active Lua modules.
-* **Bar and menus**: Waybar files are in `waybar/`; Rofi themes are in `rofi/`; automation and tests are in `scripts/` and `scripts/tests/`.
+* **Bar and menus**: Quickshell modules are in `quickshell/`; Waybar is retained in `waybar/` for recovery; Rofi themes are in `rofi/`.
 * **Persisted settings**: Display profiles/preferences, idle settings, session presets, and the saved wallpaper path are in `state/`. Root-level compatibility symlinks keep older references working.
 * **Validation**: Run `scripts/rice validate` for config references and syntax checks, or `scripts/rice doctor --full` for broader diagnostics.
+
+### Quickshell/QML shell
+Quickshell is the primary Hyprland bar and launches automatically. Its modular bar includes event-driven workspaces and active-window title, system tray, clock/calendar, network/audio/battery status, notification history, Control Center, and the existing power menu. Waybar configuration and scripts remain installed as a recovery fallback.
+
+Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Quickshell and switch the current and future sessions to Waybar. `Super+Shift+R` still reloads the bar and Hyprland configuration; it now reloads whichever shell is selected. Review [quickshell/README.md](./quickshell/README.md) for deployment, startup, and recovery details.
 
 ---
 
@@ -164,7 +172,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 * **Open**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd>, or Control Center → HyprSec Box. Change the key in `~/.config/hyprsec/keybind`, then reload Hyprland.
 * **Install**: Run `~/.config/hypr/scripts/hyprsec-install.sh` as your regular user. It asks before installing Podman or pulling the Kali Rolling image and preserves existing HyprSec configuration.
 * **Isolation**: Rootless Podman, no privileged mode, no host-wide mounts, dropped capabilities, and an internal-only network by default. Only `~/HyprSec/workspace` subdirectories are mounted.
-* **Network**: Enable the named rootless bridge explicitly from the menu when package downloads are needed; it requires confirmation. Disable it afterward. The Waybar indicator shows container state; left-click opens the manager and right-click confirms before stopping.
+* **Network**: Enable the named rootless bridge explicitly from the menu when package downloads are needed; it requires confirmation. Disable it afterward. The bar's status cluster includes the existing container state indicator; manage the container from Control Center, where network changes require confirmation.
 * **Tools and projects**: Manage the curated APT catalog in `~/.config/hyprsec/tools.conf`; package actions happen inside Kali. Create projects under `~/HyprSec/workspace/projects/`. Cleanup is project-scoped and interactive; removing the container preserves workspace files.
 * **Configuration and full guide**: See [hyprsec/README.md](./hyprsec/README.md). The default catalog is limited to diagnostics, analysis, development, and reporting tools.
 
@@ -174,7 +182,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 * **What it does**: Provides a centralized keyboard dashboard for the entire desktop.
   * **Rice Health & Diagnostics** is available under System & Performance. It checks Hyprland config/IPC, display watcher count, active monitor geometry for overlaps, workspace state, saved external workspace preference, and commands used by rice features. Choose **Refresh diagnostics** to re-query live state.
   * **Categorized Submenus**:
-    * `󰒓 System & Performance`: Rice health diagnostics, process monitor (`btop`), power center, disk usage, desktop/Waybar reload.
+    * `󰒓 System & Performance`: Rice health diagnostics, process monitor (`btop`), power center, disk usage, desktop/bar reload.
     * `󰤨 Hardware & Connectivity`: Wi-Fi, Bluetooth, PipeWire audio switcher, battery diagnostics.
     * `󰍹 Display & Personalization`: Wallpaper selector, GTK theme synchronization, display info.
     * `󰲋 Developer & Workstation`: VS Code, Kitty, Lazygit, HyprSec Box, tools folder, CMatrix.
@@ -186,33 +194,33 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
   * **Open**: Control Center → **Maintenance Center**. The Rice Diagnostics view is also reachable from System & Performance.
   * **CLI**: Run `~/.config/hypr/scripts/rice doctor`, `doctor --full`, `doctor --module audio`, `validate`, `dependencies --full`, `reload`, or `test`.
   * **Reports**: `rice doctor --report` writes a timestamped report under `~/.local/state/hypr-rice/reports/`; `rice doctor --report PATH` chooses a destination.
-  * **Safe repairs**: `rice doctor --fix` offers only a confirmed Waybar status refresh. It does not edit configs, install packages, or restart services.
+  * **Safe repairs**: `rice doctor --fix` offers only a confirmed status refresh for the retained Waybar fallback. It does not edit configs, install packages, or restart services.
   * **Snapshots**: `rice snapshot create`, `list`, `diff ID`, `compare ID OTHER`, `restore ID`, `delete ID`, and `retention N`. Restore previews affected paths, requires confirmation, snapshots the current config first, validates the restored config, and rolls back on validation failure. It can recover from an already-invalid config. Restore is additive: it does not delete files absent from a snapshot. Backups are stored under `~/.local/share/hypr-rice/snapshots/`, with default retention of 10. Display, audio, session-preset, and snapshot-setting changes automatically snapshot their previous saved preferences.
-  * **Safe reload**: `rice reload` validates Hyprland and Lua syntax before reloading, then checks Hyprland's reported config errors. Waybar is not restarted; use the separate Restart Waybar action when needed.
+  * **Safe reload**: `rice reload` validates Hyprland and Lua syntax before reloading, then checks Hyprland's reported config errors. Use <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> to reload the selected bar.
   * **Activity**: `rice logs` supports `--module`, `--severity`, `--search`, `--since YYYY-MM-DD`, `--export PATH`, and confirmed `--clear`. JSONL logs rotate at 2 MiB with three retained generations in `~/.local/state/hypr-rice/`.
   * Snapshots exclude `.git`, `.backup`, caches, wallpaper image assets, log files, and common private key/credential filenames. Snapshot restore and manual snapshot deletion always require explicit confirmation. Before manually editing config files, use `rice snapshot create --label pre-manual-edit`.
   * Tests use Python's built-in `unittest`; no new packages are required. The repeatable hardware checklist is in [docs/maintenance-testing.md](./docs/maintenance-testing.md).
 
   ---
 
-### Waybar Quick Settings
-* **Open**: Click the combined status cluster on the right side of Waybar. It displays Wi-Fi, speaker, microphone, battery, and optional DND/security indicators.
+### Quick Settings
+* **Open**: Click the combined status cluster on the right side of the Quickshell bar. It displays Wi-Fi, speaker, microphone, battery, and optional DND/security indicators.
 * **Control panels**: In the popup, click the Wi-Fi, Bluetooth, speaker, microphone, or battery row's icon/text to open its corresponding manager. Use the row's switch to toggle Wi-Fi, Bluetooth, speaker mute, microphone mute, or DND.
 * **System tiles**: CPU, RAM, CPU temperature, and GPU temperature are shown in the System section; clicking CPU or RAM opens `btop`.
 * **Network traffic**: The popup shows live download/upload speeds and cumulative totals for the active default-route interface. Totals persist across restarts in `~/.local/state/hypr-rice/network-traffic.json`; the session-start monitor tracks traffic while the popup is closed.
-* **Live status**: The popup refreshes device and control state while open. Speaker and microphone icons in Waybar refresh immediately after changes made through Quick Settings or the volume/microphone hotkeys.
+* **Live status**: The popup refreshes device and control state while open. The Quickshell status cluster refreshes every five seconds after changes made through Quick Settings or the volume/microphone hotkeys.
 * **Scripts**: `~/.config/hypr/scripts/desktop/quick-settings.py` and `desktop/quick-settings-status.py`.
 
 ---
 
 ### 2. PipeWire Audio Control Center
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>A</kbd>
-* **Waybar Trigger**: Click the combined Quick Settings cluster, then click the Speaker or Microphone row's icon/text to open the audio manager. The switches toggle mute.
+* **Bar Trigger**: Click the Quickshell status cluster, then click the Speaker or Microphone row's icon/text to open the audio manager. The switches toggle mute.
 * **Script**: `~/.config/hypr/scripts/hardware/audio-menu.sh`
 * **What it does**:
   * Enumerates current PipeWire-Pulse outputs and inputs from JSON, including built-in speakers, HDMI/DisplayPort, Bluetooth, and headsets when exposed by PipeWire.
   * Shows the active route and device-provided description; selecting an output changes the default and moves active streams.
-  * The **Set output volume** menu offers 0–100% in 5% steps. Waybar scroll adjusts volume; middle-click opens Pavucontrol's live sliders and per-app routing.
+  * The **Set output volume** menu offers 0–100% in 5% steps. The volume hotkeys adjust volume; middle-click opens Pavucontrol's live sliders and per-app routing.
   * Automatic HDMI routing is **off by default**. Enable it from the audio menu; the single autostart watcher selects HDMI/DisplayPort when an audio sink appears and falls back when it disappears.
   * Manual output selection is saved in `~/.config/hypr/audio-preferences.json` and restored at startup or when that output reconnects, provided automatic HDMI routing has not taken precedence.
   * No audio-device names are hardcoded. A connected TV without a PipeWire audio sink is ignored.
@@ -243,9 +251,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 ---
 
 ### 3. Power Profiles & Battery Center
-* **Waybar Trigger**:
-  * **Left-Click** on Battery: Opens the interactive Power & Battery Center.
-  * **Right-Click** on Battery: Instantly cycles through power profiles (`power-saver` → `balanced` → `performance`).
+* **Bar Trigger**: The Quickshell status cluster shows battery level and opens Control Center; use the existing power-profile menu for profile selection.
 * **Script**: `~/.config/hypr/scripts/session/power-profile-menu.sh`
 * **What it does**:
   * Interfaces with `powerprofilesctl` to switch AMD P-State CPU governor profiles:
@@ -257,13 +263,13 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
     * Battery health percentage based on `energy_full` vs `energy_full_design`.
     * Battery cycle count.
   * Includes a **Battery Diagnostic Report** button that triggers a Dunst notification with full hardware and power metrics.
-  * Integrated with Waybar's native `power-profiles-daemon` module with live icons.
+  * Power profile selection remains in the existing power-profile menu; the bar does not duplicate that backend.
 
 ---
 
 ### 4. Graphical Wi-Fi Manager
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>
-* **Waybar Trigger**: Click the combined Quick Settings cluster, then click the Wi-Fi row's icon/text to open the network manager. The switch toggles the Wi-Fi radio.
+* **Bar Trigger**: Click the Quickshell status cluster, then click the Wi-Fi row's icon/text to open the network manager. The switch toggles the Wi-Fi radio.
 * **Script**: `~/.config/hypr/scripts/hardware/wifi-menu.sh`
 * **What it does**:
   * Scans nearby Wi-Fi networks in the background (`nmcli --rescan no`) for fast response times.
@@ -275,7 +281,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 
 ### 5. Graphical Bluetooth Manager & Pairing Agent
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd>
-* **Waybar Trigger**: Click the combined Quick Settings cluster, then click the Bluetooth row's icon/text to open the manager. The switch toggles Bluetooth power.
+* **Bar Trigger**: Click the Quickshell status cluster, then click the Bluetooth row's icon/text to open the manager. The switch toggles Bluetooth power.
 * **Scripts**: `~/.config/hypr/scripts/hardware/bluetooth-menu.sh`, `bluetooth-status.py`, and `bluetooth-agent.py`
 * **What it does**:
   * The Quick Settings popup shows whether Bluetooth is powered off (`󰂲`), powered on (`󰂯`), or connected (`󰂱`), and refreshes the state while open.
@@ -329,7 +335,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 * **Notification History**: <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>N</kbd>
 * **Pop Last Notification**: <kbd>Super</kbd> + <kbd>N</kbd>
 * **Dismiss All**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd>
-* **Waybar Module**: Displays `󰂚` when notifications are active and `󰂛 DND` when muted. Clicking the module toggles DND mode.
+* **Quickshell indicators**: The bar shows the displayed-notification count and opens the existing notification-history viewer when clicked. DND remains available through the status cluster and existing keybinding.
 
 ---
 
@@ -443,7 +449,7 @@ Workspace shortcuts now cover 1–10 to match the Display Manager; use <kbd>Supe
 | :--- | :--- | :--- |
 | <kbd>Super</kbd> + <kbd>Escape</kbd> | Power Menu | Opens system session menu (Lock, Suspend, Reboot, Shutdown) |
 | <kbd>Super</kbd> + <kbd>L</kbd> / <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>L</kbd> | Lock Screen | Locks desktop immediately with Hyprlock |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> | Reload Desktop | Restarts Waybar and reloads Hyprland configuration |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> | Reload Desktop | Reloads the selected bar (Quickshell by default) and Hyprland configuration |
 | <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>A</kbd> | Audio Switcher | Opens PipeWire audio sink and source switcher |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>D</kbd> | Toggle DND | Toggles notification Do Not Disturb mode |
 | <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>N</kbd> | Notification History | Opens Rofi notification history viewer |
@@ -481,17 +487,18 @@ Workspace shortcuts now cover 1–10 to match the Display Manager; use <kbd>Supe
 
 ---
 
-## Interactive Waybar Modules
+## Interactive Quickshell Bar
 
-The Waybar status bar at the top of the screen provides these mouse interactions:
+The Quickshell bar provides these mouse interactions; Waybar is retained as a fallback:
 
 | Module | Left-Click | Right-Click | Scroll Wheel |
 | :--- | :--- | :--- | :--- |
-| **Workspaces** | Activate workspace | — | Disabled |
+| **Workspaces** | Activate workspace | — | — |
 | **Window title** | — | — | — |
-| **Quick Settings cluster** | Open Quick Settings popup | — | — |
-| **Quick Settings rows** | Open the row's manager from its icon/text; switches toggle Wi-Fi, Bluetooth, speaker/mic mute, or DND | — | — |
-| **Clock (`󰸗`)** | Show calendar | Toggle alternate time format | Change calendar month |
+| **Status cluster** | Open the existing Control Center | — | — |
+| **Notifications** | Open Dunst notification history | — | — |
+| **Clock** | Show/hide calendar | Toggle alternate time format | Change calendar month |
+| **System tray** | Activate item | Open item menu | — |
 | **Power (`󰐥`)** | Open System Power Menu | — | — |
 
 ---
@@ -550,7 +557,7 @@ Always verify before reloading if you make manual changes:
 # Check Hyprland Lua configuration
 XDG_RUNTIME_DIR=/tmp Hyprland --verify-config
 
-# Check Waybar configuration JSON
+# Check retained Waybar fallback configuration JSON
 python3 -m json.tool ~/.config/hypr/waybar/config.jsonc > /dev/null
 ```
 

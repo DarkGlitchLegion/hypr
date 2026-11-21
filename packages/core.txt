@@ -1,6 +1,7 @@
 # Essential Hyprland rice components
 hyprland
 waybar
+quickshell
 dunst
 rofi
 kitty

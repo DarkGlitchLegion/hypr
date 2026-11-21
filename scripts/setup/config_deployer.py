@@ -30,6 +30,7 @@ class ConfigDeployer:
             ("hyprland.lua", self.repository / "hyprland.lua", self.target_root / "hyprland.lua"),
             ("lua", self.repository / "lua", self.target_root / "lua"),
             ("waybar", self.repository / "waybar", self.target_root / "waybar"),
+            ("quickshell", self.repository / "quickshell", self.target_root / "quickshell"),
             ("rofi", self.repository / "rofi", self.target_root / "rofi"),
             ("kitty", self.repository / "kitty", self.target_root / "kitty"),
             ("dunst", self.repository / "dunst", self.target_root / "dunst"),
