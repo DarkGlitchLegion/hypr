@@ -2026,6 +2026,50 @@ def main() -> int:
                 transaction("Saved display layout", profile["layout"])
             else:
                 notify("Display Manager", "No compatible saved display layout is available.", "critical")
+        elif len(sys.argv) == 4 and sys.argv[1] == "--set-mode":
+            _, name, mode = sys.argv[1:]
+            record = next((item for item in monitors() if item["name"] == name and item.get("connected")), None)
+            if record is None or mode not in (record.get("availableModes") or []) and mode != "preferred":
+                raise DisplayError("The selected display mode is no longer available.")
+            setting = current_setting(record)
+            setting.update(mode=mode, disabled=False, mirror=None)
+            transaction(f"{name} set to {mode}", replace_setting(setting))
+        elif len(sys.argv) == 4 and sys.argv[1] == "--set-scale":
+            _, name, value = sys.argv[1:]
+            if value not in {"0.75", "1.0", "1.25", "1.5", "1.75", "2.0"}:
+                raise DisplayError("Scale must be a supported preset value.")
+            record = next((item for item in monitors() if item["name"] == name and item.get("connected")), None)
+            if record is None:
+                raise DisplayError("The selected display is disconnected.")
+            setting = current_setting(record)
+            setting.update(scale=float(value), disabled=False, mirror=None)
+            transaction(f"Scale for {name} set to {value}", replace_setting(setting))
+        elif len(sys.argv) == 4 and sys.argv[1] == "--set-transform":
+            _, name, value = sys.argv[1:]
+            if value not in {str(item) for item in TRANSFORMS}:
+                raise DisplayError("Transform must be between 0 and 7.")
+            record = next((item for item in monitors() if item["name"] == name and item.get("connected")), None)
+            if record is None:
+                raise DisplayError("The selected display is disconnected.")
+            setting = current_setting(record)
+            setting.update(transform=int(value), disabled=False, mirror=None)
+            transaction(f"Orientation for {name} changed", replace_setting(setting))
+        elif len(sys.argv) == 3 and sys.argv[1] == "--primary":
+            name = sys.argv[2]
+            record = next((item for item in monitors() if item["name"] == name and item.get("connected")), None)
+            if record is None:
+                raise DisplayError("The selected display is disconnected.")
+            layout = runtime_layout()
+            selected = next((item for item in layout if item["name"] == name), current_setting(record))
+            selected.update(x=0, y=0, disabled=False, mirror=None)
+            x = logical_size(record)[0]
+            for item in layout:
+                if item["name"] != name and not item.get("disabled"):
+                    item.update(x=x, y=0, mirror=None)
+                    x += logical_size(next((entry for entry in monitors() if entry["name"] == item["name"]), {}))[0]
+            if not any(item["name"] == name for item in layout):
+                layout.append(selected)
+            transaction(f"{name} set as primary display", layout)
         else:
             config = CONFIG / "quickshell" / "shell.qml"
             subprocess.run(["qs", "ipc", "--path", str(config), "call", "hyprshell", "openHub", "display"], check=False)

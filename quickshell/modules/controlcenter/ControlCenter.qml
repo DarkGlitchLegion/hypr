@@ -201,7 +201,7 @@ PopupWindow {
             onStreamFinished: {
                 try {
                     const result = JSON.parse(text);
-                    root.displayOutputs = result.monitors.filter(item => item.connected && !item.internal);
+                    root.displayOutputs = result.monitors.filter(item => item.connected);
                     root.displayWorkspace = result.externalWorkspace || "2";
                 }
                 catch (e) { root.displayOutputs = []; }
@@ -743,7 +743,6 @@ PopupWindow {
                             Repeater {
                                 model: [
                                     { label: "Laptop only", cmd: ["python3", root.settings.scriptsRoot + "/hardware/display-manager.py", "--preset", "laptop"] },
-                                    { label: "Mirror displays", cmd: ["python3", root.settings.scriptsRoot + "/hardware/display-manager.py", "--preset", "mirror"] },
                                     { label: "Save current layout", cmd: ["python3", root.settings.scriptsRoot + "/hardware/display-manager.py", "--save"] },
                                     { label: "Reapply saved layout", cmd: ["python3", root.settings.scriptsRoot + "/hardware/display-manager.py", "--restore"] }
                                 ]
@@ -753,6 +752,73 @@ PopupWindow {
                                     Layout.fillWidth: true
                                     text: modelData.label
                                     onClicked: root.run(modelData.cmd)
+                                }
+                            }
+                            Text { text: "Connected displays · per-monitor controls"; color: root.theme.textMuted; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSize }
+                            Repeater {
+                                model: root.displayOutputs
+                                delegate: ColumnLayout {
+                                    id: displayOutput
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    spacing: root.theme.spacing
+                                    Text { text: displayOutput.modelData.name + (displayOutput.modelData.internal ? " · built-in" : " · external"); color: root.theme.text; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSizeLarge }
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Repeater {
+                                            model: ["0.75", "1.0", "1.25", "1.5", "1.75", "2.0"]
+                                            delegate: HubButton {
+                                                required property string modelData
+                                                theme: root.theme
+                                                Layout.fillWidth: true
+                                                text: modelData + "×"
+                                                onClicked: root.run(["python3", root.settings.scriptsRoot + "/hardware/display-manager.py", "--set-scale", displayOutput.modelData.name, modelData])
+                                            }
+                                        }
+                                    }
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        HubButton { theme: root.theme; Layout.fillWidth: true; text: "Landscape"; onClicked: root.run(["python3", root.settings.scriptsRoot + "/hardware/display-manager.py", "--set-transform", displayOutput.modelData.name, "0"]) }
+                                        HubButton { theme: root.theme; Layout.fillWidth: true; text: "Portrait"; onClicked: root.run(["python3", root.settings.scriptsRoot + "/hardware/display-manager.py", "--set-transform", displayOutput.modelData.name, "1"]) }
+                                        HubButton { theme: root.theme; Layout.fillWidth: true; text: "Primary"; onClicked: root.run(["python3", root.settings.scriptsRoot + "/hardware/display-manager.py", "--primary", displayOutput.modelData.name]) }
+                                    }
+                                    ComboBox {
+                                        id: modeSelector
+                                        Layout.fillWidth: true
+                                        model: displayOutput.modelData.availableModes || []
+                                        currentIndex: Math.max(0, model.findIndex(mode => mode.startsWith(displayOutput.modelData.width + "x" + displayOutput.modelData.height)))
+                                        contentItem: Text { leftPadding: root.theme.spacingLarge; text: modeSelector.currentText || "Preferred mode"; color: root.theme.text; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSize; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight }
+                                        background: Rectangle { radius: root.theme.radius; color: root.theme.surface; border.width: 1; border.color: root.theme.border }
+                                        delegate: ItemDelegate {
+                                            id: displayModeDelegate
+                                            required property string modelData
+                                            width: modeSelector.width
+                                            contentItem: Text { text: displayModeDelegate.modelData; color: root.theme.text; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSize; verticalAlignment: Text.AlignVCenter }
+                                            background: Rectangle { color: displayModeDelegate.highlighted ? root.theme.surfaceRaised : root.theme.surface }
+                                        }
+                                        popup: Popup {
+                                            y: modeSelector.height
+                                            width: modeSelector.width
+                                            implicitHeight: Math.min(contentItem.implicitHeight, 320)
+                                            padding: 2
+                                            contentItem: ListView {
+                                                clip: true
+                                                implicitHeight: contentHeight
+                                                model: modeSelector.popup.visible ? modeSelector.delegateModel : null
+                                                currentIndex: modeSelector.highlightedIndex
+                                                ScrollIndicator.vertical: ScrollIndicator {}
+                                            }
+                                            background: Rectangle { color: root.theme.background; radius: root.theme.radius; border.width: 1; border.color: root.theme.border }
+                                        }
+                                        onActivated: root.run(["python3", root.settings.scriptsRoot + "/hardware/display-manager.py", "--set-mode", displayOutput.modelData.name, currentText])
+                                    }
+                                    RowLayout {
+                                        visible: !displayOutput.modelData.internal && root.displayOutputs.some(item => item.internal)
+                                        Layout.fillWidth: true
+                                        TextField { id: extWorkspace; Layout.fillWidth: true; text: root.displayWorkspace; placeholderText: "External display workspace"; color: root.theme.text; onTextChanged: root.displayWorkspace = text }
+                                        HubButton { theme: root.theme; text: "Extend"; onClicked: root.run(["python3", root.settings.scriptsRoot + "/hardware/display-manager.py", "--preset", "extend", displayOutput.modelData.name, root.displayWorkspace, "right"]) }
+                                        HubButton { theme: root.theme; text: "Mirror"; onClicked: root.run(["python3", root.settings.scriptsRoot + "/hardware/display-manager.py", "--preset", "mirror", displayOutput.modelData.name]) }
+                                    }
                                 }
                             }
                         }
@@ -770,35 +836,6 @@ PopupWindow {
                                     Layout.fillWidth: true
                                     text: modelData
                                     onClicked: root.run(["python3", root.settings.scriptsRoot + "/session/idle-manager.py", "--preset", modelData])
-                                }
-                            }
-                            Text { text: root.displayOutputs.length > 0 ? "Connected external displays" : "No connected external display detected"; color: root.theme.textMuted; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSize }
-                            TextField { visible: root.displayOutputs.length > 0; Layout.fillWidth: true; text: root.displayWorkspace; placeholderText: "Workspace shown on external display"; onTextChanged: root.displayWorkspace = text }
-                            Repeater {
-                                model: root.displayOutputs
-                                delegate: ColumnLayout {
-                                    id: displayOutput
-                                    required property var modelData
-                                    Layout.fillWidth: true
-                                    Text { text: displayOutput.modelData.name; color: root.theme.text; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSizeLarge }
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Repeater {
-                                            model: [
-                                                { label: "Extend right", preset: "extend", position: "right" },
-                                                { label: "Extend left", preset: "extend", position: "left" },
-                                                { label: "Mirror", preset: "mirror", position: "right" },
-                                                { label: "External only", preset: "external", position: "right" }
-                                            ]
-                                            delegate: HubButton {
-                                    theme: root.theme
-                                                required property var modelData
-                                                Layout.fillWidth: true
-                                                text: modelData.label
-                                                onClicked: root.run(["python3", root.settings.scriptsRoot + "/hardware/display-manager.py", "--preset", modelData.preset, displayOutput.modelData.name, root.displayWorkspace, modelData.position])
-                                            }
-                                        }
-                                    }
                                 }
                             }
                             HubButton {
