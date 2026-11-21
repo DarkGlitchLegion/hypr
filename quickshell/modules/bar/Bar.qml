@@ -60,33 +60,6 @@ PanelWindow {
                 Layout.fillHeight: true
             }
 
-            Rectangle {
-                visible: panel.settings.showLauncherButton
-                color: launchMouse.containsMouse ? panel.theme.surfaceRaised : panel.theme.surface
-                radius: panel.theme.radius
-                border.width: 1
-                border.color: panel.theme.border
-                implicitWidth: launchLabel.implicitWidth + panel.theme.spacingLarge * 2
-                Layout.fillHeight: true
-
-                Text {
-                    id: launchLabel
-                    anchors.centerIn: parent
-                    text: "󰣇"
-                    color: panel.theme.accent
-                    font.family: panel.theme.fontFamily
-                    font.pixelSize: panel.theme.fontSizeLarge
-                }
-                MouseArea {
-                    id: launchMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    onClicked: panel.settings.launcherOpen = !panel.settings.launcherOpen
-                    ToolTip.visible: containsMouse
-                    ToolTip.text: "Applications"
-                }
-            }
-
             WindowTitle {
                 theme: panel.theme
                 hyprlandService: panel.hyprlandService
