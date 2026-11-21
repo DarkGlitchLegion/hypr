@@ -1,0 +1,107 @@
+configuration {
+    modi: "dmenu";
+    font: "JetBrainsMono Nerd Font 10.5";
+    show-icons: false;
+    case-sensitive: false;
+    cycle: false;
+}
+
+@theme "/dev/null"
+
+* {
+    bg:          #0C0D10;
+    bg-alt:      #17191F;
+    surface:     #202126;
+    fg:          #D5D5D5;
+    fg-dim:      #888888;
+    accent:      #AAAAAA;
+    border-col:  #333333;
+
+    background-color: transparent;
+    text-color:       @fg;
+    margin:           0;
+    padding:          0;
+    spacing:          0;
+}
+
+window {
+    width:            560px;
+    height:           270px;
+    background-color: @bg;
+    border:           1px solid;
+    border-color:     @border-col;
+    border-radius:    10px;
+    padding:          18px;
+    location:         center;
+    anchor:           center;
+}
+
+mainbox {
+    children: [ inputbar, message, listview, footer ];
+    spacing:  12px;
+}
+
+inputbar {
+    background-color: @bg-alt;
+    border:           1px solid;
+    border-color:     @surface;
+    border-radius:    8px;
+    padding:          10px 14px;
+    children:         [ prompt ];
+}
+
+prompt {
+    text-color: @accent;
+    font:       "JetBrainsMono Nerd Font Bold 11.5";
+}
+
+message {
+    background-color: @bg-alt;
+    border:           1px solid;
+    border-color:     @surface;
+    border-radius:    8px;
+    padding:          14px;
+}
+
+textbox {
+    text-color: @fg;
+    font:       "JetBrainsMono Nerd Font 10";
+    markup:     false;
+}
+
+listview {
+    lines:      2;
+    columns:    1;
+    spacing:    7px;
+    scrollbar:  false;
+    dynamic:    false;
+}
+
+element {
+    padding:       9px 14px;
+    border-radius: 6px;
+    children:      [ element-text ];
+}
+
+element selected {
+    background-color: @surface;
+    text-color:       #FFFFFF;
+    border:           1px solid;
+    border-color:     @accent;
+}
+
+element-text {
+    text-color:       inherit;
+    horizontal-align: 0.5;
+}
+
+footer {
+    expand:   false;
+    children: [ footer-text ];
+}
+
+footer-text {
+    font:             "JetBrainsMono Nerd Font 9";
+    text-color:       @fg-dim;
+    horizontal-align: 0.5;
+}
