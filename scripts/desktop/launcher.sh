@@ -11,9 +11,11 @@ if [[ -f "${MODE_FILE}" ]]; then
 fi
 
 if [[ "${MODE}" == "quickshell" ]] && command -v qs >/dev/null 2>&1; then
-    if qs ipc --path "${CONFIG_ROOT}/quickshell/shell.qml" call hyprshell toggleLauncher >/dev/null 2>&1; then
+    IPC_OUTPUT="$(qs ipc --path "${CONFIG_ROOT}/quickshell/shell.qml" call hyprshell toggleLauncher 2>&1 || true)"
+    if [[ -z "${IPC_OUTPUT}" ]]; then
         exit 0
     fi
+    printf 'Quickshell launcher unavailable: %s\nFalling back to Rofi.\n' "${IPC_OUTPUT}" >&2
 fi
 
 exec rofi -show drun -config "${CONFIG_ROOT}/rofi/launcher.rasi"

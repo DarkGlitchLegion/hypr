@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import Quickshell.Io
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Layouts
 import "../../config"
 
 Item {
@@ -17,8 +16,8 @@ Item {
             "class": "unavailable"
         })
 
-    implicitWidth: statusCluster.implicitWidth
-    implicitHeight: settings.barHeight - theme.spacingSmall
+    implicitWidth: statusLabel.implicitWidth + 24
+    implicitHeight: settings.barHeight - 6
 
     function refreshStatus() {
         if (!statusProcess.running)
@@ -59,66 +58,34 @@ Item {
 
     Component.onCompleted: refreshStatus()
 
-    RowLayout {
-        id: statusCluster
+    Rectangle {
+        id: statusButton
         anchors.fill: parent
-        spacing: root.theme.spacingSmall
+        color: statusMouse.containsMouse ? root.theme.surfaceRaised : root.theme.surface
+        radius: 8
+        border.width: 1
+        border.color: (root.status.class || "").includes("sec-running")
+                ? Qt.rgba(163 / 255, 190 / 255, 140 / 255, 0.35)
+                : root.theme.moduleBorder
 
-        Rectangle {
-            id: statusButton
-            color: statusMouse.containsMouse ? root.theme.surfaceRaised : root.theme.surface
-            radius: root.theme.radius
-            border.width: 1
-            border.color: root.theme.border
-            implicitWidth: statusLabel.implicitWidth + root.theme.spacingLarge * 2
-            Layout.fillHeight: true
-
-            Text {
-                id: statusLabel
-                anchors.centerIn: parent
-                text: root.status.text || "󰂲"
-                color: root.theme.text
-                font.family: root.theme.fontFamily
-                font.pixelSize: root.theme.fontSizeLarge
-            }
-
-            MouseArea {
-                id: statusMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                onClicked: root.settings.toggleQuickControls()
-                ToolTip.visible: containsMouse
-                ToolTip.text: root.status.tooltip || "Control Center"
-            }
+        Text {
+            id: statusLabel
+            anchors.centerIn: parent
+            text: root.status.text || "󰂲"
+            color: root.theme.text
+            font.family: root.theme.fontFamily
+            font.pixelSize: root.theme.fontSizeLarge
+            font.letterSpacing: 2
         }
 
-        Rectangle {
-            id: notificationButton
-            color: notificationMouse.containsMouse ? root.theme.surfaceRaised : root.theme.surface
-            radius: root.theme.radius
-            border.width: 1
-            border.color: root.theme.border
-            implicitWidth: notificationLabel.implicitWidth + root.theme.spacingLarge * 2
-            Layout.fillHeight: true
-
-            Text {
-                id: notificationLabel
-                anchors.centerIn: parent
-                text: "󰂚" + (Number(root.status.notifications || 0) > 0 ? " " + root.status.notifications : "")
-                color: root.theme.text
-                opacity: Number(root.status.notifications || 0) > 0 ? 1 : 0.6
-                font.family: root.theme.fontFamily
-                font.pixelSize: root.theme.fontSizeLarge
-            }
-
-            MouseArea {
-                id: notificationMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                onClicked: root.settings.openOverlay("notifications")
-                ToolTip.visible: containsMouse
-                ToolTip.text: "Notifications: " + Number(root.status.notifications || 0) + " displayed"
-            }
+        MouseArea {
+            id: statusMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: root.settings.toggleQuickControls()
+            ToolTip.visible: containsMouse
+            ToolTip.text: (root.status.tooltip || "Quick Settings")
+                    + "\nNotifications: " + Number(root.status.notifications || 0) + " displayed"
         }
     }
 }

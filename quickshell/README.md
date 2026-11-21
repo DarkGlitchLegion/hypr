@@ -45,6 +45,20 @@ Other shortcuts are documented in the searchable Keybindings page (`Super+K`).
 `Super+W` and `Super+Q` close the active shell overlay first, and close the
 focused application window when no overlay is open.
 
+The compact panel reads Wi-Fi, Bluetooth, audio/microphone mute, brightness,
+notification, battery, and power-profile state from their existing system
+interfaces. Toggle actions report completion or errors and refresh from the
+system; volume and brightness changes are coalesced while dragging. Controls
+whose backing utility is unavailable are disabled rather than shown as active.
+Wi-Fi and Bluetooth rows have separate switches and expand controls: their
+selectors list nearby/known devices, expose connect and disconnect actions, and
+show operation status without conflating opening the selector with toggling
+radio power. The panel also offers active audio input/output selection, network
+traffic rates, CPU/RAM meters, available temperature readings, and a HyprSec
+status shortcut. Resource and traffic sampling runs only while a shell panel is
+open; battery, notification, and security details reuse the existing status
+provider.
+
 The wallpaper and clipboard pages use the established wallpaper setter,
 clipboard daemon, and clipboard-clear operation. Audio, network, Bluetooth,
 and display views use existing system tools or small JSON/action bridges.

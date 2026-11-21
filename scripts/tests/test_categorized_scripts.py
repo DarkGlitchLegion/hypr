@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import ast
+import contextlib
+import io
 import importlib.util
+import json
 import os
 import shutil
 import subprocess
@@ -201,6 +204,42 @@ class CategorizedScriptTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("-show drun", output_file.read_text(encoding="utf-8"))
 
+    def test_application_launcher_falls_back_when_quickshell_ipc_is_not_ready(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fake_bin = root / "bin"
+            fake_bin.mkdir()
+            output_file = root / "invocation.txt"
+            (fake_bin / "qs").write_text(
+                "#!/bin/sh\nprintf '%s\\n' 'Not ready to accept queries yet.'\n",
+                encoding="utf-8",
+            )
+            (fake_bin / "rofi").write_text(
+                "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"$LAUNCHER_TEST_OUTPUT\"\n",
+                encoding="utf-8",
+            )
+            for executable in fake_bin.iterdir():
+                executable.chmod(0o755)
+            environment = os.environ.copy()
+            environment.update({
+                "PATH": f"{fake_bin}:{environment['PATH']}",
+                "HOME": str(root / "home"),
+                "XDG_CONFIG_HOME": str(root / "config"),
+                "XDG_STATE_HOME": str(root / "state"),
+                "LAUNCHER_TEST_OUTPUT": str(output_file),
+            })
+
+            result = subprocess.run(
+                [str(SCRIPTS / "desktop" / "launcher.sh")],
+                env=environment,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("Not ready to accept queries yet.", result.stderr)
+            self.assertIn("-show drun", output_file.read_text(encoding="utf-8"))
+
     def test_waybar_restart_compatibility_entrypoint_respects_quickshell_mode(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -250,6 +289,57 @@ class CategorizedScriptTests(unittest.TestCase):
         self.assertIn("class", data)
         self.assertIn("notifications", data)
         self.assertGreaterEqual(data["notifications"], 0)
+        self.assertIn("battery", data)
+        self.assertIn("available", data["battery"])
+        if data["battery"]["available"]:
+            self.assertIn("status", data["battery"])
+            self.assertTrue(
+                data["battery"]["percentage"] is None
+                or isinstance(data["battery"]["percentage"], int)
+            )
+
+    def test_quick_settings_metrics_emits_valid_resource_data(self) -> None:
+        result = subprocess.run(
+            [sys.executable, str(SCRIPTS / "desktop" / "quick-settings-metrics.py")],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertIn("available", data)
+        if data["available"]:
+            self.assertGreaterEqual(data["cpuPercent"], 0)
+            self.assertLessEqual(data["cpuPercent"], 100)
+            self.assertGreaterEqual(data["memoryPercent"], 0)
+            self.assertLessEqual(data["memoryPercent"], 100)
+            self.assertIn("temperatures", data)
+            self.assertIn("network", data)
+
+    def test_network_helper_decodes_escaped_status_fields(self) -> None:
+        script = SCRIPTS / "hardware" / "qml-network.py"
+        spec = importlib.util.spec_from_file_location("qml_network_test", script)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        responses = [
+            subprocess.CompletedProcess([], 0, "wlan0:wifi:connected:Home\\: Office\n", ""),
+            subprocess.CompletedProcess([], 0, "192.168.1.10/24\n", ""),
+        ]
+        output = io.StringIO()
+        with (
+            mock.patch.object(module.shutil, "which", return_value="/usr/bin/nmcli"),
+            mock.patch.object(module, "run", side_effect=responses),
+            mock.patch.object(sys, "argv", [str(script), "status"]),
+            contextlib.redirect_stdout(output),
+        ):
+            self.assertEqual(module.main(), 0)
+        data = json.loads(output.getvalue())
+        self.assertEqual(data["interface"], "wlan0")
+        self.assertEqual(data["type"], "Wi-Fi")
+        self.assertEqual(data["connection"], "Home: Office")
+        self.assertEqual(data["ip"], "192.168.1.10/24")
 
     def test_idle_manager_status_and_validation(self) -> None:
         script = SCRIPTS / "session" / "idle-manager.py"

@@ -12,52 +12,68 @@ Item {
     required property Settings settings
     required property HyprlandService hyprlandService
     property string monitorName: ""
-    implicitWidth: workspaces.implicitWidth + theme.spacing
-    implicitHeight: settings.barHeight - theme.spacingSmall
+    implicitWidth: workspacePill.implicitWidth
+    implicitHeight: settings.barHeight - 6
 
-    RowLayout {
-        id: workspaces
+    Rectangle {
+        id: workspacePill
         anchors.fill: parent
-        spacing: root.theme.spacingSmall
+        color: root.theme.surface
+        radius: 8
+        border.width: 1
+        border.color: root.theme.moduleBorder
+        implicitWidth: workspaces.implicitWidth + 8
 
-        Repeater {
-            model: root.hyprlandService.workspaces
+        RowLayout {
+            id: workspaces
+            anchors.fill: parent
+            anchors.leftMargin: 4
+            anchors.rightMargin: 4
+            spacing: 0
 
-            delegate: Rectangle {
-                id: workspaceButton
+            Repeater {
+                model: root.hyprlandService.workspaces
 
-                required property var modelData
-                readonly property bool onThisMonitor: workspaceButton.modelData.monitor && workspaceButton.modelData.monitor.name === root.monitorName
-                readonly property bool occupied: workspaceButton.modelData.toplevels.values.length > 0
+                delegate: Rectangle {
+                    id: workspaceButton
 
-                visible: onThisMonitor
-                implicitWidth: workspaceLabel.implicitWidth + root.theme.spacingLarge * 2
-                Layout.fillHeight: true
-                radius: root.theme.radiusSmall
-                color: workspaceButton.modelData.active ? root.theme.accent : (workspaceMouse.containsMouse ? root.theme.surfaceRaised : root.theme.surface)
+                    required property var modelData
+                    readonly property bool occupied: workspaceButton.modelData.toplevels.values.length > 0
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: root.theme.animationFast
+                    implicitWidth: workspaceLabel.implicitWidth + 16
+                    Layout.fillHeight: true
+                    Layout.topMargin: 2
+                    Layout.bottomMargin: 2
+                    radius: root.theme.radiusSmall
+                    color: workspaceButton.modelData.active
+                            ? root.theme.accent
+                            : (workspaceMouse.containsMouse ? root.theme.surfaceRaised : "transparent")
+
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: root.theme.animationFast
+                        }
                     }
-                }
 
-                Text {
-                    id: workspaceLabel
-                    anchors.centerIn: parent
-                    text: workspaceButton.modelData.name.length > 0 ? workspaceButton.modelData.name : String(workspaceButton.modelData.id)
-                    color: workspaceButton.modelData.active ? root.theme.background : root.theme.text
-                    opacity: workspaceButton.occupied || workspaceButton.modelData.active ? 1 : 0.55
-                    font.family: root.theme.fontFamily
-                    font.pixelSize: root.theme.fontSize
-                    font.bold: workspaceButton.modelData.active
-                }
+                    Text {
+                        id: workspaceLabel
+                        anchors.centerIn: parent
+                        text: workspaceButton.modelData.name.length > 0
+                                ? workspaceButton.modelData.name
+                                : String(workspaceButton.modelData.id)
+                        color: workspaceButton.modelData.active ? root.theme.background : root.theme.textMuted
+                        opacity: workspaceButton.occupied || workspaceButton.modelData.active ? 1 : 0.55
+                        font.family: root.theme.fontFamily
+                        font.pixelSize: root.theme.fontSize
+                        font.bold: workspaceButton.modelData.active
+                    }
 
-                MouseArea {
-                    id: workspaceMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    onClicked: root.hyprlandService.activateWorkspace(workspaceButton.modelData)
+                    MouseArea {
+                        id: workspaceMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: root.hyprlandService.activateWorkspace(workspaceButton.modelData)
+                    }
                 }
             }
         }

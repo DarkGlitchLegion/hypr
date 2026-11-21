@@ -19,8 +19,8 @@ Item {
     readonly property bool calendarOpen: settings.calendarOpen
     property bool alternateFormat: false
 
-    implicitWidth: clockLabel.implicitWidth + theme.spacingLarge * 2
-    implicitHeight: settings.barHeight - theme.spacingSmall
+    implicitWidth: clockLabel.implicitWidth + 20
+    implicitHeight: settings.barHeight - 6
 
     function updateCalendarCells() {
         const firstWeekday = new Date(displayYear, displayMonth, 1).getDay();
@@ -59,17 +59,20 @@ Item {
     Rectangle {
         anchors.fill: parent
         color: clockMouse.containsMouse ? root.theme.surfaceRaised : root.theme.surface
-        radius: root.theme.radius
+        radius: 8
         border.width: 1
-        border.color: root.theme.border
+        border.color: root.theme.moduleBorder
 
         Text {
             id: clockLabel
             anchors.centerIn: parent
-            text: Qt.formatDateTime(root.currentDate, root.alternateFormat ? root.settings.clockFormatAlt : root.settings.clockFormat)
+            text: root.alternateFormat
+                    ? "󰥔 " + Qt.formatDateTime(root.currentDate, root.settings.clockFormatAlt)
+                    : "󰸗 " + Qt.formatDateTime(root.currentDate, root.settings.clockFormat).replace(/ (\d{1,2}) /, " $1  󰥔 ")
             color: root.theme.text
             font.family: root.theme.fontFamily
             font.pixelSize: root.theme.fontSize
+            font.bold: !root.alternateFormat
         }
 
         MouseArea {
