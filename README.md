@@ -9,8 +9,8 @@ Designed around the **Minimal Dark Charcoal palette** (`#0C0D10` background, `#1
 Clone the repository and run the single guided installer:
 
 ```sh
-git clone <repository-url> hypr-rice
-cd hypr-rice
+git clone https://github.com/DarkGlitchLegion/hypr.git
+cd hypr
 ./setup.sh
 ```
 
