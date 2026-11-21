@@ -160,9 +160,9 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 * **Validation**: Run `scripts/rice validate` for config references and syntax checks, or `scripts/rice doctor --full` for broader diagnostics.
 
 ### Quickshell/QML shell
-Quickshell is the primary Hyprland bar and launches automatically. Its modular bar includes event-driven workspaces and active-window title, system tray, clock/calendar, network/audio/battery status, notification history, Control Center, and the existing power menu. <kbd>Super</kbd> + <kbd>Space</kbd> opens the Quickshell application launcher, with fuzzy app search, favorites, recent queries, safe browser search (`? words`), arithmetic (`= 2 * (3 + 4)`), and shortcuts to existing system tools. The launcher also opens a dashboard for CPU, memory, storage, and battery metrics and a settings panel for bar placement, visible modules, accent color, and animation speed. Settings save automatically in Quickshell’s state directory. Waybar configuration and scripts remain installed as a recovery fallback.
+Quickshell is the primary Hyprland shell. The native QML UI includes the bar, app launcher, dashboard, settings, notification history, OSD, and a Control Center with network, Bluetooth, audio, displays, idle, screenshots, session presets, clipboard, wallpaper, power, maintenance, and HyprSec pages. <kbd>Super</kbd> + <kbd>C</kbd> or <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>Space</kbd> opens the Control Center; <kbd>Super</kbd> + <kbd>K</kbd> opens its searchable keybindings list. Existing scripts continue to perform system operations behind these QML views. Waybar remains an explicit recovery fallback.
 
-Device controls, notification history, wallpaper selection, clipboard history, and session actions continue to use their established utilities, called from the Quickshell UI. See [quickshell/README.md](./quickshell/README.md) for module structure, setup, and current migration scope.
+<kbd>Super</kbd> + <kbd>Space</kbd> opens the Quickshell application launcher with fuzzy app search, favorites, recent queries, safe browser search (`? words`), arithmetic (`= 2 * (3 + 4)`), and QML Control Center shortcuts. Its dashboard reports CPU, memory, storage, and battery metrics; shell preferences save automatically in Quickshell state. See [quickshell/README.md](./quickshell/README.md) for the QML modules, startup, recovery, and development workflow.
 
 Volume, microphone, and brightness hotkeys show a short Quickshell OSD while its IPC endpoint is available, with Dunst notifications as fallback.
 
@@ -207,13 +207,11 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
 
   ---
 
-### Quick Settings
-* **Open**: Click the combined status cluster on the right side of the Quickshell bar. It displays Wi-Fi, speaker, microphone, battery, and optional DND/security indicators.
-* **Control panels**: In the popup, click the Wi-Fi, Bluetooth, speaker, microphone, or battery row's icon/text to open its corresponding manager. Use the row's switch to toggle Wi-Fi, Bluetooth, speaker mute, microphone mute, or DND.
-* **System tiles**: CPU, RAM, CPU temperature, and GPU temperature are shown in the System section; clicking CPU or RAM opens `btop`.
-* **Network traffic**: The popup shows live download/upload speeds and cumulative totals for the active default-route interface. Totals persist across restarts in `~/.local/state/hypr-rice/network-traffic.json`; the session-start monitor tracks traffic while the popup is closed.
-* **Live status**: The popup refreshes device and control state while open. The Quickshell status cluster refreshes every five seconds after changes made through Quick Settings or the volume/microphone hotkeys.
-* **Scripts**: `~/.config/hypr/scripts/desktop/quick-settings.py` and `desktop/quick-settings-status.py`.
+### QML Quick Controls and Control Center
+* **Open Quick Controls**: Click the status cluster on the Quickshell bar. Use the Control Center sidebar for network, Bluetooth, audio, display, idle, wallpaper, clipboard, keybinding, screenshot, session, and maintenance views.
+* **Device actions**: Wi-Fi networks and known Bluetooth devices are listed in QML. Audio outputs and inputs come from the existing PipeWire backend; select a device and adjust active levels in the Audio page.
+* **Other pages**: Display presets preserve the rollback-aware display manager; idle presets preserve the validated timeout manager; wallpaper choices call the existing setter; clipboard history calls the existing clipboard daemon and clear operation.
+* **Scripts**: `scripts/desktop/open-hub.sh`, `scripts/hardware/qml-network.py`, `scripts/hardware/qml-bluetooth.py`, and the existing hardware/session backends.
 
 ---
 
@@ -255,7 +253,7 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
 ---
 
 ### 3. Power Profiles & Battery Center
-* **Bar Trigger**: The Quickshell status cluster shows battery level and opens Control Center; use the existing power-profile menu for profile selection.
+* **Bar Trigger**: Open Quick Controls from the Quickshell status cluster, then use the Audio & Display page to select a power profile.
 * **Script**: `~/.config/hypr/scripts/session/power-profile-menu.sh`
 * **What it does**:
   * Interfaces with `powerprofilesctl` to switch AMD P-State CPU governor profiles:
@@ -267,7 +265,7 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
     * Battery health percentage based on `energy_full` vs `energy_full_design`.
     * Battery cycle count.
   * Includes a **Battery Diagnostic Report** button that triggers a Dunst notification with full hardware and power metrics.
-  * Power profile selection remains in the existing power-profile menu; the bar does not duplicate that backend.
+  * Power profile selection is available on the QML Audio & Display page.
 
 ---
 
@@ -278,7 +276,7 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
 * **What it does**:
   * Scans nearby Wi-Fi networks in the background (`nmcli --rescan no`) for fast response times.
   * Displays signal strength icons, security state (WPA/WPA2/open), and active connection indicators.
-  * Selecting an unconfigured network prompts for password entry directly in Rofi.
+  * The QML Network page includes password entry for secured networks and a rescan control.
   * Includes options to toggle Wi-Fi radio on/off and force an access point rescan.
 
 ---
@@ -315,7 +313,7 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
 * **What it does**:
   * Runs a lightweight `wl-paste` listener.
   * Uses `cliphist` when available; otherwise it uses the built-in cache and works without extra packages.
-  * Pressing <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>V</kbd> opens a fuzzy-searchable history list in Rofi.
+  * Pressing <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>V</kbd> opens the searchable QML clipboard history.
   * Selecting an entry copies it back to the active clipboard buffer ready for pasting.
 
 ---
@@ -403,7 +401,7 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
 | :--- | :--- | :--- |
 | <kbd>Super</kbd> + <kbd>Return</kbd> | Open Terminal | Launches Kitty with charcoal theme |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>Return</kbd> | Web Browser | Launches Firefox (Wayland native) |
-| <kbd>Super</kbd> + <kbd>Space</kbd> | App Launcher | Opens Rofi application launcher |
+| <kbd>Super</kbd> + <kbd>Space</kbd> | App Launcher | Opens Quickshell application launcher |
 | <kbd>Super</kbd> + <kbd>C</kbd> | Rice Control Center | Opens the unified desktop super-hub |
 | <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>Space</kbd> | Rice Control Center | Alternative shortcut for Control Center |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd> | File Manager | Opens Thunar file manager |
@@ -412,8 +410,8 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> | System Information | Displays Fastfetch in a Kitty terminal |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd> | Display Manager | Configure monitor layouts, modes, scaling, and orientation |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> | CMatrix | Matrix digital rain terminal screensaver |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Wi-Fi Manager | Opens Rofi Wi-Fi manager |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> | Bluetooth Manager | Opens Rofi Bluetooth manager |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Wi-Fi Manager | Opens QML Network page |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> | Bluetooth Manager | Opens QML Network page |
 
 ### Window Management
 | Shortcut | Action | Description |
@@ -456,15 +454,15 @@ Workspace shortcuts now cover 1–10 to match the Display Manager; use <kbd>Supe
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> | Reload Desktop | Reloads the selected bar (Quickshell by default) and Hyprland configuration |
 | <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>A</kbd> | Audio Switcher | Opens PipeWire audio sink and source switcher |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>D</kbd> | Toggle DND | Toggles notification Do Not Disturb mode |
-| <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>N</kbd> | Notification History | Opens Rofi notification history viewer |
+| <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>N</kbd> | Notification History | Opens QML notification history |
 | <kbd>Super</kbd> + <kbd>N</kbd> | Pop Notification | Displays the most recent notification |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd> | Dismiss Notifications| Closes all active notification popups |
 
 ### Productivity, Capture & Cheatsheets
 | Shortcut | Action | Description |
 | :--- | :--- | :--- |
-| <kbd>Super</kbd> + <kbd>K</kbd> | Shortcuts Menu | Opens searchable keybindings modal in Rofi |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>K</kbd> | Cheatsheet Window | Launches floating Kitty window with all shortcuts |
+| <kbd>Super</kbd> + <kbd>K</kbd> | Shortcuts Menu | Opens searchable QML keybindings page |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>K</kbd> | Cheatsheet Window | Opens the QML keybindings page |
 | <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>W</kbd> | Wallpaper Selector | Visual thumbnail wallpaper browser |
 | <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>Space</kbd> | Wallpaper Selector | Alternative shortcut for wallpaper selector |
 | <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>V</kbd> | Clipboard History | Opens clipboard history manager |

@@ -32,6 +32,7 @@ ShellRoot {
                 shellSettings.dashboardOpen = false;
                 shellSettings.notificationOpen = false;
                 shellSettings.osdOpen = false;
+                shellSettings.controlCenterOpen = false;
             }
         }
 
@@ -57,6 +58,17 @@ ShellRoot {
 
         function toggleSettings(): void {
             shellSettings.settingsOpen = !shellSettings.settingsOpen;
+        }
+
+        function openHub(page: string): void {
+            shellSettings.controlCenterPage = page;
+            shellSettings.controlCenterOpen = true;
+        }
+
+        function toggleHub(): void {
+            shellSettings.controlCenterOpen = !shellSettings.controlCenterOpen;
+            if (shellSettings.controlCenterOpen)
+                shellSettings.controlCenterPage = "home";
         }
 
         function showOsd(title: string, value: int, detail: string): void {

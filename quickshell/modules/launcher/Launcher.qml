@@ -98,18 +98,15 @@ PopupWindow {
     }
 
     function runQuickAction(action) {
-        const scripts = {
-            control: "/desktop/quick-settings.py",
-            clipboard: "/clipboard/clipboard-menu.sh",
-            wallpaper: "/wallpaper/wallpaper-selector.sh",
-            power: "/session/power-menu.sh"
-        };
+        const pages = { control: "controls", clipboard: "clipboard", wallpaper: "wallpaper", power: "power", keys: "keys" };
         if (action === "settings")
             settings.settingsOpen = true;
         else if (action === "dashboard")
             settings.dashboardOpen = true;
-        else if (scripts[action])
-            Quickshell.execDetached([settings.scriptsRoot + scripts[action]]);
+        else if (pages[action]) {
+            settings.controlCenterPage = pages[action];
+            settings.controlCenterOpen = true;
+        }
         else
             return false;
         recordSearch();
@@ -269,7 +266,7 @@ PopupWindow {
             Text {
                 Layout.fillWidth: true
                 visible: root.query.trim().startsWith("!")
-                text: visible ? "Actions: !control  !clipboard  !wallpaper  !power  !dashboard  !settings" : ""
+                text: visible ? "Actions: !control  !clipboard  !wallpaper  !power  !keys  !dashboard  !settings" : ""
                 color: root.theme.accent
                 font.family: root.theme.fontFamily
                 font.pixelSize: root.theme.fontSizeSmall
@@ -280,10 +277,10 @@ PopupWindow {
                 spacing: root.theme.spacingSmall
                 Repeater {
                     model: [
-                        { label: "Wallpaper", script: "/wallpaper/wallpaper-selector.sh" },
-                        { label: "Clipboard", script: "/clipboard/clipboard-menu.sh" },
-                        { label: "Controls", script: "/desktop/quick-settings.py" },
-                        { label: "Power", script: "/session/power-menu.sh" },
+                        { label: "Wallpaper", script: "wallpaper" },
+                        { label: "Clipboard", script: "clipboard" },
+                        { label: "Controls", script: "controls" },
+                        { label: "Power", script: "power" },
                         { label: "Dashboard", script: "dashboard" },
                         { label: "Settings", script: "" }
                     ]
@@ -306,10 +303,11 @@ PopupWindow {
                             anchors.fill: parent
                             hoverEnabled: true
                             onClicked: {
-                                if (actionCard.modelData.script === "dashboard") {
+                                if (["wallpaper", "clipboard", "controls", "power", "keys"].includes(actionCard.modelData.script)) {
+                                    root.settings.controlCenterPage = actionCard.modelData.script;
+                                    root.settings.controlCenterOpen = true;
+                                } else if (actionCard.modelData.script === "dashboard") {
                                     root.settings.dashboardOpen = true;
-                                } else if (actionCard.modelData.script.length > 0) {
-                                    Quickshell.execDetached([root.settings.scriptsRoot + actionCard.modelData.script]);
                                 } else {
                                     root.settings.settingsOpen = true;
                                 }

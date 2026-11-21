@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 
-CONFIG = Path.home() / ".config" / "hypr"
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "hypr"
 ROFI_THEME = CONFIG / "rofi" / "command-center.rasi"
 STATE_FILE = CONFIG / "state" / "display-profiles.json"
 DISPLAY_PREFERENCES = CONFIG / "state" / "display-preferences.json"
@@ -1163,12 +1163,16 @@ def preset_layout(preset: str, external_name: str | None = None, side: str = "ri
     return None
 
 
-def apply_preset(preset: str, output: str | None = None) -> None:
+def apply_preset(
+    preset: str,
+    output: str | None = None,
+    workspace: str | None = None,
+    side: str = "right",
+) -> None:
     if preset == "presentation":
         start_presentation_mode()
         return
-    side = "right"
-    selected_workspace: str | None = None
+    selected_workspace: str | None = workspace
     selected_output = output
     if preset == "extend":
         records = monitors()
@@ -1181,24 +1185,11 @@ def apply_preset(preset: str, output: str | None = None) -> None:
         if not external:
             return
         selected_output = external["name"]
-        selected_workspace = choose_external_workspace(
-            records,
-            load_external_workspace_preference(),
-        )
+        selected_workspace = selected_workspace or choose_external_workspace(records, load_external_workspace_preference())
         if not selected_workspace:
             return
-        position = rofi(
-            ["Right of laptop", "Left of laptop", "Above laptop", "Below laptop"],
-            "󰍹  Position external display",
-        )
-        if not position:
-            return
-        side = {
-            "Right of laptop": "right",
-            "Left of laptop": "left",
-            "Above laptop": "above",
-            "Below laptop": "below",
-        }[position]
+        if side not in {"right", "left", "above", "below"}:
+            raise DisplayError("Position must be right, left, above, or below.")
     result = preset_layout(preset, selected_output, side)
     if result:
         applied = transaction(result[0], result[1])
@@ -2015,10 +2006,29 @@ def main() -> int:
     try:
         if len(sys.argv) > 1 and sys.argv[1] == "--watch":
             watch_displays()
+        elif len(sys.argv) > 1 and sys.argv[1] == "--json":
+            print(json.dumps({
+                "monitors": monitors(),
+                "externalWorkspace": load_external_workspace_preference() or "2",
+            }))
         elif len(sys.argv) > 1 and sys.argv[1] == "--preset" and len(sys.argv) >= 3:
-            apply_preset(sys.argv[2], sys.argv[3] if len(sys.argv) >= 4 else None)
+            apply_preset(
+                sys.argv[2],
+                sys.argv[3] if len(sys.argv) >= 4 else None,
+                sys.argv[4] if len(sys.argv) >= 5 else None,
+                sys.argv[5] if len(sys.argv) >= 6 else "right",
+            )
+        elif len(sys.argv) == 2 and sys.argv[1] == "--save":
+            save_current_layout()
+        elif len(sys.argv) == 2 and sys.argv[1] == "--restore":
+            profile = load_profile(monitors())
+            if profile:
+                transaction("Saved display layout", profile["layout"])
+            else:
+                notify("Display Manager", "No compatible saved display layout is available.", "critical")
         else:
-            display_manager()
+            config = CONFIG / "quickshell" / "shell.qml"
+            subprocess.run(["qs", "ipc", "--path", str(config), "call", "hyprshell", "openHub", "display"], check=False)
     except DisplayError as exc:
         notify("Display Manager error", str(exc), "critical")
         return 1

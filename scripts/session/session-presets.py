@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import runpy
+import subprocess
 import sys
 import tempfile
 import time
@@ -13,8 +14,8 @@ from pathlib import Path
 from typing import Any
 
 
-CONFIG = Path.home() / ".config" / "hypr"
-DISPLAY_MANAGER = CONFIG / "scripts" / "display-manager.py"
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "hypr"
+DISPLAY_MANAGER = CONFIG / "scripts" / "hardware" / "display-manager.py"
 PRESETS_FILE = CONFIG / "state" / "session-presets.json"
 IDLE_MANAGER = CONFIG / "scripts" / "idle-manager.py"
 RUNTIME_DIR = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
@@ -167,7 +168,7 @@ def prompt_preset_name() -> str | None:
     return name
 
 
-def save_current_preset(name: str | None = None) -> None:
+def save_current_preset(name: str | None = None, *, replace: bool = False) -> None:
     name = name or prompt_preset_name()
     if not name:
         return
@@ -175,11 +176,7 @@ def save_current_preset(name: str | None = None) -> None:
         fail("Preset names must be 1–40 characters and cannot contain slashes.")
     presets = load_presets()
     if name in presets:
-        choice = display_function("rofi")(
-            [f"Replace {name}", "Cancel"],
-            "Preset already exists",
-        )
-        if not choice or choice == "Cancel":
+        if not replace:
             return
     preset = capture_session()
     preset["saved_at"] = int(time.time())
@@ -380,13 +377,14 @@ def restore_previous() -> None:
     )
 
 
-def delete_preset(name: str) -> None:
+def delete_preset(name: str, *, confirm: bool = True) -> None:
     presets = load_presets()
     if name not in presets:
         fail(f"Session preset '{name}' does not exist.")
-    choice = display_function("rofi")([f"Delete {name}", "Cancel"], "Delete session preset")
-    if not choice or choice == "Cancel":
-        return
+    if confirm:
+        choice = display_function("rofi")([f"Delete {name}", "Cancel"], "Delete session preset")
+        if not choice or choice == "Cancel":
+            return
     del presets[name]
     display_function("snapshot_before_config_change")("session-presets", PRESETS_FILE)
     atomic_write(PRESETS_FILE, {"version": 1, "presets": presets})
@@ -427,13 +425,26 @@ def menu() -> None:
 def main(argv: list[str]) -> int:
     try:
         if not argv:
-            menu()
+            subprocess.run([
+                "qs", "ipc", "--path", str(CONFIG / "quickshell" / "shell.qml"),
+                "call", "hyprshell", "openHub", "presets",
+            ], check=False)
+        elif argv == ["--json"]:
+            presets = load_presets()
+            print(json.dumps([
+                {"name": name, "summary": preset_summary(preset)}
+                for name, preset in sorted(presets.items())
+            ], ensure_ascii=False))
         elif argv[0] == "--save" and len(argv) == 2:
             save_current_preset(argv[1])
+        elif argv[0] == "--save" and len(argv) == 3 and argv[2] == "--replace":
+            save_current_preset(argv[1], replace=True)
         elif argv[0] == "--apply" and len(argv) == 2:
             apply_preset(argv[1])
         elif argv == ["--restore"]:
             restore_previous()
+        elif argv[0] == "--delete" and len(argv) == 3 and argv[2] == "--yes":
+            delete_preset(argv[1], confirm=False)
         else:
             fail("Usage: session-presets.py [--save NAME|--apply NAME|--restore]")
     except display_function("DisplayError") as exc:

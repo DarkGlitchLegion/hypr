@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 
-CONFIG = Path.home() / ".config" / "hypr"
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "hypr"
 SCRIPTS = CONFIG / "scripts"
 SETTINGS_FILE = CONFIG / "state" / "idle-settings.json"
 LOCK_CONFIG = CONFIG / "hyprlock" / "hyprlock.conf"
@@ -1005,7 +1005,10 @@ def main(argv: list[str]) -> int:
         if argv == ["--validate"]:
             return validate_command()
         if argv in (["--menu"], ["--quick"]):
-            show_menu()
+            subprocess.run([
+                "qs", "ipc", "--path", str(CONFIG / "quickshell" / "shell.qml"),
+                "call", "hyprshell", "openHub", "idle",
+            ], check=False)
             return 0
         if argv == ["--dpms-off"]:
             return dpms_off()
@@ -1021,9 +1024,12 @@ def main(argv: list[str]) -> int:
             apply_preset(argv[1])
             return 0
         if len(argv) == 2 and argv[0] == "--master":
-            if argv[1] not in ("on", "off"):
-                raise IdleError("Use --master on or --master off.")
-            set_master_enabled(argv[1] == "on")
+            if argv[1] == "toggle":
+                set_master_enabled(not load_settings()["enabled"])
+            elif argv[1] in ("on", "off"):
+                set_master_enabled(argv[1] == "on")
+            else:
+                raise IdleError("Use --master on, off, or toggle.")
             return 0
         if len(argv) == 3 and argv[0] == "--action":
             name, operation = argv[1:]

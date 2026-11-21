@@ -11,6 +11,9 @@ QtObject {
     property bool dashboardOpen: false
     property bool notificationOpen: false
     property bool osdOpen: false
+    property bool controlCenterOpen: false
+    property string controlCenterPage: "home"
+    property bool wallpaperFavoritesOnly: false
     property int osdSerial: 0
     property int osdValue: 0
     property string osdTitle: ""
@@ -32,7 +35,6 @@ QtObject {
     property alias showStatusIndicators: preferences.showStatusIndicators
     property alias showClock: preferences.showClock
     property alias showPowerButton: preferences.showPowerButton
-    property alias showLauncherButton: preferences.showLauncherButton
     property alias clockFormat: preferences.clockFormat
     property alias clockFormatAlt: preferences.clockFormatAlt
     property alias accentColor: preferences.accentColor
@@ -40,6 +42,8 @@ QtObject {
     property alias favoriteAppIds: preferences.favoriteAppIds
     property alias searchHistory: preferences.searchHistory
     property alias browserCommand: preferences.browserCommand
+    property alias wallpaperFavorites: preferences.wallpaperFavorites
+    property alias wallpaperHistory: preferences.wallpaperHistory
 
     property var settingsFile: FileView {
         path: Quickshell.statePath("settings.json")
@@ -63,7 +67,6 @@ QtObject {
             property bool showStatusIndicators: true
             property bool showClock: true
             property bool showPowerButton: true
-            property bool showLauncherButton: true
             property string clockFormat: "ddd MMM d  HH:mm"
             property string clockFormatAlt: "HH:mm:ss"
             property string accentColor: "#B4B9D0"
@@ -71,6 +74,8 @@ QtObject {
             property list<string> favoriteAppIds: []
             property list<string> searchHistory: []
             property string browserCommand: "xdg-open"
+            property list<string> wallpaperFavorites: []
+            property list<string> wallpaperHistory: []
         }
     }
 }

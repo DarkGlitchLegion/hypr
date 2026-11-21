@@ -154,14 +154,6 @@ hl.layer_rule({
     ignore_alpha = 0.1,
 })
 
--- 5. Quick Settings popup blur (gtk-layer-shell, namespace: hypr-quick-settings)
-hl.layer_rule({
-    name = "blur-quick-settings",
-    match = { namespace = "hypr-quick-settings" },
-    blur = true,
-    ignore_alpha = 0.1,
-})
-
 hl.window_rule({
     name = "opacity-firefox",
     match = { class = "firefox" },

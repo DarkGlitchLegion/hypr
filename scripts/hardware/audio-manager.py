@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Rofi audio selector and optional PipeWire sink hotplug manager."""
+"""PipeWire device backend and optional sink hotplug manager."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 
-CONFIG = Path.home() / ".config" / "hypr"
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "hypr"
 PREFERENCES = CONFIG / "audio-preferences.json"
 ROFI_THEME = CONFIG / "rofi" / "audio.rasi"
 VOLUME_SCRIPT = CONFIG / "scripts" / "volume.sh"
@@ -569,13 +569,55 @@ def main(argv: list[str]) -> int:
         if argv == ["--watch"]:
             watch()
             return 0
+        if argv == ["--json"]:
+            sinks = get_devices("sinks")
+            sources = get_devices("sources")
+            print(json.dumps([
+                {"type": kind, "name": device["name"], "description": device["description"],
+                 "active": device["name"] == get_default("sink" if kind == "output" else "source"),
+                 "volume": percent(device)}
+                for kind, devices in (("output", sinks), ("input", sources))
+                for device in devices
+            ]))
+            return 0
+        if argv == ["--toggle-auto"]:
+            toggle_auto_switch()
+            return 0
+        if len(argv) == 3 and argv[0] == "--set" and argv[1] in {"output", "input"}:
+            kind, name = argv[1:]
+            devices = get_devices("sinks" if kind == "output" else "sources")
+            device = next((item for item in devices if item["name"] == name), None)
+            if device is None:
+                raise AudioError(f"The requested audio {kind} is no longer available.")
+            if kind == "output":
+                set_sink(device)
+                preferences = load_preferences()
+                preferences["preferred_sink"] = device["name"]
+                preferences["preferred_sink_id"] = device_identity(device)
+                save_preferences(preferences)
+                notify("Audio output switched", f"Default output: {device['description']}")
+            else:
+                set_source(device)
+                preferences = load_preferences()
+                preferences["preferred_source"] = device["name"]
+                save_preferences(preferences)
+                notify("Audio input switched", f"Default input: {device['description']}")
+            return 0
         if argv and argv[0] in {"toggle-mute", "toggle-mic"}:
             run([str(VOLUME_SCRIPT), "mute" if argv[0] == "toggle-mute" else "mic"])
             return 0
         if len(argv) > 1 or (argv and argv[0] not in {"all", "outputs", "inputs"}):
-            raise AudioError("Usage: audio-manager.py [all|outputs|inputs|--watch]")
-        mode = argv[0] if argv else "all"
-        open_menu(mode)
+            raise AudioError("Usage: audio-manager.py [all|outputs|inputs|--watch|--json|--set output|input DEVICE]")
+        if argv and argv[0] in {"all", "outputs", "inputs"}:
+            subprocess.run([
+                "qs", "ipc", "--path", str(CONFIG / "quickshell" / "shell.qml"),
+                "call", "hyprshell", "openHub", "audio",
+            ], check=False)
+            return 0
+        subprocess.run([
+            "qs", "ipc", "--path", str(CONFIG / "quickshell" / "shell.qml"),
+            "call", "hyprshell", "openHub", "audio",
+        ], check=False)
         return 0
     except AudioError as exc:
         print(f"Audio Manager: {exc}", file=sys.stderr)

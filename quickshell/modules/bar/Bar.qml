@@ -1,6 +1,5 @@
 import Quickshell
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import "../../config"
 import "../../services"
@@ -9,6 +8,7 @@ import "../settings"
 import "../dashboard"
 import "../osd"
 import "../notifications"
+import "../controlcenter"
 
 PanelWindow {
     id: panel
@@ -123,7 +123,10 @@ PanelWindow {
                         id: powerMouse
                         anchors.fill: parent
                         hoverEnabled: true
-                        onClicked: Quickshell.execDetached([panel.settings.scriptsRoot + "/session/power-menu.sh"])
+                        onClicked: {
+                            panel.settings.controlCenterPage = "power";
+                            panel.settings.controlCenterOpen = true;
+                        }
                     }
                 }
             }
@@ -131,6 +134,13 @@ PanelWindow {
     }
 
     Launcher {
+        theme: panel.theme
+        settings: panel.settings
+        hostWindow: panel
+        targetScreen: panel.screen
+    }
+
+    ControlCenter {
         theme: panel.theme
         settings: panel.settings
         hostWindow: panel
