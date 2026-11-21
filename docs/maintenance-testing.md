@@ -7,8 +7,8 @@ Use the CLI from a terminal:
 ~/.config/hypr/scripts/rice validate
 ~/.config/hypr/scripts/rice dependencies --full
 ~/.config/hypr/scripts/rice test
-~/.config/hypr/scripts/idle-manager.py --validate
-~/.config/hypr/scripts/idle-manager.py --status
+~/.config/hypr/scripts/session/idle-manager.py --validate
+~/.config/hypr/scripts/session/idle-manager.py --status
 ```
 
 The automated suite only reports tests it actually ran. Hardware items below remain manual and are not included as passed tests.
