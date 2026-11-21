@@ -10,7 +10,7 @@ CATALOG_HELPER="${SCRIPT_DIR}/hyprsec_catalog.py"
 ROFI_THEME="${CONFIG_ROOT}/rofi/command-center.rasi"
 
 CONTAINER_NAME="hyprsec-kali"
-CONTAINER_IMAGE="docker.io/kalilinux/kali-rolling:latest"
+CONTAINER_IMAGE="docker.io/kalilinux/kali-rolling@sha256:12e581978942a815b35ab2406725c274a4f28825650595d2ec2b7fb7668b039d"
 WORKSPACE_ROOT="${HOME}/HyprSec/workspace"
 TERMINAL="kitty"
 LAUNCHER="rofi"
@@ -29,6 +29,13 @@ if [[ -f "${USER_CONFIG}" ]]; then
     # shellcheck source=/dev/null
     source "${USER_CONFIG}"
 fi
+
+validate_container_image() {
+    [[ "${CONTAINER_IMAGE}" =~ ^[^[:space:]]+@sha256:[0-9a-fA-F]{64}$ ]] || {
+        fail "CONTAINER_IMAGE must be immutable and use @sha256:<64-character-digest>; tag-only or latest images are rejected."
+        exit 2
+    }
+}
 
 STATE_DIR="${XDG_STATE_HOME:-${HOME}/.local/state}/hyprsec"
 LOG_FILE="${STATE_DIR}/manager.log"
@@ -53,6 +60,8 @@ notify() {
         notify-send "$1" "$2" >/dev/null 2>&1 || true
     fi
 }
+
+validate_container_image
 
 require_command() {
     command -v "$1" >/dev/null 2>&1 || {

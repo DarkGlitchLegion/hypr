@@ -119,6 +119,22 @@ class CategorizedScriptTests(unittest.TestCase):
                 with self.subTest(path=path.relative_to(ROOT), old=old):
                     self.assertNotIn(old, content)
 
+    def test_bluetooth_agent_requires_interactive_approval(self) -> None:
+        source = (SCRIPTS / "hardware" / "bluetooth-agent.py").read_text(encoding="utf-8")
+        self.assertNotIn('return "0000"', source)
+        self.assertNotIn("return dbus.UInt32(0)", source)
+        self.assertNotIn("Auto-confirmed pairing", source)
+        self.assertIn("ask_user(", source)
+        self.assertIn("PairableTimeout\", dbus.UInt32(PAIRABLE_TIMEOUT_SECONDS)", source)
+
+    def test_hyprsec_rejects_mutable_images(self) -> None:
+        source = (SCRIPTS / "security" / "hyprsec-box.sh").read_text(encoding="utf-8")
+        example = (ROOT / "hyprsec" / "config.example.sh").read_text(encoding="utf-8")
+        self.assertNotIn("kali-rolling:latest", source)
+        self.assertNotIn("kali-rolling:latest", example)
+        self.assertIn("@sha256:", source)
+        self.assertIn("tag-only or latest images are rejected", source)
+
 
 if __name__ == "__main__":
     unittest.main()

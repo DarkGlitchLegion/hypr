@@ -98,11 +98,21 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(f"Dry run: would restore backup: {backup_directory}")
             return 0
-        if not options.dry_run and not options.yes and not confirm("Restore this configuration backup?", False):
-            print("Cancelled.")
-            return 0
         deployer = ConfigDeployer(repository, home, backup)
         paths = [(name, destination) for name, source, destination in deployer.components(profile)]
+        restore_directory = backup_directory
+        try:
+            preview_items = backup.preview_restore(restore_directory)
+        except Exception as exc:
+            print(f"Error: restore rejected: {exc}", file=sys.stderr)
+            log_install(home, [f"restore rejected: {exc}"])
+            return 1
+        print("Restore preview:")
+        for item in preview_items:
+            print(f"  - {item['name']}: {item['destination']}")
+        if not options.yes and not confirm("Apply only the listed restore destinations?", False):
+            print("Cancelled.")
+            return 0
         if paths:
             safety_directory, _ = backup.backup_paths(paths, "pre-restore")
             print(f"Current configuration backed up before restore: {safety_directory}")
