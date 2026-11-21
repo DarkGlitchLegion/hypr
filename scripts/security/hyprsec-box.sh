@@ -754,7 +754,9 @@ EOF
 main() {
     validate_config || return
     case "${1:-menu}" in
-        menu) open_menu ;;
+        menu)
+            qs ipc --path "${XDG_CONFIG_HOME:-${HOME}/.config}/hypr/quickshell/shell.qml" call hyprshell openHub security
+            ;;
         init) ensure_workspace ;;
         status) status ;;
         waybar-status) waybar_status ;;

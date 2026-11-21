@@ -1,6 +1,2 @@
 #!/usr/bin/env bash
-# =====================================================================
-# Hyprland Command Center (Compatibility Bridge)
-# Forwarding directly to the enhanced Control Center
-# =====================================================================
-exec "${HOME}/.config/hypr/scripts/desktop/control-center.sh" "$@"
+exec "${XDG_CONFIG_HOME:-${HOME}/.config}/hypr/scripts/desktop/open-hub.sh" home

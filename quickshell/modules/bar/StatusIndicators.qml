@@ -1,6 +1,5 @@
 pragma ComponentBehavior: Bound
 
-import Quickshell
 import Quickshell.Io
 import QtQuick
 import QtQuick.Controls
@@ -87,7 +86,7 @@ Item {
                 id: statusMouse
                 anchors.fill: parent
                 hoverEnabled: true
-                onClicked: Quickshell.execDetached(["python3", root.settings.scriptsRoot + "/desktop/quick-settings.py"])
+                onClicked: root.settings.toggleQuickControls()
                 ToolTip.visible: containsMouse
                 ToolTip.text: root.status.tooltip || "Control Center"
             }
@@ -116,7 +115,7 @@ Item {
                 id: notificationMouse
                 anchors.fill: parent
                 hoverEnabled: true
-                onClicked: root.settings.notificationOpen = true
+                onClicked: root.settings.openOverlay("notifications")
                 ToolTip.visible: containsMouse
                 ToolTip.text: "Notifications: " + Number(root.status.notifications || 0) + " displayed"
             }

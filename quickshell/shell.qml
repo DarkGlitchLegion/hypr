@@ -27,10 +27,7 @@ ShellRoot {
         function setEnabled(enabled: bool): void {
             shellSettings.shellEnabled = enabled;
             if (!enabled) {
-                shellSettings.launcherOpen = false;
-                shellSettings.settingsOpen = false;
-                shellSettings.dashboardOpen = false;
-                shellSettings.notificationOpen = false;
+                shellSettings.closeOverlays();
                 shellSettings.osdOpen = false;
             }
         }
@@ -40,23 +37,45 @@ ShellRoot {
         }
 
         function toggleLauncher(): void {
-            shellSettings.launcherOpen = !shellSettings.launcherOpen;
+            shellSettings.toggleOverlay("launcher");
         }
 
         function openLauncher(): void {
-            shellSettings.launcherOpen = true;
+            shellSettings.openOverlay("launcher");
         }
 
         function toggleDashboard(): void {
-            shellSettings.dashboardOpen = !shellSettings.dashboardOpen;
+            shellSettings.toggleOverlay("dashboard");
         }
 
         function toggleNotifications(): void {
-            shellSettings.notificationOpen = !shellSettings.notificationOpen;
+            shellSettings.toggleOverlay("notifications");
         }
 
         function toggleSettings(): void {
-            shellSettings.settingsOpen = !shellSettings.settingsOpen;
+            shellSettings.toggleOverlay("settings");
+        }
+
+        function openHub(page: string): void {
+            shellSettings.controlCenterPage = page;
+            shellSettings.openOverlay("controlCenter");
+        }
+
+        function toggleHub(): void {
+            shellSettings.toggleOverlay("controlCenter");
+            if (shellSettings.controlCenterOpen)
+                shellSettings.controlCenterPage = "home";
+        }
+
+        function toggleQuickControls(): void {
+            shellSettings.toggleQuickControls();
+        }
+
+        function closeFocusedOrOverlay(): void {
+            if (shellSettings.activeOverlay.length > 0)
+                shellSettings.closeOverlays();
+            else
+                Quickshell.execDetached(["hyprctl", "dispatch", "killactive"]);
         }
 
         function showOsd(title: string, value: int, detail: string): void {

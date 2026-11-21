@@ -1,110 +1,77 @@
-# Quickshell/QML desktop shell
+# Quickshell and QML desktop shell
 
-Quickshell is the primary bar for this Hyprland rice. The root `shell.qml`
-creates one panel per connected display. Modules use Quickshell's Hyprland,
-system-tray, process, and IPC APIs; the existing scripts remain the source of
-network, audio, battery, notification, Control Center, and power-menu behavior.
+Quickshell is the primary graphical shell for this Hyprland setup. The existing
+Waybar configuration remains available as a recovery option. The QML shell
+owns the bar, launcher, dashboard, settings, notification history, OSD, and
+Control Center. System operations stay in the existing scripts and are called
+with argument arrays from QML.
 
-## Requirements and startup
+## Start and recover
 
-- Arch Linux package `quickshell` (provides `qs`); installed Qt 6 runtime
-- Hyprland 0.57+ with the native Lua configuration used by this rice
-- Existing scripts and Dunst/NetworkManager/PipeWire services as available
-
-The rice installer deploys `quickshell/` to
-`~/.config/hypr/quickshell/` and includes Quickshell in the minimal package
-profile. Hyprland starts the selected shell through
-`scripts/desktop/start-bar.sh`; Quickshell is the default unless the persistent
-bar-mode state selects Waybar. The launcher uses an absolute path derived from
-the deployed config directory and `qs --no-duplicate`.
-
-The live bar reuses `quick-settings-status.py` for network, audio, microphone,
-battery, DND, and security status. It refreshes every five seconds, displays
-the active Dunst notification count, opens the existing notification-history
-viewer, and opens the existing Control Center from the status cluster. Workspace
-switching/occupancy and active-window data come from Quickshell's Hyprland
-integration; the tray is event-driven.
-
-`Super+Space` and the bar launcher button open the Quickshell application
-launcher. It searches installed desktop entries with subsequence fuzzy matching,
-supports keyboard selection, saves favorites and recent queries, accepts
-`? words` for a browser search, evaluates safe arithmetic after `=`, and offers
-whitelisted actions after `!` (for example `!clipboard` or `!settings`). The
-launcher also opens the existing wallpaper,
-clipboard, control, and power tools. It does not run arbitrary typed commands.
-
-The launcher’s Settings panel controls bar placement, visible bar modules,
-accent color, and animation speed. These preferences are stored atomically in
-Quickshell’s per-shell state directory as `settings.json`. The Dashboard panel
-shows CPU, memory, storage, and battery metrics; it samples every five seconds
-only while open. Both panels are centered on the first connected display.
-Volume, microphone, and brightness scripts send event-driven updates to a short
-Quickshell OSD and retain Dunst notifications as the fallback when no shell IPC
-endpoint is available.
-
-The existing GTK Control Center remains the backend interface for device
-operations, and Dunst remains the notification daemon. This avoids a second
-network/audio manager or notification daemon while the shell migration
-continues. Wallpaper and clipboard selections similarly call the existing
-scripts, so their persistence and privacy behavior remain in effect.
-The notification button displays Dunst history in a Quickshell panel with
-urgency styling, per-item history-pop, clear-all, and the existing DND toggle.
-
-## Recovery and keybinding
-
-Run this command to switch immediately and persistently back to Waybar:
+Hyprland starts the selected bar with `scripts/desktop/start-bar.sh`. The
+default is Quickshell. To return to Waybar, run:
 
 ```sh
 ~/.config/hypr/scripts/desktop/rollback-to-waybar.sh
 ```
 
-The script hides the running Quickshell panel through its IPC handler, starts
-Waybar if it is not already running, and records Waybar as the startup choice.
-It does not delete Quickshell or Waybar files. To make Quickshell the default
-again after a rollback, remove
-`~/.local/state/hypr-rice/bar-mode` and log in again.
+Remove `~/.local/state/hypr-rice/bar-mode` and log in again to select
+Quickshell. `Super+Shift+R` reloads the selected bar and Hyprland.
 
-`Super+Shift+R` is unchanged as a key chord. It now reloads the selected bar
-(Quickshell by default, Waybar after rollback) and reloads Hyprland.
-Startup and reload scripts keep the unselected bar hidden or stopped. The
-legacy `restart-waybar.sh` entrypoint delegates to the selected shell unless
-Waybar fallback mode is explicitly active.
+## QML modules
 
-## Structure
+- `shell.qml`: shared settings/theme/services and IPC used by Hyprland binds.
+- `config/`: design tokens and persistent preferences.
+- `services/`: event-driven Hyprland workspace and window information.
+- `modules/bar/`: workspace indicator, active title, tray, status, clock, and
+  launcher-free bar controls.
+- `modules/launcher/`: app search, favorites, history, calculator, web search,
+  and QML Control Center shortcuts.
+- `modules/controlcenter/`: overview plus controls, network, audio, displays,
+  idle management, screenshots, HyprSec, system, maintenance, developer tools,
+  session presets, wallpapers, clipboard, keybindings, power, and settings.
+- `modules/notifications/`: Dunst-backed history, urgency, dismiss, clear, and
+  DND controls.
+- `modules/dashboard/`, `modules/settings/`, and `modules/osd/`: system
+  metrics, shell preferences, and hardware feedback.
 
-- `shell.qml`: screen variants, shared theme/settings/service objects, and
-  shell-management IPC.
-- `config/`: dimensions, module toggles, scripts path, and theme tokens.
-- `services/`: event-driven Hyprland workspace and active-window access.
-- `modules/bar/`: panel, workspaces, title, tray, indicators, clock, and
-  calendar.
-- `modules/launcher/`: application search, favorites, search history, and
-  quick links to existing system tools.
-- `modules/dashboard/`: on-demand CPU, memory, storage, and battery overview.
-- `modules/notifications/`: Dunst-backed history cards, urgency, clear, and DND.
-- `modules/osd/`: event-driven volume, microphone, and brightness display.
-- `modules/settings/`: persistent bar, accent, and animation preferences.
+`Super+C` and `Super+Alt+Space` toggle the full Control Center. Clicking the
+bar's status cluster toggles a separate, compact Quick Controls panel aligned
+with the bar; clicking the cluster again or pressing Escape closes it. Neither
+panel uses an in-panel close button. Existing menu entry scripts such as
+`control-center.sh`, `keybindings-menu.sh`, `wallpaper-selector.sh`,
+`clipboard-menu.sh`, and `power-menu.sh` now open the corresponding QML page.
+Other shortcuts are documented in the searchable Keybindings page (`Super+K`).
+`Super+W` and `Super+Q` close the active shell overlay first, and close the
+focused application window when no overlay is open.
 
-The shell derives integration paths from its deployed config location, not the
-current working directory or repository checkout. Legacy Waybar configuration
-and backend scripts remain available for recovery.
+The wallpaper and clipboard pages use the established wallpaper setter,
+clipboard daemon, and clipboard-clear operation. Audio, network, Bluetooth,
+and display views use existing system tools or small JSON/action bridges.
+Display layouts still use the transactional display manager and rollback
+behavior. Dunst remains the notification daemon; Quickshell does not start a
+second one.
+
+Settings, wallpaper favorites, and recent wallpaper choices are written to
+Quickshell state. Paths are derived from the deployed config directory. Missing
+hardware tools produce empty device lists or normal command failures rather
+than blocking shell startup.
+Wi-Fi and Bluetooth actions now report pending/completed/failure state and
+refresh their device lists when each command exits; audio slider updates are
+coalesced while dragging to avoid spawning a process for every pointer event.
 
 ## Validation and development
 
-The config targets the installed Quickshell 0.3.2 API. Run a startup check with
-`qs --path ~/.config/hypr/quickshell/shell.qml --verbose`; use
-`qs ipc --path ~/.config/hypr/quickshell/shell.qml call hyprshell reload` after
-editing. On systems with Qt tools, run:
+Use `qs --path ~/.config/hypr/quickshell/shell.qml --verbose` to inspect startup
+and `qs ipc --path ~/.config/hypr/quickshell/shell.qml show` to inspect IPC.
+The code targets the installed Quickshell 0.3.2 API. `qmllint` can report
+unresolved Quickshell-specific types because its standalone metadata does not
+include all compositor types; verify actual loading with Quickshell as well.
 
-```sh
-QML_IMPORT_PATH=/usr/lib/qt6/qml /usr/lib/qt6/bin/qmllint -E quickshell/modules/launcher/Launcher.qml
-```
+The bar creates one panel per screen. Overlay panels use the primary screen and
+remain independent of monitor-specific window management. Wallpaper and
+clipboard backends keep their existing persistence and privacy behavior.
 
-`qmllint` may still report
-Quickshell API metadata as incomplete; the runtime loader is the compatibility
-check for Quickshell types.
-
-The Control Center, Dunst notification history, wallpaper selector, clipboard
-history, and power interface remain script-backed. The current shell does not
-yet replace those individual interfaces with native QML panels; it integrates
-them through the existing backends.
+Interactive overlays use on-demand Wayland layer-shell keyboard focus, and
+only one modal overlay is active at a time. This avoids competing popup grabs
+when opening the launcher or Control Center from Hyprland keybindings.

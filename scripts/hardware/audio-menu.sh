@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-exec "${HOME}/.config/hypr/scripts/hardware/audio-manager.py" "$@"
+exec "${XDG_CONFIG_HOME:-${HOME}/.config}/hypr/scripts/desktop/open-hub.sh" audio

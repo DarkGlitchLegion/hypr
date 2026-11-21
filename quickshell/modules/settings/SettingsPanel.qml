@@ -5,24 +5,37 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../../config"
+import "../window"
 
-PopupWindow {
+OverlayPanel {
     id: root
 
     required property Theme theme
     required property Settings settings
     required property var hostWindow
-    required property var targetScreen
+    property real previewAnimationSpeed: settings.animationSpeed
 
-    anchor.window: hostWindow
-    anchor.rect.x: Math.round((hostWindow.width - 420) / 2)
-    anchor.rect.y: settings.barPosition === "top" ? Math.round(targetScreen.height * 0.13) : Math.round(settings.barHeight + settings.barMarginBottom - targetScreen.height * 0.87)
     implicitWidth: 420
     implicitHeight: 500
     visible: settings.shellEnabled && settings.settingsOpen && targetScreen === Quickshell.screens[0]
-    grabFocus: true
-    color: "transparent"
-    onVisibleChanged: if (!visible && settings.settingsOpen) settings.settingsOpen = false
+    wantsKeyboardFocus: visible
+    anchors {
+        top: true
+        left: true
+    }
+    margins {
+        top: settings.barPosition === "top"
+                ? Math.round(targetScreen.height * 0.13)
+                : Math.round(settings.barHeight + settings.barMarginBottom - targetScreen.height * 0.87)
+        left: Math.round((targetScreen.width - implicitWidth) / 2)
+    }
+    onVisibleChanged: {
+        if (visible) {
+            previewAnimationSpeed = settings.animationSpeed;
+        } else if (settings.settingsOpen) {
+            settings.closeOverlay("settings");
+        }
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -52,7 +65,7 @@ PopupWindow {
                     font.pixelSize: 22
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: root.settings.settingsOpen = false
+                        onClicked: root.settings.closeOverlay("settings")
                     }
                 }
             }
@@ -175,7 +188,7 @@ PopupWindow {
                     font.pixelSize: root.theme.fontSizeSmall
                 }
                 Text {
-                    text: Math.round(root.settings.animationSpeed * 100) + "%"
+                    text: Math.round(root.previewAnimationSpeed * 100) + "%"
                     color: root.theme.text
                     font.family: root.theme.fontFamily
                     font.pixelSize: root.theme.fontSizeSmall
@@ -186,8 +199,9 @@ PopupWindow {
                 from: 0.25
                 to: 1.5
                 stepSize: 0.05
-                value: root.settings.animationSpeed
-                onMoved: root.settings.animationSpeed = value
+                value: root.previewAnimationSpeed
+                onMoved: root.previewAnimationSpeed = value
+                onPressedChanged: if (!pressed) root.settings.animationSpeed = root.previewAnimationSpeed
             }
             Text {
                 Layout.fillWidth: true

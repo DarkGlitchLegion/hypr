@@ -5,29 +5,35 @@ import Quickshell.Io
 import QtQuick
 import QtQuick.Layouts
 import "../../config"
+import "../window"
 
-PopupWindow {
+OverlayPanel {
     id: root
 
     required property Theme theme
     required property Settings settings
     required property var hostWindow
-    required property var targetScreen
     property var notifications: []
 
-    anchor.window: hostWindow
-    anchor.rect.x: Math.round((hostWindow.width - 460) / 2)
-    anchor.rect.y: settings.barPosition === "top" ? settings.barHeight + 16 : -implicitHeight - 16
     implicitWidth: 460
     implicitHeight: Math.min(560, Math.max(220, notificationList.contentHeight + 120))
     visible: settings.shellEnabled && settings.notificationOpen && targetScreen === Quickshell.screens[0]
-    grabFocus: true
-    color: "transparent"
+    wantsKeyboardFocus: visible
+    anchors {
+        top: true
+        left: true
+    }
+    margins {
+        top: settings.barPosition === "top"
+                ? settings.barMarginTop + settings.barHeight + 16
+                : Math.round(targetScreen.height * 0.1)
+        left: Math.round((targetScreen.width - implicitWidth) / 2)
+    }
     onVisibleChanged: {
         if (visible)
             loadHistory();
         else if (settings.notificationOpen)
-            settings.notificationOpen = false;
+            settings.closeOverlay("notifications");
     }
 
     function valueFor(item, key, fallback) {
@@ -120,7 +126,7 @@ PopupWindow {
                     font.pixelSize: 22
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: root.settings.notificationOpen = false
+                        onClicked: root.settings.closeOverlay("notifications")
                     }
                 }
             }

@@ -4,6 +4,7 @@ import Quickshell
 import QtQuick
 import QtQuick.Layouts
 import "../../config"
+import "../window"
 
 Item {
     id: root
@@ -15,7 +16,7 @@ Item {
     property int displayMonth: currentDate.getMonth()
     property int displayYear: currentDate.getFullYear()
     property var calendarCells: []
-    property bool calendarOpen: false
+    readonly property bool calendarOpen: settings.calendarOpen
     property bool alternateFormat: false
 
     implicitWidth: clockLabel.implicitWidth + theme.spacingLarge * 2
@@ -85,7 +86,7 @@ Item {
                         root.displayYear = root.currentDate.getFullYear();
                         root.updateCalendarCells();
                     }
-                    root.calendarOpen = !root.calendarOpen;
+                    root.settings.toggleOverlay("calendar");
                 }
             }
             onWheel: function (wheel) {
@@ -93,25 +94,35 @@ Item {
                     root.displayMonth = root.currentDate.getMonth();
                     root.displayYear = root.currentDate.getFullYear();
                     root.updateCalendarCells();
-                    root.calendarOpen = true;
+                    root.settings.openOverlay("calendar");
                 }
                 root.moveMonth(wheel.angleDelta.y > 0 ? -1 : 1);
             }
         }
     }
 
-    PopupWindow {
+    OverlayPanel {
         id: calendarPopup
-        anchor.item: root
-        anchor.edges: root.settings.barPosition === "top" ? Edges.Bottom | Edges.Right : Edges.Top | Edges.Right
-        anchor.gravity: root.settings.barPosition === "top" ? Edges.Bottom | Edges.Right : Edges.Top | Edges.Right
-        anchor.margins.top: root.theme.spacingSmall
-        visible: root.calendarOpen
+        targetScreen: root.panelWindow ? root.panelWindow.screen : Quickshell.screens[0]
         implicitWidth: root.theme.calendarWidth
         implicitHeight: root.theme.calendarHeight
-        color: "transparent"
+        visible: root.settings.shellEnabled && root.calendarOpen && targetScreen === Quickshell.screens[0]
+        anchors {
+            top: root.settings.barPosition === "top"
+            bottom: root.settings.barPosition === "bottom"
+            right: true
+        }
+        margins {
+            top: root.settings.barPosition === "top"
+                    ? root.settings.barMarginTop + root.settings.barHeight + root.theme.spacingSmall
+                    : 0
+            bottom: root.settings.barPosition === "bottom"
+                    ? root.settings.barMarginBottom + root.settings.barHeight + root.theme.spacingSmall
+                    : 0
+            right: root.settings.barMarginHorizontal
+        }
         onVisibleChanged: if (!calendarPopup.visible)
-            root.calendarOpen = false
+            root.settings.closeOverlay("calendar")
 
         Rectangle {
             anchors.fill: parent

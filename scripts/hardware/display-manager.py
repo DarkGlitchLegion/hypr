@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 
-CONFIG = Path.home() / ".config" / "hypr"
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "hypr"
 ROFI_THEME = CONFIG / "rofi" / "command-center.rasi"
 STATE_FILE = CONFIG / "state" / "display-profiles.json"
 DISPLAY_PREFERENCES = CONFIG / "state" / "display-preferences.json"
@@ -1163,12 +1163,16 @@ def preset_layout(preset: str, external_name: str | None = None, side: str = "ri
     return None
 
 
-def apply_preset(preset: str, output: str | None = None) -> None:
+def apply_preset(
+    preset: str,
+    output: str | None = None,
+    workspace: str | None = None,
+    side: str = "right",
+) -> None:
     if preset == "presentation":
         start_presentation_mode()
         return
-    side = "right"
-    selected_workspace: str | None = None
+    selected_workspace: str | None = workspace
     selected_output = output
     if preset == "extend":
         records = monitors()
@@ -1181,24 +1185,11 @@ def apply_preset(preset: str, output: str | None = None) -> None:
         if not external:
             return
         selected_output = external["name"]
-        selected_workspace = choose_external_workspace(
-            records,
-            load_external_workspace_preference(),
-        )
+        selected_workspace = selected_workspace or choose_external_workspace(records, load_external_workspace_preference())
         if not selected_workspace:
             return
-        position = rofi(
-            ["Right of laptop", "Left of laptop", "Above laptop", "Below laptop"],
-            "󰍹  Position external display",
-        )
-        if not position:
-            return
-        side = {
-            "Right of laptop": "right",
-            "Left of laptop": "left",
-            "Above laptop": "above",
-            "Below laptop": "below",
-        }[position]
+        if side not in {"right", "left", "above", "below"}:
+            raise DisplayError("Position must be right, left, above, or below.")
     result = preset_layout(preset, selected_output, side)
     if result:
         applied = transaction(result[0], result[1])
@@ -2015,10 +2006,73 @@ def main() -> int:
     try:
         if len(sys.argv) > 1 and sys.argv[1] == "--watch":
             watch_displays()
+        elif len(sys.argv) > 1 and sys.argv[1] == "--json":
+            print(json.dumps({
+                "monitors": monitors(),
+                "externalWorkspace": load_external_workspace_preference() or "2",
+            }))
         elif len(sys.argv) > 1 and sys.argv[1] == "--preset" and len(sys.argv) >= 3:
-            apply_preset(sys.argv[2], sys.argv[3] if len(sys.argv) >= 4 else None)
+            apply_preset(
+                sys.argv[2],
+                sys.argv[3] if len(sys.argv) >= 4 else None,
+                sys.argv[4] if len(sys.argv) >= 5 else None,
+                sys.argv[5] if len(sys.argv) >= 6 else "right",
+            )
+        elif len(sys.argv) == 2 and sys.argv[1] == "--save":
+            save_current_layout()
+        elif len(sys.argv) == 2 and sys.argv[1] == "--restore":
+            profile = load_profile(monitors())
+            if profile:
+                transaction("Saved display layout", profile["layout"])
+            else:
+                notify("Display Manager", "No compatible saved display layout is available.", "critical")
+        elif len(sys.argv) == 4 and sys.argv[1] == "--set-mode":
+            _, name, mode = sys.argv[1:]
+            record = next((item for item in monitors() if item["name"] == name and item.get("connected")), None)
+            if record is None or mode not in (record.get("availableModes") or []) and mode != "preferred":
+                raise DisplayError("The selected display mode is no longer available.")
+            setting = current_setting(record)
+            setting.update(mode=mode, disabled=False, mirror=None)
+            transaction(f"{name} set to {mode}", replace_setting(setting))
+        elif len(sys.argv) == 4 and sys.argv[1] == "--set-scale":
+            _, name, value = sys.argv[1:]
+            if value not in {"0.75", "1.0", "1.25", "1.5", "1.75", "2.0"}:
+                raise DisplayError("Scale must be a supported preset value.")
+            record = next((item for item in monitors() if item["name"] == name and item.get("connected")), None)
+            if record is None:
+                raise DisplayError("The selected display is disconnected.")
+            setting = current_setting(record)
+            setting.update(scale=float(value), disabled=False, mirror=None)
+            transaction(f"Scale for {name} set to {value}", replace_setting(setting))
+        elif len(sys.argv) == 4 and sys.argv[1] == "--set-transform":
+            _, name, value = sys.argv[1:]
+            if value not in {str(item) for item in TRANSFORMS}:
+                raise DisplayError("Transform must be between 0 and 7.")
+            record = next((item for item in monitors() if item["name"] == name and item.get("connected")), None)
+            if record is None:
+                raise DisplayError("The selected display is disconnected.")
+            setting = current_setting(record)
+            setting.update(transform=int(value), disabled=False, mirror=None)
+            transaction(f"Orientation for {name} changed", replace_setting(setting))
+        elif len(sys.argv) == 3 and sys.argv[1] == "--primary":
+            name = sys.argv[2]
+            record = next((item for item in monitors() if item["name"] == name and item.get("connected")), None)
+            if record is None:
+                raise DisplayError("The selected display is disconnected.")
+            layout = runtime_layout()
+            selected = next((item for item in layout if item["name"] == name), current_setting(record))
+            selected.update(x=0, y=0, disabled=False, mirror=None)
+            x = logical_size(record)[0]
+            for item in layout:
+                if item["name"] != name and not item.get("disabled"):
+                    item.update(x=x, y=0, mirror=None)
+                    x += logical_size(next((entry for entry in monitors() if entry["name"] == item["name"]), {}))[0]
+            if not any(item["name"] == name for item in layout):
+                layout.append(selected)
+            transaction(f"{name} set as primary display", layout)
         else:
-            display_manager()
+            config = CONFIG / "quickshell" / "shell.qml"
+            subprocess.run(["qs", "ipc", "--path", str(config), "call", "hyprshell", "openHub", "display"], check=False)
     except DisplayError as exc:
         notify("Display Manager error", str(exc), "critical")
         return 1
