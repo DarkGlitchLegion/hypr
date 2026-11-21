@@ -156,9 +156,17 @@ def snapshot_before_change() -> None:
     if not SETTINGS_FILE.exists():
         return
     try:
-        from scripts.core.rice_maintenance import snapshot_before_config_change
-
-        snapshot_before_config_change("idle-settings", SETTINGS_FILE)
+        path = SCRIPTS / "core" / "rice_maintenance.py"
+        spec = importlib.util.spec_from_file_location("rice_idle_maintenance", path)
+        if spec is None or spec.loader is None:
+            raise IdleError("The rice snapshot manager could not be loaded.")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module
+        try:
+            spec.loader.exec_module(module)
+        finally:
+            sys.modules.pop(spec.name, None)
+        module.snapshot_before_config_change("idle-settings", SETTINGS_FILE)
     except (ImportError, OSError, RuntimeError) as exc:
         raise IdleError(f"Could not create a safety snapshot before changing idle settings: {exc}") from exc
 

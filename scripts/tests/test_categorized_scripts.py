@@ -4,6 +4,7 @@ import ast
 import importlib.util
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -95,6 +96,32 @@ class CategorizedScriptTests(unittest.TestCase):
             timeout=10,
         )
         self.assertEqual(validation.returncode, 0, validation.stderr)
+
+    def test_idle_manager_snapshot_loader_works_without_repository_python_path(self) -> None:
+        script = SCRIPTS / "session" / "idle-manager.py"
+        spec = importlib.util.spec_from_file_location("idle_manager_test", script)
+        self.assertIsNotNone(spec)
+        self.assertIsNotNone(spec.loader)
+        idle_manager = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(idle_manager)
+
+        with tempfile.TemporaryDirectory() as directory:
+            settings = Path(directory) / "idle-settings.json"
+            settings.write_text("{}", encoding="utf-8")
+            snapshot = mock.Mock()
+            loader = mock.Mock()
+            loader.exec_module.side_effect = lambda module: setattr(
+                module, "snapshot_before_config_change", snapshot
+            )
+            module_spec = mock.Mock(loader=loader)
+            with (
+                mock.patch.object(idle_manager, "SETTINGS_FILE", settings),
+                mock.patch.object(idle_manager.importlib.util, "spec_from_file_location", return_value=module_spec) as load,
+            ):
+                idle_manager.snapshot_before_change()
+
+            load.assert_called_once_with("rice_idle_maintenance", SCRIPTS / "core" / "rice_maintenance.py")
+            snapshot.assert_called_once_with("idle-settings", settings)
 
     def test_moved_scripts_have_no_old_sibling_paths(self) -> None:
         stale = (
