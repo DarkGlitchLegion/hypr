@@ -3,6 +3,7 @@ from __future__ import annotations
 import ast
 import importlib.util
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -113,6 +114,71 @@ class CategorizedScriptTests(unittest.TestCase):
             result = subprocess.run([str(launcher)], env=environment, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("waybar/config.jsonc", output_file.read_text(encoding="utf-8"))
+
+    def test_application_launcher_uses_rofi_after_waybar_rollback(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fake_bin = root / "bin"
+            fake_bin.mkdir()
+            output_file = root / "invocation.txt"
+            for name in ("qs", "rofi"):
+                executable = fake_bin / name
+                executable.write_text(
+                    "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"$LAUNCHER_TEST_OUTPUT\"\n",
+                    encoding="utf-8",
+                )
+                executable.chmod(0o755)
+            config_root = root / "config"
+            state_root = root / "state"
+            mode_file = state_root / "hypr-rice" / "bar-mode"
+            mode_file.parent.mkdir(parents=True)
+            mode_file.write_text("waybar\n", encoding="utf-8")
+            environment = os.environ.copy()
+            environment.update({
+                "PATH": f"{fake_bin}:{environment['PATH']}",
+                "HOME": str(root / "home"),
+                "XDG_CONFIG_HOME": str(config_root),
+                "XDG_STATE_HOME": str(state_root),
+                "LAUNCHER_TEST_OUTPUT": str(output_file),
+            })
+            script = SCRIPTS / "desktop" / "launcher.sh"
+            result = subprocess.run([str(script)], env=environment, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("-show drun", output_file.read_text(encoding="utf-8"))
+
+    def test_waybar_restart_compatibility_entrypoint_respects_quickshell_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fake_bin = root / "bin"
+            fake_bin.mkdir()
+            output_file = root / "invocation.txt"
+            for name in ("qs", "waybar"):
+                executable = fake_bin / name
+                executable.write_text(
+                    "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"$BAR_TEST_OUTPUT\"\n",
+                    encoding="utf-8",
+                )
+                executable.chmod(0o755)
+            config_root = root / "config"
+            state_root = root / "state"
+            script_target = config_root / "hypr" / "scripts" / "desktop"
+            script_target.mkdir(parents=True)
+            for name in ("restart-bar.sh", "start-bar.sh"):
+                shutil.copy2(SCRIPTS / "desktop" / name, script_target / name)
+            environment = os.environ.copy()
+            environment.update({
+                "PATH": f"{fake_bin}:{environment['PATH']}",
+                "HOME": str(root / "home"),
+                "XDG_CONFIG_HOME": str(config_root),
+                "XDG_STATE_HOME": str(state_root),
+                "BAR_TEST_OUTPUT": str(output_file),
+            })
+            script = SCRIPTS / "desktop" / "restart-waybar.sh"
+            result = subprocess.run([str(script)], env=environment, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            invocation = output_file.read_text(encoding="utf-8")
+            self.assertIn("call hyprshell reload", invocation)
+            self.assertNotIn("waybar -c", invocation)
 
     def test_quick_settings_status_is_valid_json(self) -> None:
         result = subprocess.run(

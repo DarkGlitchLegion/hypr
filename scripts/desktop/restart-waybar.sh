@@ -1,12 +1,22 @@
 #!/usr/bin/env bash
 # =====================================================================
-# Restart the retained Waybar fallback.
+# Restart the selected bar, keeping this compatibility entrypoint safe.
 # =====================================================================
 
 CONFIG_ROOT="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
 STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/hypr-rice"
 CONFIG="${CONFIG_ROOT}/waybar/config.jsonc"
 STYLE="${CONFIG_ROOT}/waybar/style.css"
+MODE_FILE="${STATE_ROOT}/bar-mode"
+MODE="quickshell"
+
+if [[ -f "${MODE_FILE}" ]]; then
+    IFS= read -r MODE < "${MODE_FILE}"
+fi
+
+if [[ "${MODE}" != "waybar" ]]; then
+    exec "${CONFIG_ROOT}/scripts/desktop/restart-bar.sh"
+fi
 
 while IFS= read -r pid; do
     [[ "${pid}" =~ ^[0-9]+$ ]] || continue
