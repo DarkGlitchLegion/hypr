@@ -21,6 +21,14 @@ OverlayPanel {
     property string displayWorkspace: "2"
     property var audioDevices: []
     property var wifiNetworks: []
+    property var networkStatus: ({})
+    property var quickMetrics: ({})
+    property real downloadBytesPerSecond: 0
+    property real uploadBytesPerSecond: 0
+    property real lastNetworkSampleTime: 0
+    property real lastNetworkRxBytes: 0
+    property real lastNetworkTxBytes: 0
+    property string lastNetworkInterface: ""
     property var bluetoothDevices: []
     property string securityStatus: ""
     property var sessionPresets: []
@@ -197,8 +205,21 @@ OverlayPanel {
             quickStatusLoading = true;
             quickPanelStatusProcess.running = true;
             wifiProcess.running = true;
+            networkStatusProcess.running = true;
+            quickMetricsProcess.running = true;
             bluetoothProcess.running = true;
             powerProfileProcess.running = true;
+            audioProcess.running = true;
+        }
+        if (visible && !compactControls) {
+            refreshQuickState();
+            quickStatusLoading = true;
+            quickPanelStatusProcess.running = true;
+            wifiProcess.running = true;
+            bluetoothProcess.running = true;
+            audioProcess.running = true;
+            powerProfileProcess.running = true;
+            quickMetricsProcess.running = true;
         }
     }
     Connections {
@@ -232,10 +253,24 @@ OverlayPanel {
 
     function refreshQuickState() {
         for (const process of [wifiStateProcess, bluetoothStateProcess, volumeStateProcess,
-                               micStateProcess, brightnessStateProcess, dndStateProcess]) {
+                               micStateProcess, brightnessStateProcess, dndStateProcess,
+                               networkStatusProcess]) {
             if (!process.running)
                 process.running = true;
         }
+    }
+
+    function selectAudioDevice(kind, deviceName) {
+        run(["python3", settings.scriptsRoot + "/hardware/audio-manager.py", "--set", kind, deviceName]);
+        audioRefreshTimer.restart();
+    }
+
+    function formatRate(bytesPerSecond) {
+        if (bytesPerSecond < 1024)
+            return Math.round(bytesPerSecond) + " B/s";
+        if (bytesPerSecond < 1024 * 1024)
+            return (bytesPerSecond / 1024).toFixed(1) + " KB/s";
+        return (bytesPerSecond / (1024 * 1024)).toFixed(1) + " MB/s";
     }
 
     function runQuickAction(command, label) {
@@ -266,14 +301,28 @@ OverlayPanel {
         id: quickStateTimer
         interval: 5000
         repeat: true
-        running: root.visible && root.compactControls
-        onTriggered: root.refreshQuickState()
+        running: root.visible
+        onTriggered: {
+            root.refreshQuickState();
+            if (!quickMetricsProcess.running)
+                quickMetricsProcess.running = true;
+        }
+    }
+    Timer {
+        id: quickAudioRefreshTimer
+        interval: 15000
+        repeat: true
+        running: root.visible
+        onTriggered: {
+            if (!audioProcess.running)
+                audioProcess.running = true;
+        }
     }
     Timer {
         id: quickStatusTimer
         interval: 30000
         repeat: true
-        running: root.visible && root.compactControls
+        running: root.visible
         onTriggered: {
             root.quickStatusLoading = true;
             quickPanelStatusProcess.running = true;
@@ -381,6 +430,9 @@ OverlayPanel {
                             || root.networkOperation + " failed (exit " + exitCode + ").";
             root.refreshQuickState();
             wifiProcess.running = true;
+            networkStatusProcess.running = true;
+            if (root.networkOperation.startsWith("Connecting to") || root.networkOperation === "Wi-Fi")
+                root.wifiPassword = "";
         }
     }
 
@@ -450,6 +502,69 @@ OverlayPanel {
             onStreamFinished: { try { root.wifiNetworks = JSON.parse(text); } catch (e) { root.wifiNetworks = []; } }
         }
         onExited: function(code) { if (code !== 0) root.wifiNetworks = []; }
+    }
+    Process {
+        id: networkStatusProcess
+        command: ["python3", root.settings.scriptsRoot + "/hardware/qml-network.py", "status"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.networkStatus = JSON.parse(text);
+                } catch (error) {
+                    root.networkStatus = ({ available: false, connected: false });
+                    console.warn("Network status could not be parsed:", error);
+                }
+            }
+        }
+        onExited: function(code) {
+            if (code !== 0) {
+                root.networkStatus = ({ available: false, connected: false });
+                console.warn("Network status exited with code", code);
+            }
+        }
+    }
+    Process {
+        id: quickMetricsProcess
+        command: ["python3", root.settings.scriptsRoot + "/desktop/quick-settings-metrics.py",
+                  root.networkStatus.interface || ""]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const result = JSON.parse(text);
+                    root.quickMetrics = result;
+                    if (result.available && result.network && result.network.rxBytes !== null
+                            && result.network.txBytes !== null) {
+                        const now = Date.now();
+                        const sameInterface = root.lastNetworkInterface === (result.network.interface || "");
+                        const elapsed = sameInterface && root.lastNetworkSampleTime > 0
+                                ? (now - root.lastNetworkSampleTime) / 1000 : 0;
+                        if (elapsed > 0 && result.network.rxBytes >= root.lastNetworkRxBytes
+                                && result.network.txBytes >= root.lastNetworkTxBytes) {
+                            root.downloadBytesPerSecond = (result.network.rxBytes - root.lastNetworkRxBytes) / elapsed;
+                            root.uploadBytesPerSecond = (result.network.txBytes - root.lastNetworkTxBytes) / elapsed;
+                        }
+                        root.lastNetworkSampleTime = now;
+                        root.lastNetworkRxBytes = result.network.rxBytes;
+                        root.lastNetworkTxBytes = result.network.txBytes;
+                        root.lastNetworkInterface = result.network.interface || "";
+                    } else {
+                        root.downloadBytesPerSecond = 0;
+                        root.uploadBytesPerSecond = 0;
+                        root.lastNetworkSampleTime = 0;
+                        root.lastNetworkInterface = "";
+                    }
+                } catch (error) {
+                    root.quickMetrics = ({ available: false });
+                    console.warn("System metrics could not be parsed:", error);
+                }
+            }
+        }
+        onExited: function(code) {
+            if (code !== 0) {
+                root.quickMetrics = ({ available: false });
+                console.warn("System metrics exited with code", code);
+            }
+        }
     }
     Timer { id: audioRefreshTimer; interval: 900; onTriggered: audioProcess.running = true }
     Timer {
@@ -600,6 +715,14 @@ OverlayPanel {
                     : root.quickActionErrorText || root.quickActionOutputText
                             || root.quickOperation + " failed (exit " + code + ").";
             root.refreshQuickState();
+            if (root.quickOperation === "Wi-Fi") {
+                wifiProcess.running = true;
+                networkStatusProcess.running = true;
+            } else if (root.quickOperation === "Bluetooth") {
+                bluetoothProcess.running = true;
+            } else if (root.quickOperation === "Output mute" || root.quickOperation === "Microphone mute") {
+                audioProcess.running = true;
+            }
             if (root.quickOperation === "Power profile")
                 powerProfileProcess.running = true;
             if (root.hasPendingQuickAction)
@@ -641,25 +764,50 @@ OverlayPanel {
                         id: navColumn
                         width: navFlick.width
                         spacing: root.theme.spacing
+                        // ── Group 1: main features ──────────────────────
                         Repeater {
-                            model: root.pages
-                            delegate: Rectangle {
-                                id: navItem
-                                required property var modelData
+                            model: ["home", "controls", "network", "audio"]
+                            delegate: NavItem {
+                                required property string modelData
+                                pageId: modelData
+                                pageData: root.pages.find(p => p.id === modelData) || { icon: "", label: modelData }
+                                theme: root.theme
+                                active: root.settings.controlCenterPage === modelData
                                 Layout.fillWidth: true
-                                implicitHeight: 38
-                                radius: root.theme.radius
-                                color: root.settings.controlCenterPage === navItem.modelData.id ? root.theme.surfaceRaised : (navMouse.containsMouse ? root.theme.surface : "transparent")
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: root.theme.spacingLarge
-                                    anchors.rightMargin: root.theme.spacing
-                                    Text { text: navItem.modelData.icon; color: root.theme.accent; font.pixelSize: 16 }
-                                    Text { text: navItem.modelData.label; color: root.theme.text; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSize; Layout.fillWidth: true }
-                                }
-                                MouseArea { id: navMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.open(navItem.modelData.id) }
+                                onNavigate: root.open(modelData)
                             }
                         }
+                        // thin group divider
+                        Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: root.theme.border; opacity: 0.5 }
+                        // ── Group 2: tools ───────────────────────────────
+                        Repeater {
+                            model: ["display", "idle", "capture", "security", "system", "maintenance", "developer"]
+                            delegate: NavItem {
+                                required property string modelData
+                                pageId: modelData
+                                pageData: root.pages.find(p => p.id === modelData) || { icon: "", label: modelData }
+                                theme: root.theme
+                                active: root.settings.controlCenterPage === modelData
+                                Layout.fillWidth: true
+                                onNavigate: root.open(modelData)
+                            }
+                        }
+                        // thin group divider
+                        Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: root.theme.border; opacity: 0.5 }
+                        // ── Group 3: content / session ───────────────────
+                        Repeater {
+                            model: ["presets", "notifications", "wallpaper", "clipboard", "keys", "power", "settings"]
+                            delegate: NavItem {
+                                required property string modelData
+                                pageId: modelData
+                                pageData: root.pages.find(p => p.id === modelData) || { icon: "", label: modelData }
+                                theme: root.theme
+                                active: root.settings.controlCenterPage === modelData
+                                Layout.fillWidth: true
+                                onNavigate: root.open(modelData)
+                            }
+                        }
+
                     }
                 }
             }
@@ -739,57 +887,457 @@ OverlayPanel {
                         width: pageFlick.width
                         spacing: root.theme.spacing
 
-                        // Overview
-                        GridLayout {
+                        // ── Overview (home page) ─────────────────────────────────────────────
+                        ColumnLayout {
                             visible: root.settings.controlCenterPage === "home"
                             Layout.fillWidth: true
-                            columns: 2
-                            rowSpacing: root.theme.spacing
-                            columnSpacing: root.theme.spacing
-                            Repeater {
-                                model: [
-                                    { page: "controls", title: "Quick controls", detail: "Wi-Fi, Bluetooth, audio and brightness" },
-                                    { page: "wallpaper", title: "Personalization", detail: "Choose from your wallpaper collection" },
-                                    { page: "clipboard", title: "Clipboard history", detail: "Search and restore copied items" },
-                                    { page: "keys", title: "Keybindings", detail: "Search shortcuts and descriptions" },
-                                    { page: "power", title: "Session & power", detail: "Lock, suspend, restart or log out" },
-                                    { page: "display", title: "Displays", detail: "Apply a monitor layout or enter presentation mode" },
-                                    { page: "idle", title: "Idle management", detail: "Set timeout profile or keep the screen awake" },
-                                    { page: "capture", title: "Screenshots", detail: "Capture a region, window or full screen" },
-                                    { page: "security", title: "HyprSec Box", detail: "Manage the isolated security workspace" },
-                                    { page: "system", title: "System tools", detail: "Process monitor, storage and desktop reload" },
-                                    { page: "maintenance", title: "Maintenance", detail: "Diagnostics, snapshots, logs and validation" },
-                                    { page: "developer", title: "Developer tools", detail: "Terminal, editor, Git and security workspace" },
-                                    { page: "presets", title: "Session presets", detail: "Save or restore display, workspace, DND and idle state" },
-                                    { page: "notifications", title: "Notifications", detail: "Review Dunst history and manage do not disturb" },
-                                    { page: "dashboard", title: "System dashboard", detail: "CPU, memory, storage and battery metrics" },
-                                    { page: "settings", title: "Shell settings", detail: "Bar, appearance and launcher options" }
-                                ]
-                                delegate: Rectangle {
-                                    id: homeCard
-                                    required property var modelData
-                                    Layout.fillWidth: true
-                                    implicitHeight: 96
-                                    radius: root.theme.radius
-                                    color: cardMouse.containsMouse ? root.theme.surfaceRaised : root.theme.surface
-                                    border.width: 1
-                                    border.color: root.theme.border
-                                    ColumnLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: root.theme.spacingLarge
-                                        Text { text: homeCard.modelData.title; color: root.theme.text; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSizeLarge; font.bold: true }
-                                        Text { text: homeCard.modelData.detail; color: root.theme.textMuted; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSizeSmall; wrapMode: Text.WordWrap; Layout.fillWidth: true }
-                                    }
-                                MouseArea {
-                                    id: cardMouse
+                            spacing: root.theme.spacingLarge
+
+                            // ── Row 1: Status chips ──────────────────────────────────────────
+                            Rectangle {
+                                Layout.fillWidth: true
+                                implicitHeight: 36
+                                radius: root.theme.radiusSmall
+                                color: root.theme.surface
+                                border.width: 1
+                                border.color: root.theme.border
+                                RowLayout {
                                     anchors.fill: parent
-                                    hoverEnabled: true
-                                    onClicked: {
-                                        if (homeCard.modelData.page === "dashboard") {
-                                            root.settings.openOverlay("dashboard");
-                                        } else root.open(homeCard.modelData.page);
+                                    anchors.leftMargin: root.theme.spacingLarge
+                                    anchors.rightMargin: root.theme.spacingLarge
+                                    spacing: 0
+
+                                    // Wi-Fi chip
+                                    RowLayout {
+                                        spacing: 4
+                                        Text {
+                                            text: root.quickWifiEnabled ? "󰤨" : "󰤭"
+                                            color: root.quickWifiEnabled ? root.theme.accent : root.theme.textMuted
+                                            font.pixelSize: 13
+                                        }
+                                        Text {
+                                            text: root.quickWifiEnabled
+                                                    ? (root.wifiNetworks.some(n => n.active)
+                                                        ? root.wifiNetworks.find(n => n.active).ssid
+                                                        : "On")
+                                                    : "Off"
+                                            color: root.quickWifiEnabled ? root.theme.text : root.theme.textMuted
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                        }
+                                    }
+                                    Rectangle { implicitWidth: 1; implicitHeight: 18; color: root.theme.border; opacity: 0.6; Layout.leftMargin: 6; Layout.rightMargin: 6 }
+
+                                    // Bluetooth chip
+                                    RowLayout {
+                                        spacing: 4
+                                        Text {
+                                            text: root.quickBluetoothPowered
+                                                    ? (root.bluetoothDevices.some(d => d.connected) ? "󰂱" : "󰂯")
+                                                    : "󰂲"
+                                            color: root.quickBluetoothPowered ? root.theme.accent : root.theme.textMuted
+                                            font.pixelSize: 13
+                                        }
+                                        Text {
+                                            text: root.quickBluetoothPowered
+                                                    ? (root.bluetoothDevices.some(d => d.connected)
+                                                        ? root.bluetoothDevices.find(d => d.connected).name
+                                                        : "On")
+                                                    : "Off"
+                                            color: root.quickBluetoothPowered ? root.theme.text : root.theme.textMuted
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                        }
+                                    }
+                                    Rectangle { implicitWidth: 1; implicitHeight: 18; color: root.theme.border; opacity: 0.6; Layout.leftMargin: 6; Layout.rightMargin: 6 }
+
+                                    // Volume chip
+                                    RowLayout {
+                                        spacing: 4
+                                        Text {
+                                            text: root.quickOutputMuted ? "󰝟" : (root.quickVolume > 60 ? "󰕾" : root.quickVolume > 20 ? "󰖀" : "󰕿")
+                                            color: root.quickOutputMuted ? root.theme.textMuted : root.theme.accent
+                                            font.pixelSize: 13
+                                        }
+                                        Text {
+                                            text: root.quickOutputMuted ? "Muted" : (root.quickVolume + "%")
+                                            color: root.quickOutputMuted ? root.theme.textMuted : root.theme.text
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                        }
+                                    }
+                                    Rectangle { implicitWidth: 1; implicitHeight: 18; color: root.theme.border; opacity: 0.6; Layout.leftMargin: 6; Layout.rightMargin: 6 }
+
+                                    // Brightness chip
+                                    RowLayout {
+                                        visible: root.quickBrightnessAvailable
+                                        spacing: 4
+                                        Text { text: "󰃠"; color: root.theme.accent; font.pixelSize: 13 }
+                                        Text {
+                                            text: root.quickBrightness + "%"
+                                            color: root.theme.text
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                        }
+                                    }
+                                    Rectangle { visible: root.quickBrightnessAvailable; implicitWidth: 1; implicitHeight: 18; color: root.theme.border; opacity: 0.6; Layout.leftMargin: 6; Layout.rightMargin: 6 }
+
+                                    // Battery chip
+                                    RowLayout {
+                                        visible: root.quickStatusAvailable && root.quickPanelStatus.battery && root.quickPanelStatus.battery.available
+                                        spacing: 4
+                                        Text { text: "󰁹"; color: root.theme.accent; font.pixelSize: 13 }
+                                        Text {
+                                            text: (root.quickStatusAvailable && root.quickPanelStatus.battery)
+                                                    ? ((root.quickPanelStatus.battery.percentage !== null ? root.quickPanelStatus.battery.percentage + "%" : "?")
+                                                        + (root.quickPanelStatus.battery.status ? " · " + root.quickPanelStatus.battery.status : ""))
+                                                    : ""
+                                            color: root.theme.text
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                        }
+                                    }
+
+                                    Item { Layout.fillWidth: true }
+
+                                    // DND indicator (only when active)
+                                    RowLayout {
+                                        visible: root.quickDnd
+                                        spacing: 4
+                                        Text { text: "󰂛"; color: root.theme.warning; font.pixelSize: 13 }
+                                        Text {
+                                            text: "DND"
+                                            color: root.theme.warning
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                        }
                                     }
                                 }
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: root.theme.spacingLarge
+                                MetricBar {
+                                    Layout.fillWidth: true
+                                    theme: root.theme
+                                    label: "CPU"
+                                    value: root.quickMetrics.available ? root.quickMetrics.cpuPercent / 100 : 0
+                                }
+                                MetricBar {
+                                    Layout.fillWidth: true
+                                    theme: root.theme
+                                    label: "RAM"
+                                    value: root.quickMetrics.available ? root.quickMetrics.memoryPercent / 100 : 0
+                                }
+                            }
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: root.networkStatus.available === false ? "Network unavailable"
+                                            : root.networkStatus.connected
+                                                ? root.networkStatus.type + " · " + root.networkStatus.interface
+                                                : "Network disconnected"
+                                    color: root.theme.textMuted
+                                    font.family: root.theme.fontFamily
+                                    font.pixelSize: root.theme.fontSizeSmall
+                                    elide: Text.ElideRight
+                                }
+                                Text {
+                                    text: "↓ " + root.formatRate(root.downloadBytesPerSecond)
+                                          + "   ↑ " + root.formatRate(root.uploadBytesPerSecond)
+                                    color: root.theme.textMuted
+                                    font.family: root.theme.fontFamily
+                                    font.pixelSize: root.theme.fontSizeSmall
+                                }
+                                Text {
+                                    visible: root.quickMetrics.available && root.quickMetrics.temperatures
+                                            && root.quickMetrics.temperatures.cpu !== undefined
+                                    text: "CPU " + root.quickMetrics.temperatures.cpu + "°C"
+                                    color: root.theme.textMuted
+                                    font.family: root.theme.fontFamily
+                                    font.pixelSize: root.theme.fontSizeSmall
+                                }
+                            }
+
+                            // ── Row 2: Quick actions 2×3 grid ───────────────────────────────
+                            GridLayout {
+                                Layout.fillWidth: true
+                                columns: 3
+                                rowSpacing: root.theme.spacing
+                                columnSpacing: root.theme.spacing
+                                Repeater {
+                                    model: [
+                                        {
+                                            id: "wifi",
+                                            icon: "󰤨",
+                                            iconOff: "󰤭",
+                                            label: "Wi-Fi",
+                                            activeLabel: "On",
+                                            inactiveLabel: "Off",
+                                            isToggle: true,
+                                            page: "",
+                                            activeProperty: "quickWifiEnabled"
+                                        },
+                                        {
+                                            id: "bluetooth",
+                                            icon: "󰂯",
+                                            iconOff: "󰂲",
+                                            label: "Bluetooth",
+                                            activeLabel: "On",
+                                            inactiveLabel: "Off",
+                                            isToggle: true,
+                                            page: "",
+                                            activeProperty: "quickBluetoothPowered"
+                                        },
+                                        {
+                                            id: "dnd",
+                                            icon: "󰂛",
+                                            iconOff: "󰂚",
+                                            label: "Do Not Disturb",
+                                            activeLabel: "Active",
+                                            inactiveLabel: "Off",
+                                            isToggle: true,
+                                            page: "",
+                                            activeProperty: "quickDnd"
+                                        },
+                                        {
+                                            id: "wallpaper",
+                                            icon: "▧",
+                                            iconOff: "▧",
+                                            label: "Wallpaper",
+                                            activeLabel: "",
+                                            inactiveLabel: "",
+                                            isToggle: false,
+                                            page: "wallpaper",
+                                            activeProperty: ""
+                                        },
+                                        {
+                                            id: "capture",
+                                            icon: "▧",
+                                            iconOff: "▧",
+                                            label: "Screenshots",
+                                            activeLabel: "",
+                                            inactiveLabel: "",
+                                            isToggle: false,
+                                            page: "capture",
+                                            activeProperty: ""
+                                        },
+                                        {
+                                            id: "power",
+                                            icon: "⏻",
+                                            iconOff: "⏻",
+                                            label: "Session & Power",
+                                            activeLabel: "",
+                                            inactiveLabel: "",
+                                            isToggle: false,
+                                            page: "power",
+                                            activeProperty: ""
+                                        }
+                                    ]
+                                    delegate: Rectangle {
+                                        id: quickTile
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        implicitHeight: 52
+                                        radius: root.theme.radius
+                                        readonly property bool tileActive: modelData.activeProperty === "quickWifiEnabled" ? root.quickWifiEnabled
+                                                                        : modelData.activeProperty === "quickBluetoothPowered" ? root.quickBluetoothPowered
+                                                                        : modelData.activeProperty === "quickDnd" ? root.quickDnd
+                                                                        : false
+                                        color: tileMouse.containsMouse
+                                                ? root.theme.surfaceRaised
+                                                : (modelData.isToggle && tileActive ? Qt.darker(root.theme.surface, 1.0) : root.theme.surface)
+                                        border.width: 1
+                                        border.color: modelData.isToggle && tileActive ? root.theme.accent : root.theme.border
+                                        Behavior on color { ColorAnimation { duration: root.theme.animationFast } }
+                                        Behavior on border.color { ColorAnimation { duration: root.theme.animationFast } }
+                                        ColumnLayout {
+                                            anchors.fill: parent
+                                            anchors.margins: root.theme.spacing
+                                            spacing: 2
+                                            Text {
+                                                text: (quickTile.modelData.isToggle && quickTile.tileActive)
+                                                        ? quickTile.modelData.icon
+                                                        : quickTile.modelData.iconOff
+                                                color: (quickTile.modelData.isToggle && quickTile.tileActive)
+                                                        ? root.theme.accent : root.theme.textMuted
+                                                font.pixelSize: 16
+                                                Behavior on color { ColorAnimation { duration: root.theme.animationFast } }
+                                            }
+                                            Text {
+                                                text: quickTile.modelData.label
+                                                color: root.theme.text
+                                                font.family: root.theme.fontFamily
+                                                font.pixelSize: root.theme.fontSizeSmall
+                                                elide: Text.ElideRight
+                                                Layout.fillWidth: true
+                                            }
+                                        }
+                                        MouseArea {
+                                            id: tileMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            onClicked: {
+                                                if (quickTile.modelData.isToggle) {
+                                                    if (quickTile.modelData.id === "wifi")
+                                                        root.runQuickAction(["nmcli", "radio", "wifi", quickTile.tileActive ? "off" : "on"], "Wi-Fi");
+                                                    else if (quickTile.modelData.id === "bluetooth")
+                                                        root.runQuickAction(["bluetoothctl", "power", quickTile.tileActive ? "off" : "on"], "Bluetooth");
+                                                    else if (quickTile.modelData.id === "dnd")
+                                                        root.runQuickAction(["dunstctl", "set-paused", quickTile.tileActive ? "false" : "true"], "Do not disturb");
+                                                } else {
+                                                    root.open(quickTile.modelData.page);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ── Row 3: Navigate section ──────────────────────────────────────
+                            Text {
+                                text: "NAVIGATE"
+                                color: root.theme.textMuted
+                                font.family: root.theme.fontFamily
+                                font.pixelSize: root.theme.fontSizeSmall
+                                font.letterSpacing: 1.2
+                            }
+                            GridLayout {
+                                Layout.fillWidth: true
+                                columns: 2
+                                rowSpacing: 2
+                                columnSpacing: root.theme.spacing
+                                Repeater {
+                                    model: [
+                                        { page: "controls",    icon: "◉", title: "Quick controls",   detail: "Wi-Fi, Bluetooth, audio, brightness" },
+                                        { page: "network",     icon: "⌁", title: "Network",           detail: "Connections, Wi-Fi & Bluetooth" },
+                                        { page: "audio",       icon: "♫", title: "Audio & display",   detail: "Devices, volume, brightness" },
+                                        { page: "display",     icon: "▣", title: "Displays",          detail: "Layouts, scale, presentation" },
+                                        { page: "idle",        icon: "◷", title: "Idle & power",      detail: "Timeouts, power profiles" },
+                                        { page: "security",    icon: "⬡", title: "HyprSec",           detail: "Security workspace" },
+                                        { page: "system",      icon: "⌘", title: "System",            detail: "Processes, storage, reload" },
+                                        { page: "maintenance", icon: "⚒", title: "Maintenance",       detail: "Diagnostics, snapshots, logs" },
+                                        { page: "developer",   icon: "⌁", title: "Developer tools",   detail: "Terminal, editor, Git" },
+                                        { page: "presets",     icon: "▣", title: "Session presets",   detail: "Save & restore sessions" },
+                                        { page: "notifications",icon: "◌", title: "Notifications",    detail: "History & do not disturb" },
+                                        { page: "clipboard",   icon: "▤", title: "Clipboard",         detail: "Search & restore copied items" },
+                                        { page: "keys",        icon: "⌨", title: "Keybindings",       detail: "Search shortcuts" },
+                                        { page: "settings",    icon: "⚙", title: "Shell settings",    detail: "Bar, appearance, launcher" }
+                                    ]
+                                    delegate: Rectangle {
+                                        id: navCard
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        implicitHeight: 48
+                                        radius: root.theme.radiusSmall
+                                        color: navCardMouse.containsMouse ? root.theme.surfaceRaised : root.theme.surface
+                                        Behavior on color { ColorAnimation { duration: root.theme.animationFast } }
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: root.theme.spacingLarge
+                                            anchors.rightMargin: root.theme.spacingLarge
+                                            spacing: root.theme.spacing
+                                            Text {
+                                                text: navCard.modelData.icon
+                                                color: root.theme.accent
+                                                font.pixelSize: 14
+                                            }
+                                            ColumnLayout {
+                                                Layout.fillWidth: true
+                                                spacing: 1
+                                                Text {
+                                                    text: navCard.modelData.title
+                                                    color: root.theme.text
+                                                    font.family: root.theme.fontFamily
+                                                    font.pixelSize: root.theme.fontSize
+                                                    font.bold: true
+                                                    elide: Text.ElideRight
+                                                    Layout.fillWidth: true
+                                                }
+                                                Text {
+                                                    text: navCard.modelData.detail
+                                                    color: root.theme.textMuted
+                                                    font.family: root.theme.fontFamily
+                                                    font.pixelSize: root.theme.fontSizeSmall
+                                                    elide: Text.ElideRight
+                                                    Layout.fillWidth: true
+                                                }
+                                            }
+                                        }
+                                        MouseArea {
+                                            id: navCardMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            onClicked: root.open(navCard.modelData.page)
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ── Row 4: Session shortcuts ─────────────────────────────────────
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: root.theme.spacing
+                                Repeater {
+                                    model: [
+                                        { label: "Lock",     icon: "󰌾", action: "lock" },
+                                        { label: "Logout",   icon: "󰍃", action: "logout" },
+                                        { label: "Suspend",  icon: "󰤄", action: "suspend" },
+                                        { label: "Restart",  icon: "󰑓", action: "reboot" },
+                                        { label: "Shutdown", icon: "⏻", action: "poweroff" }
+                                    ]
+                                    delegate: Rectangle {
+                                        id: sessBtn
+                                        required property var modelData
+                                        Layout.fillWidth: true
+                                        implicitHeight: 44
+                                        radius: root.theme.radius
+                                        color: sessMouse.containsMouse ? root.theme.surfaceRaised : root.theme.surface
+                                        border.width: 1
+                                        border.color: root.theme.border
+                                        Behavior on color { ColorAnimation { duration: root.theme.animationFast } }
+                                        ColumnLayout {
+                                            anchors.fill: parent
+                                            spacing: 0
+                                            Text {
+                                                Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+                                                text: sessBtn.modelData.icon
+                                                color: sessMouse.containsMouse ? root.theme.text : root.theme.textMuted
+                                                font.pixelSize: 16
+                                                Layout.topMargin: 4
+                                                Behavior on color { ColorAnimation { duration: root.theme.animationFast } }
+                                            }
+                                            Text {
+                                                Layout.alignment: Qt.AlignHCenter
+                                                text: sessBtn.modelData.label
+                                                color: sessMouse.containsMouse ? root.theme.text : root.theme.textMuted
+                                                font.family: root.theme.fontFamily
+                                                font.pixelSize: root.theme.fontSizeSmall - 1
+                                                Behavior on color { ColorAnimation { duration: root.theme.animationFast } }
+                                            }
+                                        }
+                                        MouseArea {
+                                            id: sessMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            onClicked: {
+                                                const action = sessBtn.modelData.action;
+                                                if (["reboot","poweroff","logout"].includes(action) && root.pendingPower !== action) {
+                                                    root.pendingPower = action;
+                                                    root.open("power");
+                                                    return;
+                                                }
+                                                if (action === "lock") root.run(["hyprlock", "-c", root.settings.configRoot + "/hyprlock/hyprlock.conf"]);
+                                                else if (action === "suspend") root.run(["systemctl", "suspend"]);
+                                                else if (action === "reboot") root.run(["systemctl", "reboot"]);
+                                                else if (action === "poweroff") root.run(["systemctl", "poweroff"]);
+                                                else if (action === "logout") root.run(["hyprctl", "dispatch", "exit"]);
+                                                root.closePanel();
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -853,55 +1401,202 @@ OverlayPanel {
 
                                     Rectangle { Layout.fillWidth: true; height: 1; color: root.theme.border }
                                     SectionHeader { theme: root.theme; text: "CONNECTIVITY" }
-                                    ToggleRow {
+                                    ConnectivityRow {
                                         Layout.fillWidth: true
                                         theme: root.theme
                                         icon: "󰤨"
                                         label: "Wi-Fi"
-                                        available: root.quickWifiAvailable
-                                        detail: !root.quickWifiAvailable ? "Unavailable"
+                                        statusText: !root.quickWifiAvailable ? "Unavailable"
                                                 : !root.quickWifiEnabled ? "Off"
                                                 : root.wifiNetworks.some(network => network.active)
                                                         ? root.wifiNetworks.find(network => network.active).ssid
-                                                        : "On · not connected"
-                                        checked: root.quickWifiEnabled
-                                        busy: quickActionProcess.running && root.quickOperation === "Wi-Fi"
-                                        onActivated: enabled => root.runQuickAction(
+                                                        : root.networkStatus.connected
+                                                            ? root.networkStatus.connection : "On · not connected"
+                                        powered: root.quickWifiEnabled
+                                        available: root.quickWifiAvailable
+                                        busy: (quickActionProcess.running && root.quickOperation === "Wi-Fi")
+                                                || networkActionProcess.running
+                                        onToggleRequested: enabled => root.runQuickAction(
                                             ["nmcli", "radio", "wifi", enabled ? "on" : "off"], "Wi-Fi")
+                                        detailsComponent: Component {
+                                            ColumnLayout {
+                                                width: parent ? parent.width : 0
+                                                spacing: root.theme.spacingSmall
+                                                Text {
+                                                    Layout.fillWidth: true
+                                                    text: root.networkStatus.connected
+                                                            ? root.networkStatus.type + " · " + root.networkStatus.interface
+                                                                + (root.networkStatus.ip ? " · " + root.networkStatus.ip : "")
+                                                            : root.networkStatus.available === false
+                                                                ? "NetworkManager unavailable" : "Not connected"
+                                                    color: root.theme.textMuted
+                                                    font.family: root.theme.fontFamily
+                                                    font.pixelSize: root.theme.fontSizeSmall
+                                                    elide: Text.ElideRight
+                                                }
+                                                TextField {
+                                                    Layout.fillWidth: true
+                                                    visible: root.wifiNetworks.some(network => network.security !== "Open" && !network.active)
+                                                    text: root.wifiPassword
+                                                    placeholderText: "Password for a secured network"
+                                                    echoMode: TextInput.Password
+                                                    color: root.theme.text
+                                                    placeholderTextColor: root.theme.textMuted
+                                                    font.family: root.theme.fontFamily
+                                                    font.pixelSize: root.theme.fontSizeSmall
+                                                    background: Rectangle {
+                                                        color: root.theme.surface
+                                                        radius: root.theme.radiusSmall
+                                                        border.color: parent.activeFocus ? root.theme.accent : root.theme.border
+                                                    }
+                                                    onTextEdited: root.wifiPassword = text
+                                                }
+                                                RowLayout {
+                                                    Layout.fillWidth: true
+                                                    Button {
+                                                        text: "Rescan"
+                                                        enabled: root.quickWifiEnabled && !networkActionProcess.running
+                                                        onClicked: root.runNetworkAction(
+                                                            ["nmcli", "device", "wifi", "rescan"], "Wi-Fi rescan")
+                                                    }
+                                                    Button {
+                                                        visible: root.networkStatus.connected && root.networkStatus.type === "Wi-Fi"
+                                                        enabled: !networkActionProcess.running
+                                                        text: "Disconnect"
+                                                        onClicked: root.runNetworkAction(
+                                                            ["python3", root.settings.scriptsRoot + "/hardware/qml-network.py", "disconnect"],
+                                                            "Wi-Fi disconnect")
+                                                    }
+                                                    Item { Layout.fillWidth: true }
+                                                }
+                                                Repeater {
+                                                    model: root.wifiNetworks.slice(0, 5)
+                                                    delegate: Button {
+                                                        required property var modelData
+                                                        Layout.fillWidth: true
+                                                        enabled: root.quickWifiEnabled && !networkActionProcess.running
+                                                        text: (modelData.active ? "●  " : "")
+                                                              + modelData.ssid + "  ·  " + modelData.signal + "%"
+                                                              + (modelData.security === "Open" ? "  ·  Open" : "  ·  Secured")
+                                                        horizontalAlignment: Text.AlignLeft
+                                                        onClicked: {
+                                                            root.runNetworkAction(
+                                                                ["python3", root.settings.scriptsRoot + "/hardware/qml-network.py",
+                                                                 "connect", modelData.ssid]
+                                                                    .concat(root.wifiPassword ? [root.wifiPassword] : []),
+                                                                    "Connecting to " + modelData.ssid);
+                                                        }
+                                                    }
+                                                }
+                                                Text {
+                                                    visible: root.wifiNetworks.length === 0
+                                                    Layout.fillWidth: true
+                                                    text: root.quickWifiEnabled ? "No networks found. Rescan to search again."
+                                                                                 : "Turn Wi-Fi on to see nearby networks."
+                                                    color: root.theme.textMuted
+                                                    font.family: root.theme.fontFamily
+                                                    font.pixelSize: root.theme.fontSizeSmall
+                                                    wrapMode: Text.WordWrap
+                                                }
+                                            }
+                                        }
                                     }
-                                    ToggleRow {
+                                    ConnectivityRow {
                                         Layout.fillWidth: true
                                         theme: root.theme
                                         icon: "󰂯"
                                         label: "Bluetooth"
-                                        available: root.quickBluetoothAvailable
-                                        detail: !root.quickBluetoothAvailable ? "Unavailable"
+                                        statusText: !root.quickBluetoothAvailable ? "Unavailable"
                                                 : !root.quickBluetoothPowered ? "Off"
                                                 : root.bluetoothDevices.some(device => device.connected)
                                                         ? root.bluetoothDevices.find(device => device.connected).name
                                                         : "On · no device connected"
-                                        checked: root.quickBluetoothPowered
-                                        busy: quickActionProcess.running && root.quickOperation === "Bluetooth"
-                                        onActivated: enabled => root.runQuickAction(
+                                        powered: root.quickBluetoothPowered
+                                        available: root.quickBluetoothAvailable
+                                        busy: (quickActionProcess.running && root.quickOperation === "Bluetooth")
+                                                || bluetoothActionProcess.running
+                                        onToggleRequested: enabled => root.runQuickAction(
                                             ["bluetoothctl", "power", enabled ? "on" : "off"], "Bluetooth")
-                                    }
-                                    Button {
-                                        Layout.fillWidth: true
-                                        text: "Manage connections"
-                                        onClicked: root.openFullControlPage("network")
-                                        background: Rectangle {
-                                            radius: root.theme.radius
-                                            color: parent.hovered ? root.theme.surfaceRaised : root.theme.surface
-                                            border.color: root.theme.border
-                                        }
-                                        contentItem: Text {
-                                            text: parent.text
-                                            color: root.theme.textMuted
-                                            font.family: root.theme.fontFamily
-                                            font.pixelSize: root.theme.fontSizeSmall
-                                            horizontalAlignment: Text.AlignHCenter
-                                            verticalAlignment: Text.AlignVCenter
-                                            padding: 6
+                                        detailsComponent: Component {
+                                            ColumnLayout {
+                                                width: parent ? parent.width : 0
+                                                spacing: root.theme.spacingSmall
+                                                RowLayout {
+                                                    Layout.fillWidth: true
+                                                    Text {
+                                                        Layout.fillWidth: true
+                                                        text: root.bluetoothDevices.some(device => device.connected)
+                                                                ? "Connected · " + root.bluetoothDevices.find(device => device.connected).name
+                                                                : "No connected device"
+                                                        color: root.theme.textMuted
+                                                        font.family: root.theme.fontFamily
+                                                        font.pixelSize: root.theme.fontSizeSmall
+                                                        elide: Text.ElideRight
+                                                    }
+                                                    Button {
+                                                        text: "Scan"
+                                                        enabled: root.quickBluetoothPowered && !bluetoothActionProcess.running
+                                                        onClicked: root.runBluetoothAction(
+                                                            ["bluetoothctl", "scan", "on"], "Bluetooth scan")
+                                                    }
+                                                    Button {
+                                                        text: "Refresh"
+                                                        enabled: !bluetoothActionProcess.running && !bluetoothProcess.running
+                                                        onClicked: bluetoothProcess.running = true
+                                                    }
+                                                }
+                                                Repeater {
+                                                    model: root.bluetoothDevices.slice(0, 6)
+                                                    delegate: RowLayout {
+                                                        required property var modelData
+                                                        Layout.fillWidth: true
+                                                        Text {
+                                                            Layout.fillWidth: true
+                                                            text: modelData.name + (modelData.connected ? " · connected"
+                                                                    : modelData.paired ? " · paired" : " · available")
+                                                            color: root.theme.text
+                                                            font.family: root.theme.fontFamily
+                                                            font.pixelSize: root.theme.fontSizeSmall
+                                                            elide: Text.ElideRight
+                                                        }
+                                                        Button {
+                                                            visible: !modelData.connected
+                                                            enabled: root.quickBluetoothPowered && !bluetoothActionProcess.running
+                                                            text: modelData.paired ? "Connect" : "Pair"
+                                                            onClicked: root.runBluetoothAction(
+                                                                ["python3", root.settings.scriptsRoot + "/hardware/qml-bluetooth.py",
+                                                                 modelData.paired ? "connect" : "pair", modelData.mac],
+                                                                (modelData.paired ? "Connecting to " : "Pairing ") + modelData.name)
+                                                        }
+                                                        Button {
+                                                            visible: modelData.connected
+                                                            enabled: !bluetoothActionProcess.running
+                                                            text: "Disconnect"
+                                                            onClicked: root.runBluetoothAction(
+                                                                ["python3", root.settings.scriptsRoot + "/hardware/qml-bluetooth.py",
+                                                                 "disconnect", modelData.mac], "Disconnecting from " + modelData.name)
+                                                        }
+                                                        Button {
+                                                            visible: modelData.paired && !modelData.connected
+                                                            enabled: !bluetoothActionProcess.running
+                                                            text: "Forget"
+                                                            onClicked: root.runBluetoothAction(
+                                                                ["python3", root.settings.scriptsRoot + "/hardware/qml-bluetooth.py",
+                                                                 "remove", modelData.mac], "Forgetting " + modelData.name)
+                                                        }
+                                                    }
+                                                }
+                                                Text {
+                                                    visible: root.bluetoothDevices.length === 0
+                                                    Layout.fillWidth: true
+                                                    text: root.quickBluetoothPowered ? "No known devices. Scan to discover devices."
+                                                                                     : "Turn Bluetooth on to manage devices."
+                                                    color: root.theme.textMuted
+                                                    font.family: root.theme.fontFamily
+                                                    font.pixelSize: root.theme.fontSizeSmall
+                                                    wrapMode: Text.WordWrap
+                                                }
+                                            }
                                         }
                                     }
 
@@ -915,6 +1610,32 @@ OverlayPanel {
                                         interactive: root.quickVolumeAvailable
                                         onMoved: value => root.runQuickSlider(
                                             ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", String(Math.round(value) / 100)], "Volume")
+                                    }
+                                    ComboBox {
+                                        Layout.fillWidth: true
+                                        enabled: root.audioDevices.some(device => device.type === "output")
+                                        model: root.audioDevices.filter(device => device.type === "output")
+                                        textRole: "description"
+                                        currentIndex: Math.max(0, model.findIndex(device => device.active))
+                                        onActivated: index => {
+                                            const outputs = root.audioDevices.filter(device => device.type === "output");
+                                            if (outputs[index])
+                                                root.selectAudioDevice("output", outputs[index].name);
+                                        }
+                                        background: Rectangle {
+                                            color: root.theme.surface
+                                            radius: root.theme.radius
+                                            border.color: parent.activeFocus ? root.theme.accent : root.theme.border
+                                        }
+                                        contentItem: Text {
+                                            leftPadding: 8
+                                            text: parent.currentText || "No audio output"
+                                            color: parent.enabled ? root.theme.text : root.theme.textMuted
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                            verticalAlignment: Text.AlignVCenter
+                                            elide: Text.ElideRight
+                                        }
                                     }
                                     ToggleRow {
                                         Layout.fillWidth: true
@@ -937,6 +1658,32 @@ OverlayPanel {
                                         busy: quickActionProcess.running && root.quickOperation === "Microphone mute"
                                         onActivated: muted => root.runQuickAction(
                                             ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", muted ? "1" : "0"], "Microphone mute")
+                                    }
+                                    ComboBox {
+                                        Layout.fillWidth: true
+                                        enabled: root.audioDevices.some(device => device.type === "input")
+                                        model: root.audioDevices.filter(device => device.type === "input")
+                                        textRole: "description"
+                                        currentIndex: Math.max(0, model.findIndex(device => device.active))
+                                        onActivated: index => {
+                                            const inputs = root.audioDevices.filter(device => device.type === "input");
+                                            if (inputs[index])
+                                                root.selectAudioDevice("input", inputs[index].name);
+                                        }
+                                        background: Rectangle {
+                                            color: root.theme.surface
+                                            radius: root.theme.radius
+                                            border.color: parent.activeFocus ? root.theme.accent : root.theme.border
+                                        }
+                                        contentItem: Text {
+                                            leftPadding: 8
+                                            text: parent.currentText || "No microphone input"
+                                            color: parent.enabled ? root.theme.text : root.theme.textMuted
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                            verticalAlignment: Text.AlignVCenter
+                                            elide: Text.ElideRight
+                                        }
                                     }
                                     SliderRow {
                                         Layout.fillWidth: true
@@ -1013,6 +1760,94 @@ OverlayPanel {
                                         font.pixelSize: root.theme.fontSizeSmall
                                     }
 
+                                    Rectangle { Layout.fillWidth: true; height: 1; color: root.theme.border }
+                                    SectionHeader { theme: root.theme; text: "SYSTEM MONITOR" }
+                                    MetricBar {
+                                        Layout.fillWidth: true
+                                        theme: root.theme
+                                        label: "CPU"
+                                        value: root.quickMetrics.available ? root.quickMetrics.cpuPercent / 100 : 0
+                                        barColor: root.quickMetrics.cpuPercent >= 85 ? root.theme.warning : root.theme.accent
+                                    }
+                                    MetricBar {
+                                        Layout.fillWidth: true
+                                        theme: root.theme
+                                        label: "RAM"
+                                        value: root.quickMetrics.available ? root.quickMetrics.memoryPercent / 100 : 0
+                                        barColor: root.quickMetrics.memoryPercent >= 90 ? root.theme.warning : root.theme.accent
+                                    }
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: root.theme.spacingLarge
+                                        Text {
+                                            visible: root.quickMetrics.available && root.quickMetrics.temperatures
+                                                    && root.quickMetrics.temperatures.cpu !== undefined
+                                            text: "CPU " + root.quickMetrics.temperatures.cpu + "°C"
+                                            color: root.theme.textMuted
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                        }
+                                        Text {
+                                            visible: root.quickMetrics.available && root.quickMetrics.temperatures
+                                                    && root.quickMetrics.temperatures.gpu !== undefined
+                                            text: "GPU " + root.quickMetrics.temperatures.gpu + "°C"
+                                            color: root.theme.textMuted
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                        }
+                                        Text {
+                                            visible: !root.quickMetrics.available
+                                            text: "System metrics unavailable"
+                                            color: root.theme.textMuted
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                        }
+                                        Item { Layout.fillWidth: true }
+                                    }
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: root.networkStatus.available === false ? "Network · unavailable"
+                                                    : root.networkStatus.connected
+                                                        ? (root.networkStatus.type + " · " + root.networkStatus.interface)
+                                                        : "Network · disconnected"
+                                            color: root.theme.textMuted
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                            elide: Text.ElideRight
+                                        }
+                                        Text {
+                                            text: "↓ " + root.formatRate(root.downloadBytesPerSecond)
+                                                  + "   ↑ " + root.formatRate(root.uploadBytesPerSecond)
+                                            color: root.theme.textMuted
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                        }
+                                    }
+                                    Button {
+                                        Layout.fillWidth: true
+                                        text: "HyprSec  ·  "
+                                              + (root.quickStatusAvailable && root.quickPanelStatus.alt
+                                                 ? root.quickPanelStatus.alt : "Status unavailable")
+                                        onClicked: root.openFullControlPage("security")
+                                        background: Rectangle {
+                                            color: parent.hovered ? root.theme.surfaceRaised : root.theme.surface
+                                            radius: root.theme.radius
+                                            border.color: root.theme.border
+                                        }
+                                        contentItem: Text {
+                                            text: parent.text
+                                            color: root.theme.textMuted
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                            horizontalAlignment: Text.AlignLeft
+                                            verticalAlignment: Text.AlignVCenter
+                                            leftPadding: 8
+                                            rightPadding: 8
+                                        }
+                                    }
+
                                     Text {
                                         Layout.fillWidth: true
                                         visible: root.quickMessage.length > 0
@@ -1050,47 +1885,55 @@ OverlayPanel {
                             Layout.fillWidth: true
                             spacing: root.theme.spacing
                             Text { visible: root.settings.controlCenterPage !== "controls"; text: root.settings.controlCenterPage === "network" ? "Connectivity" : "Sound and display"; color: root.theme.textMuted; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSize }
-                            GridLayout {
-                                visible: root.settings.controlCenterPage !== "audio"
+                            ColumnLayout {
+                                visible: root.settings.controlCenterPage === "controls"
+                                        || root.settings.controlCenterPage === "network"
                                 Layout.fillWidth: true
-                                columns: 2
-                                Repeater {
-                                    model: [
-                                        { title: "Wi-Fi on", detail: "Enable wireless networking", cmd: ["nmcli", "radio", "wifi", "on"] },
-                                        { title: "Wi-Fi off", detail: "Disable wireless networking", cmd: ["nmcli", "radio", "wifi", "off"] },
-                                        { title: "Bluetooth on", detail: "Power on the Bluetooth adapter", cmd: ["bluetoothctl", "power", "on"] },
-                                        { title: "Bluetooth off", detail: "Power off the Bluetooth adapter", cmd: ["bluetoothctl", "power", "off"] },
-                                        { title: "Rescan Wi-Fi", detail: "Refresh nearby access points", cmd: ["nmcli", "device", "wifi", "rescan"] },
-                                        { title: "Scan Bluetooth", detail: "Scan for nearby devices", cmd: ["bluetoothctl", "scan", "on"] }
-                                    ]
-                                    delegate: Rectangle {
-                                        id: controlCard
-                                        required property var modelData
-                                        Layout.fillWidth: true
-                                        implicitHeight: 76
-                                        radius: root.theme.radius
-                                        color: controlMouse.containsMouse ? root.theme.surfaceRaised : root.theme.surface
-                                        border.width: 1; border.color: root.theme.border
-                                        ColumnLayout {
-                                            anchors.fill: parent; anchors.margins: root.theme.spacingLarge
-                                            Text { text: controlCard.modelData.title; color: root.theme.text; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSizeLarge }
-                                            Text { text: controlCard.modelData.detail; color: root.theme.textMuted; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSizeSmall }
-                                        }
-                                        MouseArea {
-                                            id: controlMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            enabled: controlCard.modelData.cmd[0] === "nmcli"
-                                                    ? !networkActionProcess.running
-                                                    : !bluetoothActionProcess.running
-                                            onClicked: {
-                                                if (controlCard.modelData.cmd[0] === "nmcli")
-                                                    root.runNetworkAction(controlCard.modelData.cmd, controlCard.modelData.title);
-                                                else
-                                                    root.runBluetoothAction(controlCard.modelData.cmd, controlCard.modelData.title);
-                                            }
-                                        }
+                                spacing: root.theme.spacingSmall
+                                ToggleRow {
+                                    Layout.fillWidth: true
+                                    theme: root.theme
+                                    icon: "󰤨"
+                                    label: "Wi-Fi"
+                                    available: root.quickWifiAvailable
+                                    detail: root.wifiNetworks.some(network => network.active)
+                                            ? root.wifiNetworks.find(network => network.active).ssid
+                                            : root.quickWifiEnabled ? "On · not connected" : "Off"
+                                    checked: root.quickWifiEnabled
+                                    busy: quickActionProcess.running && root.quickOperation === "Wi-Fi"
+                                    onActivated: enabled => root.runQuickAction(
+                                        ["nmcli", "radio", "wifi", enabled ? "on" : "off"], "Wi-Fi")
+                                }
+                                ToggleRow {
+                                    Layout.fillWidth: true
+                                    theme: root.theme
+                                    icon: "󰂯"
+                                    label: "Bluetooth"
+                                    available: root.quickBluetoothAvailable
+                                    detail: root.bluetoothDevices.some(device => device.connected)
+                                            ? root.bluetoothDevices.find(device => device.connected).name
+                                            : root.quickBluetoothPowered ? "On · no device connected" : "Off"
+                                    checked: root.quickBluetoothPowered
+                                    busy: quickActionProcess.running && root.quickOperation === "Bluetooth"
+                                    onActivated: enabled => root.runQuickAction(
+                                        ["bluetoothctl", "power", enabled ? "on" : "off"], "Bluetooth")
+                                }
+                                RowLayout {
+                                    visible: root.settings.controlCenterPage === "network"
+                                    Layout.fillWidth: true
+                                    Button {
+                                        text: "Rescan Wi-Fi"
+                                        enabled: root.quickWifiEnabled && !networkActionProcess.running
+                                        onClicked: root.runNetworkAction(
+                                            ["nmcli", "device", "wifi", "rescan"], "Wi-Fi rescan")
                                     }
+                                    Button {
+                                        text: "Scan Bluetooth"
+                                        enabled: root.quickBluetoothPowered && !bluetoothActionProcess.running
+                                        onClicked: root.runBluetoothAction(
+                                            ["bluetoothctl", "scan", "on"], "Bluetooth scan")
+                                    }
+                                    Item { Layout.fillWidth: true }
                                 }
                             }
                             Text {
@@ -1124,7 +1967,14 @@ OverlayPanel {
                                     onClicked: root.runNetworkAction(["nmcli", "device", "wifi", "rescan"], "Wi-Fi rescan")
                                     }
                                 }
-                                TextField { id: wifiPass; Layout.fillWidth: true; placeholderText: "Wi-Fi password (only needed for a new secured network)"; echoMode: TextInput.Password; onTextChanged: root.wifiPassword = text }
+                                TextField {
+                                    id: wifiPass
+                                    Layout.fillWidth: true
+                                    placeholderText: "Wi-Fi password (only needed for a new secured network)"
+                                    echoMode: TextInput.Password
+                                    text: root.wifiPassword
+                                    onTextEdited: root.wifiPassword = text
+                                }
                                 Repeater {
                                     model: root.wifiNetworks
                                     delegate: Rectangle {
@@ -1206,35 +2056,94 @@ OverlayPanel {
                                     }
                                 }
                             }
-                            GridLayout {
-                                visible: root.settings.controlCenterPage !== "network"
+                            ColumnLayout {
+                                visible: root.settings.controlCenterPage === "controls"
                                 Layout.fillWidth: true
-                                columns: 2
-                                Repeater {
-                                    model: [
-                                        { title: "Volume −", detail: "Lower output volume by 5%", cmd: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%-"] },
-                                        { title: "Volume +", detail: "Raise output volume by 5%", cmd: ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%+"] },
-                                        { title: "Mute output", detail: "Toggle output mute", cmd: ["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"] },
-                                        { title: "Mute microphone", detail: "Toggle microphone mute", cmd: ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", "toggle"] },
-                                        { title: "Brightness −", detail: "Lower screen brightness", cmd: [root.settings.scriptsRoot + "/hardware/brightness.sh", "down", "5"] },
-                                        { title: "Brightness +", detail: "Raise screen brightness", cmd: [root.settings.scriptsRoot + "/hardware/brightness.sh", "up", "5"] },
-                                        { title: "Power saver", detail: "Select power-saving profile", cmd: ["powerprofilesctl", "set", "power-saver"] },
-                                        { title: "Balanced", detail: "Select balanced profile", cmd: ["powerprofilesctl", "set", "balanced"] },
-                                        { title: "Performance", detail: "Select performance profile", cmd: ["powerprofilesctl", "set", "performance"] },
-                                        { title: "Do Not Disturb", detail: "Toggle notification delivery", cmd: [root.settings.scriptsRoot + "/session/notification-toggle.sh"] }
-                                    ]
-                                    delegate: Rectangle {
-                                        id: audioCard
-                                        required property var modelData
-                                        Layout.fillWidth: true; implicitHeight: 76; radius: root.theme.radius
-                                        color: audioMouse.containsMouse ? root.theme.surfaceRaised : root.theme.surface
-                                        border.width: 1; border.color: root.theme.border
-                                        ColumnLayout {
-                                            anchors.fill: parent; anchors.margins: root.theme.spacingLarge
-                                            Text { text: audioCard.modelData.title; color: root.theme.text; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSizeLarge }
-                                            Text { text: audioCard.modelData.detail; color: root.theme.textMuted; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSizeSmall }
+                                spacing: root.theme.spacingSmall
+                                SliderRow {
+                                    Layout.fillWidth: true
+                                    theme: root.theme
+                                    icon: "󰕾"
+                                    value: root.quickVolume
+                                    interactive: root.quickVolumeAvailable
+                                    onMoved: value => root.runQuickSlider(
+                                        ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@",
+                                         String(Math.round(value) / 100)], "Volume")
+                                }
+                                ToggleRow {
+                                    Layout.fillWidth: true
+                                    theme: root.theme
+                                    icon: "󰝟"
+                                    label: "Mute output"
+                                    available: root.quickOutputAvailable
+                                    checked: root.quickOutputMuted
+                                    onActivated: muted => root.runQuickAction(
+                                        ["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", muted ? "1" : "0"],
+                                        "Output mute")
+                                }
+                                ToggleRow {
+                                    Layout.fillWidth: true
+                                    theme: root.theme
+                                    icon: "󰍭"
+                                    label: "Mute microphone"
+                                    available: root.quickMicAvailable
+                                    checked: root.quickMicMuted
+                                    onActivated: muted => root.runQuickAction(
+                                        ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", muted ? "1" : "0"],
+                                        "Microphone mute")
+                                }
+                                SliderRow {
+                                    Layout.fillWidth: true
+                                    theme: root.theme
+                                    icon: "󰃠"
+                                    value: root.quickBrightness
+                                    interactive: root.quickBrightnessAvailable
+                                    onMoved: value => root.runQuickSlider(
+                                        ["brightnessctl", "set", Math.round(value) + "%"], "Brightness")
+                                }
+                                ToggleRow {
+                                    Layout.fillWidth: true
+                                    theme: root.theme
+                                    icon: "󰂛"
+                                    label: "Do not disturb"
+                                    available: root.quickDndAvailable
+                                    checked: root.quickDnd
+                                    onActivated: enabled => root.runQuickAction(
+                                        ["dunstctl", "set-paused", enabled ? "true" : "false"],
+                                        "Do not disturb")
+                                }
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    Repeater {
+                                        model: [
+                                            { name: "power-saver", label: "Saver" },
+                                            { name: "balanced", label: "Balanced" },
+                                            { name: "performance", label: "Performance" }
+                                        ]
+                                        delegate: Button {
+                                            required property var modelData
+                                            Layout.fillWidth: true
+                                            text: modelData.label
+                                            enabled: root.quickPowerProfilesAvailable && !quickActionProcess.running
+                                            onClicked: root.runQuickAction(
+                                                ["powerprofilesctl", "set", modelData.name], "Power profile")
+                                            background: Rectangle {
+                                                radius: root.theme.radius
+                                                color: root.quickPowerProfile === modelData.name
+                                                        ? root.theme.accent
+                                                        : parent.hovered ? root.theme.surfaceRaised : root.theme.surface
+                                                border.color: root.theme.border
+                                            }
+                                            contentItem: Text {
+                                                text: parent.text
+                                                color: root.quickPowerProfile === modelData.name
+                                                        ? root.theme.background : root.theme.text
+                                                font.family: root.theme.fontFamily
+                                                font.pixelSize: root.theme.fontSizeSmall
+                                                horizontalAlignment: Text.AlignHCenter
+                                                verticalAlignment: Text.AlignVCenter
+                                            }
                                         }
-                                        MouseArea { id: audioMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.run(audioCard.modelData.cmd) }
                                     }
                                 }
                             }
