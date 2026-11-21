@@ -39,7 +39,7 @@ log_event() {
 ensure_agent() {
     if ! pgrep -fa bluetooth-agent.py >/dev/null 2>&1; then
         if command -v hyprctl >/dev/null 2>&1; then
-            hyprctl dispatch 'hl.dsp.exec_cmd("/home/darkglitch/.config/hypr/scripts/hardware/bluetooth-agent.py")' >/dev/null 2>&1 || \
+            hyprctl dispatch "hl.dsp.exec_cmd(\"${HOME}/.config/hypr/scripts/hardware/bluetooth-agent.py\")" >/dev/null 2>&1 || \
             nohup python3 "${HOME}/.config/hypr/scripts/hardware/bluetooth-agent.py" >/dev/null 2>&1 &
         else
             nohup python3 "${HOME}/.config/hypr/scripts/hardware/bluetooth-agent.py" >/dev/null 2>&1 &

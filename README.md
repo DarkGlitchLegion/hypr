@@ -4,6 +4,58 @@ A developer-focused personal workstation environment built on **Arch Linux**, **
 
 Designed around the **Minimal Dark Charcoal palette** (`#0C0D10` background, `#17191F` surface, `#202126` card hover, `#AAAAAA` accent), this ecosystem emphasizes keyboard-driven workflows, zero bloat, and fast hardware integration.
 
+## Installation
+
+Clone the repository and run the single guided installer:
+
+```sh
+git clone <repository-url> hypr-rice
+cd hypr-rice
+./setup.sh
+```
+
+The installer never runs as root, never deletes existing configuration without confirmation, and creates timestamped backups under `~/.local/share/hypr-rice/backups/` before replacing deployed components.
+
+Installation profiles:
+
+- `./setup.sh --minimal`: core Hyprland desktop components.
+- `./setup.sh --standard` (default): core, desktop, and hardware utilities.
+- `./setup.sh --full`: standard components plus optional convenience tools.
+
+Safety and maintenance options:
+
+```sh
+./setup.sh --dry-run
+./setup.sh --skip-packages
+./setup.sh --backup-only
+./setup.sh --restore
+./setup.sh --restore /path/to/backup
+./setup.sh --symlinks
+./setup.sh --yes
+```
+
+Package installation is displayed before execution. Unsupported package managers are reported instead of using blind install commands. Package managers currently implemented for missing-package detection and installation are `pacman`, `apt`, and `dnf`; `apt` and `dnf` mappings vary by distribution and repository availability. GPU drivers, kernel settings, bootloaders, and root-level system configuration are never changed automatically.
+
+### Updating
+
+Pull repository changes, review the diff, and run `./setup.sh --dry-run` before applying an update. Use `./setup.sh` to merge deployable components into `~/.config/hypr` while preserving existing state JSON files and unrelated files.
+
+### Backup and restore
+
+- `./setup.sh --backup-only` creates a timestamped backup without deploying or installing packages.
+- `./setup.sh --restore` restores the latest backup.
+- `./setup.sh --restore /path/to/backup` restores a specific backup.
+- Restoring automatically creates a safety backup of the current configuration first.
+
+Installation activity is logged to `~/.local/state/hypr-rice/install.log`. Backup manifests and component contents are stored under `~/.local/share/hypr-rice/backups/`.
+
+### Troubleshooting
+
+- Run `./setup.sh --dry-run` to inspect the detected hardware, package plan, and deployment plan without changes.
+- Run `scripts/rice validate` after installation to check syntax and configuration references.
+- Run `scripts/rice doctor --full` for runtime and dependency diagnostics.
+- Do not run `setup.sh` with `sudo`; it intentionally refuses root execution.
+
 ---
 
 ## Architecture Overview
@@ -112,7 +164,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 
 ### 1. Rice Control Center (Unified Super-Hub)
 * **Hotkey**: <kbd>Super</kbd> + <kbd>C</kbd> or <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>Space</kbd>
-* **Script**: `~/.config/hypr/scripts/control-center.sh`
+* **Script**: `~/.config/hypr/scripts/desktop/control-center.sh`
 * **What it does**: Provides a centralized keyboard dashboard for the entire desktop.
   * **Rice Health & Diagnostics** is available under System & Performance. It checks Hyprland config/IPC, display watcher count, active monitor geometry for overlaps, workspace state, saved external workspace preference, and commands used by rice features. Choose **Refresh diagnostics** to re-query live state.
   * **Categorized Submenus**:
@@ -143,14 +195,14 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 * **System tiles**: CPU, RAM, CPU temperature, and GPU temperature are shown in the System section; clicking CPU or RAM opens `btop`.
 * **Network traffic**: The popup shows live download/upload speeds and cumulative totals for the active default-route interface. Totals persist across restarts in `~/.local/state/hypr-rice/network-traffic.json`; the session-start monitor tracks traffic while the popup is closed.
 * **Live status**: The popup refreshes device and control state while open. Speaker and microphone icons in Waybar refresh immediately after changes made through Quick Settings or the volume/microphone hotkeys.
-* **Scripts**: `~/.config/hypr/scripts/quick-settings.py` and `quick-settings-status.py`.
+* **Scripts**: `~/.config/hypr/scripts/desktop/quick-settings.py` and `desktop/quick-settings-status.py`.
 
 ---
 
 ### 2. PipeWire Audio Control Center
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>A</kbd>
 * **Waybar Trigger**: Click the combined Quick Settings cluster, then click the Speaker or Microphone row's icon/text to open the audio manager. The switches toggle mute.
-* **Script**: `~/.config/hypr/scripts/audio-menu.sh`
+* **Script**: `~/.config/hypr/scripts/hardware/audio-menu.sh`
 * **What it does**:
   * Enumerates current PipeWire-Pulse outputs and inputs from JSON, including built-in speakers, HDMI/DisplayPort, Bluetooth, and headsets when exposed by PipeWire.
   * Shows the active route and device-provided description; selecting an output changes the default and moves active streams.
@@ -173,7 +225,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 
 ### Screen Timeout and Idle Management
 * **Open**: Control Center → **Screen Timeout / Idle Management**. One menu provides timeout presets, the idle toggle, Keep Awake, and detailed action settings.
-* **CLI**: `~/.config/hypr/scripts/idle-manager.py --menu` (`--quick` remains an alias), `--status`, `--validate`, `--preset "Power Saving"`, `--master off`, `--keep-awake`, or `--resume-idle`.
+* **CLI**: `~/.config/hypr/scripts/session/idle-manager.py --menu` (`--quick` remains an alias), `--status`, `--validate`, `--preset "Power Saving"`, `--master off`, `--keep-awake`, or `--resume-idle`.
 * **Saved settings**: `~/.config/hypr/state/idle-settings.json`; the idle manager snapshots the previous rice config before changing an existing settings file. Runtime Hypridle config and manager state are generated under `$XDG_RUNTIME_DIR/hypr-rice-idle/`.
 * **Profiles**: Balanced (default), Power Saving, Security Focused, Relaxed, Never, and fixed 5–60 minute lock-time profiles. Individual actions can be toggled and set from 15 seconds to 24 hours.
 * **Defaults**: Balanced dims at 2 minutes, blanks at 5, locks at 10, powers displays off at 15, and leaves suspend disabled. Power Saving enables suspend at 15 minutes; no other preset enables suspend.
@@ -188,7 +240,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 * **Waybar Trigger**:
   * **Left-Click** on Battery: Opens the interactive Power & Battery Center.
   * **Right-Click** on Battery: Instantly cycles through power profiles (`power-saver` → `balanced` → `performance`).
-* **Script**: `~/.config/hypr/scripts/power-profile-menu.sh`
+* **Script**: `~/.config/hypr/scripts/session/power-profile-menu.sh`
 * **What it does**:
   * Interfaces with `powerprofilesctl` to switch AMD P-State CPU governor profiles:
     * **Performance** (`󰓅`): Maximum CPU boost and clocks.
@@ -206,7 +258,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 ### 4. Graphical Wi-Fi Manager
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>
 * **Waybar Trigger**: Click the combined Quick Settings cluster, then click the Wi-Fi row's icon/text to open the network manager. The switch toggles the Wi-Fi radio.
-* **Script**: `~/.config/hypr/scripts/wifi-menu.sh`
+* **Script**: `~/.config/hypr/scripts/hardware/wifi-menu.sh`
 * **What it does**:
   * Scans nearby Wi-Fi networks in the background (`nmcli --rescan no`) for fast response times.
   * Displays signal strength icons, security state (WPA/WPA2/open), and active connection indicators.
@@ -218,7 +270,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 ### 5. Graphical Bluetooth Manager & Pairing Agent
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd>
 * **Waybar Trigger**: Click the combined Quick Settings cluster, then click the Bluetooth row's icon/text to open the manager. The switch toggles Bluetooth power.
-* **Scripts**: `~/.config/hypr/scripts/bluetooth-menu.sh`, `bluetooth-status.py`, and `bluetooth-agent.py`
+* **Scripts**: `~/.config/hypr/scripts/hardware/bluetooth-menu.sh`, `bluetooth-status.py`, and `bluetooth-agent.py`
 * **What it does**:
   * The Quick Settings popup shows whether Bluetooth is powered off (`󰂲`), powered on (`󰂯`), or connected (`󰂱`), and refreshes the state while open.
   * Connects to BlueZ via D-Bus and `bluetoothctl`.
@@ -230,7 +282,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 
 ### 6. Wallpaper Selector & Persistence Engine
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>W</kbd> or <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>Space</kbd>
-* **Scripts**: `~/.config/hypr/scripts/wallpaper-selector.sh` & `set-wallpaper.sh`
+* **Scripts**: `~/.config/hypr/scripts/wallpaper/wallpaper-selector.sh` & `set-wallpaper.sh`
 * **What it does**:
   * Displays a visual grid of all wallpapers in `~/.config/hypr/wallpapers/` (PNG, JPG, WEBP).
   * Automatically applies the selected image to Hyprpaper via IPC without restarting the daemon.
@@ -242,7 +294,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 ### 7. Clipboard History Manager
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>V</kbd>
 * **Clear History**: <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>V</kbd>
-* **Scripts**: `~/.config/hypr/scripts/clipboard-menu.sh` & `clipboard-daemon.sh`
+* **Scripts**: `~/.config/hypr/scripts/clipboard/clipboard-menu.sh` & `clipboard-daemon.sh`
 * **What it does**:
   * Runs a lightweight `wl-paste` listener.
   * Uses `cliphist` when available; otherwise it uses the built-in cache and works without extra packages.
@@ -255,7 +307,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 * **Interactive Area**: Press <kbd>Print</kbd>
 * **Fullscreen**: Press <kbd>Super</kbd> + <kbd>Print</kbd>
 * **Capture Menu**: Press <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>C</kbd>
-* **Script**: `~/.config/hypr/scripts/screenshot.sh`
+* **Script**: `~/.config/hypr/scripts/session/screenshot.sh`
 * **What it does**:
   * Uses `grim` and `slurp` for Wayland capture.
   * Captured images are automatically saved to `~/Pictures/Screenshots/` with timestamped filenames.
@@ -276,7 +328,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 
 ### 10. Lock Screen & Idle Power Management
 * **Instant Lock**: <kbd>Super</kbd> + <kbd>L</kbd> or <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>L</kbd>
-* **Daemons**: `hyprlock`, plus one supervised `hypridle` managed by `scripts/idle-manager.py`
+* **Daemons**: `hyprlock`, plus one supervised `hypridle` managed by `scripts/session/idle-manager.py`
 * **What it does**:
   * Uses a clean 2D charcoal layout with custom date/time fonts and smooth input dots animations.
   * Idle profiles, individual action timers, and temporary keep-awake controls are available from the Control Center. Balanced is the default; suspend is opt-in.
@@ -286,7 +338,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 ---
 
 ### 11. GTK Dark Theme & Icon Synchronization
-* **Script**: `~/.config/hypr/scripts/apply-gtk-theme.sh`
+* **Script**: `~/.config/hypr/scripts/desktop/apply-gtk-theme.sh`
 * **What it does**:
   * Synchronizes `settings.ini` for GTK 3.0 and GTK 4.0.
   * Applies **Adwaita-dark** theme, **Papirus-Dark** icons, and **Adwaita** 20px cursor.
@@ -297,7 +349,7 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 ### 12. External Display Manager
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd>
 * **Control Center**: Open **Display & Personalization** → **Display Manager**
-* **Script**: `~/.config/hypr/scripts/display-manager.py`
+* **Script**: `~/.config/hypr/scripts/hardware/display-manager.py`
 * **Monitor configuration**: [monitors.lua](./lua/monitors.lua) remains the default fallback rule; display changes are applied at runtime and do not rewrite it.
 * **Previous limitation**: The fallback rule only selected a preferred mode, and the Control Center's display action only printed monitor information; there was no hotplug watcher, layout UI, or saved profile.
 * **What it does**:
