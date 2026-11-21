@@ -1,0 +1,6 @@
+Bar Bar.qml
+Clock Clock.qml
+StatusIndicators StatusIndicators.qml
+SystemTray SystemTray.qml
+WindowTitle WindowTitle.qml
+WorkspaceIndicator WorkspaceIndicator.qml

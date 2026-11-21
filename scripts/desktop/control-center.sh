@@ -72,7 +72,7 @@ show_system_menu() {
 <span color="#AAAAAA"><b>  Process Monitor (Btop)                </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Open transparent resource monitor</span>
 <span color="#AAAAAA"><b>󰓅  Power Profiles &amp; Battery Center       </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Switch performance, balanced, power-saver</span>
 <span color="#AAAAAA"><b>󰋊  Disk Usage &amp; Storage Overview         </b></span> <span color="#333333">│</span> <span color="#D5D5D5">View local filesystem storage in terminal</span>
-<span color="#AAAAAA"><b>󰑓  Restart Waybar                        </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Reload top status bar</span>
+<span color="#AAAAAA"><b>󰑓  Restart Bar                           </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Reload the selected status bar</span>
 <span color="#AAAAAA"><b>󰑓  Reload Hyprland Desktop               </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Validate and reload; leave Waybar running</span>
 <span color="#AAAAAA"><b>󰒓  Maintenance Center                    </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Diagnostics, snapshots, tests, logs</span>
 <span color="#AAAAAA"><b>󰒓  Hyprland Config Directory             </b></span> <span color="#333333">│</span> <span color="#D5D5D5">Open ~/.config/hypr in Kitty</span>
@@ -345,7 +345,7 @@ handle_action() {
         *"Advanced Mixer"*)
             pavucontrol &
             ;;
-        *"Restart Waybar"*)
+        *"Restart Bar"*)
             "${DESKTOP_SCRIPTS}/restart-waybar.sh" &
             ;;
         *"Reload Hyprland Desktop"*)

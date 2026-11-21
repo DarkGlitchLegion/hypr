@@ -14,6 +14,8 @@ fi
 case "${MODE}" in
     quickshell)
         if qs ipc --path "${CONFIG_ROOT}/quickshell/shell.qml" show >/dev/null 2>&1; then
+            qs ipc --path "${CONFIG_ROOT}/quickshell/shell.qml" call hyprshell setEnabled true
+            "${SCRIPTS_ROOT}/desktop/start-bar.sh"
             exec qs ipc --path "${CONFIG_ROOT}/quickshell/shell.qml" call hyprshell reload
         fi
         exec "${SCRIPTS_ROOT}/desktop/start-bar.sh"

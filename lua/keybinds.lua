@@ -8,7 +8,6 @@ local mainMod       = Desktop.mainMod
 local scripts       = Desktop.scripts
 local terminal      = Desktop.terminal
 local fileManager   = Desktop.fileManager
-local menu          = Desktop.menu
 local controlCenter = Desktop.controlCenter
 local lockscreen    = Desktop.lockscreen
 local hyprsecKeybind = "SUPER + SHIFT + H"
@@ -26,7 +25,7 @@ end
 -- -----------------------------------------------------
 hl.bind(mainMod .. " + RETURN",         hl.dsp.exec_cmd(terminal))
 hl.bind(mainMod .. " + SHIFT + RETURN", hl.dsp.exec_cmd("firefox"))
-hl.bind(mainMod .. " + SPACE",          hl.dsp.exec_cmd(menu))
+hl.bind(mainMod .. " + SPACE",          hl.dsp.exec_cmd(scripts .. "/desktop/launcher.sh"))
 hl.bind(mainMod .. " + ALT + SPACE",    hl.dsp.exec_cmd(controlCenter))
 hl.bind(mainMod .. " + C",              hl.dsp.exec_cmd(controlCenter))
 hl.bind(mainMod .. " + SHIFT + F",      hl.dsp.exec_cmd(fileManager))

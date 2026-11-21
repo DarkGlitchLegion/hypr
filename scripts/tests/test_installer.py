@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -195,6 +196,17 @@ class ValidationTests(unittest.TestCase):
             result = validation_module.validate(target)
             self.assertTrue(any("Python syntax" in item for item in result.passed))
             self.assertTrue(any("Shell syntax" in item for item in result.passed))
+
+    def test_validation_checks_quickshell_qml_syntax_when_qmllint_exists(self) -> None:
+        if shutil.which("qmllint") is None and not Path("/usr/lib/qt6/bin/qmllint").is_file():
+            self.skipTest("qmllint is not installed")
+        with tempfile.TemporaryDirectory() as directory:
+            target = Path(directory)
+            quickshell = target / "quickshell"
+            quickshell.mkdir()
+            (quickshell / "shell.qml").write_text("import QtQuick\nItem {}\n", encoding="utf-8")
+            result = validation_module.validate(target)
+            self.assertIn("QML syntax: 1 file(s)", result.passed)
 
 
 if __name__ == "__main__":

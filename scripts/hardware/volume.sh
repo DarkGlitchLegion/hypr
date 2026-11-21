@@ -5,6 +5,18 @@
 # =====================================================
 
 STEP="${2:-5}"
+QUICKSHELL_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/quickshell/shell.qml"
+BAR_MODE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/hypr-rice/bar-mode"
+
+show_osd() {
+    local title="$1" value="$2" detail="$3" mode="quickshell"
+    if [ -f "${BAR_MODE_FILE}" ]; then
+        IFS= read -r mode < "${BAR_MODE_FILE}" || true
+    fi
+    [ "${mode}" = "quickshell" ] || return 1
+    command -v qs >/dev/null 2>&1 || return 1
+    qs ipc --path "${QUICKSHELL_CONFIG}" call hyprshell showOsd "${title}" "${value}" "${detail}" >/dev/null 2>&1
+}
 
 get_volume() {
     # Extract volume as an integer percentage from wpctl output
@@ -21,6 +33,9 @@ get_volume() {
 notify_volume() {
     read -r status vol < <(get_volume)
     if [ "${status}" = "muted" ]; then
+        if show_osd "Volume" "${vol}" "Muted"; then
+            return
+        fi
         dunstify -a "Volume" \
                  -u low \
                  -r 9993 \
@@ -28,6 +43,9 @@ notify_volume() {
                  "Audio Muted" \
                  "Current level: ${vol}%"
     else
+        if show_osd "Volume" "${vol}" "Active"; then
+            return
+        fi
         dunstify -a "Volume" \
                  -u low \
                  -r 9993 \
@@ -61,9 +79,13 @@ case "$1" in
         wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
         read -r mic_status _ < <(wpctl get-volume @DEFAULT_AUDIO_SOURCE@ | awk '{if ($3 == "[MUTED]") print "muted"; else print "unmuted"}')
         if [ "${mic_status}" = "muted" ]; then
-            dunstify -a "Microphone" -u low -r 9992 -i "microphone-sensitivity-muted" "Microphone Muted"
+            if ! show_osd "Microphone" "0" "Muted"; then
+                dunstify -a "Microphone" -u low -r 9992 -i "microphone-sensitivity-muted" "Microphone Muted"
+            fi
         else
-            dunstify -a "Microphone" -u low -r 9992 -i "microphone-sensitivity-high" "Microphone Active"
+            if ! show_osd "Microphone" "100" "Active"; then
+                dunstify -a "Microphone" -u low -r 9992 -i "microphone-sensitivity-high" "Microphone Active"
+            fi
         fi
         refresh_waybar
         ;;

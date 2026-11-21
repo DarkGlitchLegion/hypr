@@ -160,7 +160,11 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 * **Validation**: Run `scripts/rice validate` for config references and syntax checks, or `scripts/rice doctor --full` for broader diagnostics.
 
 ### Quickshell/QML shell
-Quickshell is the primary Hyprland bar and launches automatically. Its modular bar includes event-driven workspaces and active-window title, system tray, clock/calendar, network/audio/battery status, notification history, Control Center, and the existing power menu. Waybar configuration and scripts remain installed as a recovery fallback.
+Quickshell is the primary Hyprland bar and launches automatically. Its modular bar includes event-driven workspaces and active-window title, system tray, clock/calendar, network/audio/battery status, notification history, Control Center, and the existing power menu. <kbd>Super</kbd> + <kbd>Space</kbd> opens the Quickshell application launcher, with fuzzy app search, favorites, recent queries, safe browser search (`? words`), arithmetic (`= 2 * (3 + 4)`), and shortcuts to existing system tools. The launcher also opens a dashboard for CPU, memory, storage, and battery metrics and a settings panel for bar placement, visible modules, accent color, and animation speed. Settings save automatically in Quickshell’s state directory. Waybar configuration and scripts remain installed as a recovery fallback.
+
+Device controls, notification history, wallpaper selection, clipboard history, and session actions continue to use their established utilities, called from the Quickshell UI. See [quickshell/README.md](./quickshell/README.md) for module structure, setup, and current migration scope.
+
+Volume, microphone, and brightness hotkeys show a short Quickshell OSD while its IPC endpoint is available, with Dunst notifications as fallback.
 
 Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Quickshell and switch the current and future sessions to Waybar. `Super+Shift+R` still reloads the bar and Hyprland configuration; it now reloads whichever shell is selected. Review [quickshell/README.md](./quickshell/README.md) for deployment, startup, and recovery details.
 

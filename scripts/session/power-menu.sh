@@ -29,6 +29,6 @@ case "${CHOSEN}" in
     *"Reload Desktop"*)
         "${HOME}/.config/hypr/scripts/desktop/restart-waybar.sh" >/dev/null 2>&1
         hyprctl reload >/dev/null 2>&1
-        dunstify -a "System" -u low "Desktop Reloaded" "Hyprland and Waybar have been refreshed." 2>/dev/null || true
+        dunstify -a "System" -u low "Desktop Reloaded" "Hyprland and the selected bar have been refreshed." 2>/dev/null || true
         ;;
 esac
