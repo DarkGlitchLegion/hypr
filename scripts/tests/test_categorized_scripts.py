@@ -250,6 +250,14 @@ class CategorizedScriptTests(unittest.TestCase):
         self.assertIn("class", data)
         self.assertIn("notifications", data)
         self.assertGreaterEqual(data["notifications"], 0)
+        self.assertIn("battery", data)
+        self.assertIn("available", data["battery"])
+        if data["battery"]["available"]:
+            self.assertIn("status", data["battery"])
+            self.assertTrue(
+                data["battery"]["percentage"] is None
+                or isinstance(data["battery"]["percentage"], int)
+            )
 
     def test_idle_manager_status_and_validation(self) -> None:
         script = SCRIPTS / "session" / "idle-manager.py"

@@ -115,6 +115,22 @@ def battery_pct() -> str:
     return _read(f"{bats[0]}/capacity") + "%"
 
 
+def battery_status() -> dict[str, object]:
+    bats = glob.glob("/sys/class/power_supply/BAT*")
+    if not bats:
+        return {"available": False, "percentage": None, "status": ""}
+    battery = bats[0]
+    try:
+        percentage = int(_read(f"{battery}/capacity"))
+    except ValueError:
+        percentage = None
+    return {
+        "available": True,
+        "percentage": percentage,
+        "status": _read(f"{battery}/status"),
+    }
+
+
 # ── Security ─────────────────────────────────────────────────────────────────
 def sec_class() -> str:
     out = run([str(SCRIPTS / "security" / "hyprsec-box.sh"), "waybar-status"], timeout=5)
@@ -144,6 +160,7 @@ a_icon = audio_icon()
 m_icon = microphone_icon()
 b_icon = battery_icon()
 b_pct = battery_pct()
+battery = battery_status()
 d_icon = dnd_icon()
 n_count = displayed_notification_count()
 s_cls = sec_class()
@@ -186,4 +203,5 @@ print(json.dumps({
     "class": f"cluster sec-{s_cls}",
     "alt": s_cls,
     "notifications": n_count,
+    "battery": battery,
 }))

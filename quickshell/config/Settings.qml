@@ -84,24 +84,24 @@ QtObject {
         JsonAdapter {
             id: preferences
             property string barPosition: "top"
-            property int barHeight: 38
-            property int barMarginTop: 7
-            property int barMarginBottom: 7
-            property int barMarginHorizontal: 10
-            property int barSpacing: 8
+            property int barHeight: 32
+            property int barMarginTop: 6
+            property int barMarginBottom: 6
+            property int barMarginHorizontal: 8
+            property int barSpacing: 6
             property int statusRefreshInterval: 5000
             property int overlayWidth: 620
             property int overlayMaxHeight: 680
             property int searchLimit: 12
             property bool showWorkspaces: true
             property bool showWindowTitle: true
-            property bool showSystemTray: true
+            property bool showSystemTray: false
             property bool showStatusIndicators: true
             property bool showClock: true
             property bool showPowerButton: true
-            property string clockFormat: "ddd MMM d  HH:mm"
+            property string clockFormat: "ddd MMM d HH:mm"
             property string clockFormatAlt: "HH:mm:ss"
-            property string accentColor: "#B4B9D0"
+            property string accentColor: "#AAAAAA"
             property real animationSpeed: 1.0
             property list<string> favoriteAppIds: []
             property list<string> searchHistory: []

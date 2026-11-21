@@ -8,6 +8,7 @@ QtObject {
     readonly property color textMuted: "#888888"
     property color accent: "#B4B9D0"
     readonly property color border: "#333333"
+    readonly property color moduleBorder: "#2A2B30"
     readonly property color success: "#A3BE8C"
     readonly property color warning: "#EBCB8B"
     readonly property color error: "#BF616A"
@@ -25,7 +26,7 @@ QtObject {
     readonly property int radiusLarge: 12
     readonly property int calendarWidth: 280
     readonly property int calendarHeight: 300
-    readonly property real barOpacity: 0.94
+    readonly property real barOpacity: 0.90
     property real animationScale: 1.0
     readonly property int animationFast: Math.round(140 * animationScale)
     readonly property int animation: Math.round(200 * animationScale)

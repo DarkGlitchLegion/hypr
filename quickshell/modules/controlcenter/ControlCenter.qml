@@ -41,6 +41,35 @@ OverlayPanel {
     property string bluetoothActionErrorText: ""
     property string bluetoothActionOutputText: ""
     property var pendingAudioCommand: []
+    property bool quickWifiEnabled: false
+    property bool quickWifiAvailable: false
+    property bool quickBluetoothPowered: false
+    property bool quickBluetoothAvailable: false
+    property bool quickOutputMuted: false
+    property bool quickOutputAvailable: false
+    property bool quickMicMuted: false
+    property bool quickMicAvailable: false
+    property bool quickDnd: false
+    property bool quickDndAvailable: false
+    property int quickVolume: 0
+    property bool quickVolumeAvailable: false
+    property int quickBrightness: 50
+    property bool quickBrightnessAvailable: false
+    property string quickPowerProfile: "balanced"
+    property bool quickPowerProfilesAvailable: false
+    property var quickPanelStatus: ({})
+    property bool quickStatusAvailable: false
+    property bool quickStatusLoading: false
+    property var quickCommand: []
+    property string quickOperation: ""
+    property string quickMessage: ""
+    property bool quickActionFailed: false
+    property string quickActionErrorText: ""
+    property string quickActionOutputText: ""
+    property var pendingQuickCommand: []
+    property string pendingQuickOperation: ""
+    property bool hasPendingQuickAction: false
+    property date quickCurrentDate: new Date()
 
     readonly property var pages: [
         { id: "home", label: "Overview", icon: "⌂" },
@@ -143,10 +172,10 @@ OverlayPanel {
         right: compactControls ? settings.barMarginHorizontal : 0
     }
     implicitWidth: compactControls
-            ? Math.min(hostWindow.width - 24, 480)
+            ? Math.min(hostWindow.width - 24, 360)
             : Math.min(hostWindow.width - 24, 920)
     implicitHeight: compactControls
-            ? Math.min(targetScreen.height - settings.barHeight - 36, 720)
+            ? Math.min(targetScreen.height - settings.barHeight - 36, quickSettingsContent.implicitHeight + 28)
             : Math.min(targetScreen.height - 90, 680)
     visible: settings.shellEnabled
             && (settings.controlCenterOpen || settings.quickControlsOpen)
@@ -163,6 +192,14 @@ OverlayPanel {
             loadWallpapers();
         if (visible && settings.controlCenterPage === "clipboard")
             loadClipboard();
+        if (visible && compactControls) {
+            refreshQuickState();
+            quickStatusLoading = true;
+            quickPanelStatusProcess.running = true;
+            wifiProcess.running = true;
+            bluetoothProcess.running = true;
+            powerProfileProcess.running = true;
+        }
     }
     Connections {
         target: root.settings
@@ -176,7 +213,7 @@ OverlayPanel {
             if (root.settings.controlCenterPage === "display") displayProcess.running = true;
             if (root.settings.controlCenterPage === "audio" || root.settings.controlCenterPage === "controls") audioProcess.running = true;
             if (root.settings.controlCenterPage === "network" || root.settings.controlCenterPage === "controls") wifiProcess.running = true;
-            if (root.settings.controlCenterPage === "network") bluetoothProcess.running = true;
+            if (root.settings.controlCenterPage === "network" || root.settings.controlCenterPage === "controls") bluetoothProcess.running = true;
             if (root.settings.controlCenterPage === "security") securityProcess.running = true;
             if (root.settings.controlCenterPage === "presets") presetProcess.running = true;
             if (root.settings.controlCenterPage === "notifications") root.settings.openOverlay("notifications");
@@ -191,6 +228,84 @@ OverlayPanel {
     function currentPageTitle(): string {
         const page = pages.find(item => item.id === settings.controlCenterPage);
         return page ? page.label : "Control Center";
+    }
+
+    function refreshQuickState() {
+        for (const process of [wifiStateProcess, bluetoothStateProcess, volumeStateProcess,
+                               micStateProcess, brightnessStateProcess, dndStateProcess]) {
+            if (!process.running)
+                process.running = true;
+        }
+    }
+
+    function runQuickAction(command, label) {
+        if (quickActionProcess.running) {
+            pendingQuickCommand = command;
+            pendingQuickOperation = label;
+            hasPendingQuickAction = true;
+            quickMessage = label + " queued.";
+            return;
+        }
+        quickCommand = command;
+        quickOperation = label;
+        quickMessage = label + "…";
+        quickActionFailed = false;
+        quickActionErrorText = "";
+        quickActionOutputText = "";
+        quickActionProcess.running = true;
+    }
+
+    function runQuickSlider(command, label) {
+        pendingQuickCommand = command;
+        pendingQuickOperation = label;
+        hasPendingQuickAction = true;
+        quickSliderTimer.restart();
+    }
+
+    Timer {
+        id: quickStateTimer
+        interval: 5000
+        repeat: true
+        running: root.visible && root.compactControls
+        onTriggered: root.refreshQuickState()
+    }
+    Timer {
+        id: quickStatusTimer
+        interval: 30000
+        repeat: true
+        running: root.visible && root.compactControls
+        onTriggered: {
+            root.quickStatusLoading = true;
+            quickPanelStatusProcess.running = true;
+        }
+    }
+    Timer {
+        id: quickClockTimer
+        interval: 1000
+        repeat: true
+        running: root.visible && root.compactControls
+        onTriggered: root.quickCurrentDate = new Date()
+    }
+    Timer {
+        id: quickSliderTimer
+        interval: 350
+        onTriggered: {
+            if (!root.hasPendingQuickAction)
+                return;
+            if (quickActionProcess.running) {
+                quickSliderTimer.restart();
+                return;
+            }
+            const command = root.pendingQuickCommand;
+            const operation = root.pendingQuickOperation;
+            root.hasPendingQuickAction = false;
+            root.runQuickAction(command, operation);
+        }
+    }
+
+    function openFullControlPage(page) {
+        settings.controlCenterPage = page;
+        settings.openOverlay("controlCenter");
     }
 
     function open(page) { settings.controlCenterPage = page; settings.openOverlay("controlCenter"); }
@@ -264,6 +379,7 @@ OverlayPanel {
                     ? root.networkOperation + " complete."
                     : root.networkActionErrorText || root.networkActionOutputText
                             || root.networkOperation + " failed (exit " + exitCode + ").";
+            root.refreshQuickState();
             wifiProcess.running = true;
         }
     }
@@ -283,6 +399,7 @@ OverlayPanel {
                     ? root.bluetoothOperation + " complete."
                     : root.bluetoothActionErrorText || root.bluetoothActionOutputText
                             || root.bluetoothOperation + " failed (exit " + exitCode + ").";
+            root.refreshQuickState();
             bluetoothProcess.running = true;
         }
     }
@@ -360,6 +477,135 @@ OverlayPanel {
         stdout: StdioCollector { onStreamFinished: { try { root.sessionPresets = JSON.parse(text); } catch (e) { root.sessionPresets = []; } } }
         onExited: function(code) { if (code !== 0) root.sessionPresets = []; }
     }
+    Process {
+        id: wifiStateProcess
+        command: ["nmcli", "radio", "wifi"]
+        stdout: StdioCollector { onStreamFinished: root.quickWifiEnabled = text.trim() === "enabled" }
+        onExited: function(code) {
+            root.quickWifiAvailable = code === 0;
+            if (code !== 0) console.warn("Could not read Wi-Fi radio state:", code);
+        }
+    }
+    Process {
+        id: bluetoothStateProcess
+        command: ["bluetoothctl", "show"]
+        stdout: StdioCollector { onStreamFinished: root.quickBluetoothPowered = /Powered:\s+yes/i.test(text) }
+        onExited: function(code) {
+            root.quickBluetoothAvailable = code === 0;
+            if (code !== 0) console.warn("Could not read Bluetooth power state:", code);
+        }
+    }
+    Process {
+        id: volumeStateProcess
+        command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SINK@"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const match = text.match(/Volume:\s+([\d.]+)/);
+                if (match) {
+                    root.quickVolume = Math.max(0, Math.min(100, Math.round(Number(match[1]) * 100)));
+                    root.quickVolumeAvailable = true;
+                }
+                root.quickOutputMuted = text.includes("[MUTED]");
+            }
+        }
+        onExited: function(code) {
+            root.quickOutputAvailable = code === 0;
+            if (code !== 0) console.warn("Could not read output volume:", code);
+        }
+    }
+    Process {
+        id: micStateProcess
+        command: ["wpctl", "get-volume", "@DEFAULT_AUDIO_SOURCE@"]
+        stdout: StdioCollector { onStreamFinished: root.quickMicMuted = text.includes("[MUTED]") }
+        onExited: function(code) {
+            root.quickMicAvailable = code === 0;
+            if (code !== 0) console.warn("Could not read microphone state:", code);
+        }
+    }
+    Process {
+        id: brightnessStateProcess
+        command: ["brightnessctl", "-m"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.quickBrightnessAvailable = false;
+                const fields = text.trim().split(",");
+                const value = fields.length > 3 ? Number(fields[3].replace("%", "")) : Number.NaN;
+                if (Number.isFinite(value)) {
+                    root.quickBrightness = Math.max(1, Math.min(100, Math.round(value)));
+                    root.quickBrightnessAvailable = true;
+                }
+            }
+        }
+        onExited: function(code) {
+            root.quickBrightnessAvailable = code === 0 && root.quickBrightnessAvailable;
+            if (code !== 0) console.warn("Could not read display brightness:", code);
+        }
+    }
+    Process {
+        id: dndStateProcess
+        command: ["dunstctl", "is-paused"]
+        stdout: StdioCollector { onStreamFinished: root.quickDnd = text.trim() === "true" }
+        onExited: function(code) {
+            root.quickDndAvailable = code === 0;
+            if (code !== 0) console.warn("Could not read DND state:", code);
+        }
+    }
+    Process {
+        id: powerProfileProcess
+        command: ["powerprofilesctl", "get"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.quickPowerProfile = text.trim();
+                root.quickPowerProfilesAvailable = text.trim().length > 0;
+            }
+        }
+        onExited: function(code) {
+            root.quickPowerProfilesAvailable = code === 0 && root.quickPowerProfilesAvailable;
+            if (code !== 0) console.warn("Could not read power profile:", code);
+        }
+    }
+    Process {
+        id: quickPanelStatusProcess
+        command: ["python3", root.settings.scriptsRoot + "/desktop/quick-settings-status.py"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.quickPanelStatus = JSON.parse(text);
+                    root.quickStatusAvailable = true;
+                } catch (error) {
+                    root.quickStatusAvailable = false;
+                    console.warn("Quick settings status could not be parsed:", error);
+                } finally {
+                    root.quickStatusLoading = false;
+                }
+            }
+        }
+        onExited: function(code) {
+            if (code !== 0) {
+                root.quickStatusAvailable = false;
+                root.quickStatusLoading = false;
+                console.warn("Quick settings status exited with code", code);
+            }
+        }
+    }
+    Process {
+        id: quickActionProcess
+        command: root.quickCommand
+        stderr: StdioCollector { onStreamFinished: root.quickActionErrorText = text.trim() }
+        stdout: StdioCollector { onStreamFinished: root.quickActionOutputText = text.trim() }
+        onExited: function(code) {
+            root.quickActionFailed = code !== 0;
+            root.quickMessage = code === 0
+                    ? root.quickOperation + " complete."
+                    : root.quickActionErrorText || root.quickActionOutputText
+                            || root.quickOperation + " failed (exit " + code + ").";
+            root.refreshQuickState();
+            if (root.quickOperation === "Power profile")
+                powerProfileProcess.running = true;
+            if (root.hasPendingQuickAction)
+                quickSliderTimer.restart();
+        }
+    }
 
     Rectangle {
         focus: root.visible
@@ -427,6 +673,7 @@ OverlayPanel {
 
                 RowLayout {
                     Layout.fillWidth: true
+                    visible: !root.compactControls
                     Text {
                         Layout.fillWidth: true
                         text: root.compactControls ? "Quick Controls" : root.currentPageTitle()
@@ -480,6 +727,7 @@ OverlayPanel {
 
                 Flickable {
                     id: pageFlick
+                    visible: true
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true
@@ -546,9 +794,259 @@ OverlayPanel {
                             }
                         }
 
+                        Flickable {
+                                id: quickPanelFlick
+                                visible: root.compactControls
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: quickSettingsContent.implicitHeight
+                                clip: true
+                                contentWidth: width
+                                contentHeight: quickSettingsContent.implicitHeight
+                                ScrollBar.vertical: ScrollBar {}
+
+                                ColumnLayout {
+                                    id: quickSettingsContent
+                                    width: quickPanelFlick.width
+                                    spacing: 10
+
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 10
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 1
+                                            Text {
+                                                text: Qt.formatDateTime(root.quickCurrentDate, "h:mm AP")
+                                                color: root.theme.text
+                                                font.family: root.theme.fontFamily
+                                                font.pixelSize: 24
+                                                font.bold: true
+                                            }
+                                            Text {
+                                                text: Qt.formatDateTime(root.quickCurrentDate, "dddd, MMMM d")
+                                                color: root.theme.textMuted
+                                                font.family: root.theme.fontFamily
+                                                font.pixelSize: root.theme.fontSize
+                                            }
+                                        }
+                                        Button {
+                                            text: root.quickPanelStatus.notifications > 0
+                                                    ? "Notifications · " + root.quickPanelStatus.notifications
+                                                    : "Notifications"
+                                            onClicked: root.settings.openOverlay("notifications")
+                                            background: Rectangle {
+                                                radius: root.theme.radius
+                                                color: parent.hovered ? root.theme.surfaceRaised : root.theme.surface
+                                                border.color: root.theme.border
+                                            }
+                                            contentItem: Text {
+                                                text: parent.text
+                                                color: root.theme.text
+                                                font.family: root.theme.fontFamily
+                                                font.pixelSize: root.theme.fontSizeSmall
+                                                leftPadding: 8
+                                                rightPadding: 8
+                                                verticalAlignment: Text.AlignVCenter
+                                            }
+                                        }
+                                    }
+
+                                    Rectangle { Layout.fillWidth: true; height: 1; color: root.theme.border }
+                                    SectionHeader { theme: root.theme; text: "CONNECTIVITY" }
+                                    ToggleRow {
+                                        Layout.fillWidth: true
+                                        theme: root.theme
+                                        icon: "󰤨"
+                                        label: "Wi-Fi"
+                                        available: root.quickWifiAvailable
+                                        detail: !root.quickWifiAvailable ? "Unavailable"
+                                                : !root.quickWifiEnabled ? "Off"
+                                                : root.wifiNetworks.some(network => network.active)
+                                                        ? root.wifiNetworks.find(network => network.active).ssid
+                                                        : "On · not connected"
+                                        checked: root.quickWifiEnabled
+                                        busy: quickActionProcess.running && root.quickOperation === "Wi-Fi"
+                                        onActivated: enabled => root.runQuickAction(
+                                            ["nmcli", "radio", "wifi", enabled ? "on" : "off"], "Wi-Fi")
+                                    }
+                                    ToggleRow {
+                                        Layout.fillWidth: true
+                                        theme: root.theme
+                                        icon: "󰂯"
+                                        label: "Bluetooth"
+                                        available: root.quickBluetoothAvailable
+                                        detail: !root.quickBluetoothAvailable ? "Unavailable"
+                                                : !root.quickBluetoothPowered ? "Off"
+                                                : root.bluetoothDevices.some(device => device.connected)
+                                                        ? root.bluetoothDevices.find(device => device.connected).name
+                                                        : "On · no device connected"
+                                        checked: root.quickBluetoothPowered
+                                        busy: quickActionProcess.running && root.quickOperation === "Bluetooth"
+                                        onActivated: enabled => root.runQuickAction(
+                                            ["bluetoothctl", "power", enabled ? "on" : "off"], "Bluetooth")
+                                    }
+                                    Button {
+                                        Layout.fillWidth: true
+                                        text: "Manage connections"
+                                        onClicked: root.openFullControlPage("network")
+                                        background: Rectangle {
+                                            radius: root.theme.radius
+                                            color: parent.hovered ? root.theme.surfaceRaised : root.theme.surface
+                                            border.color: root.theme.border
+                                        }
+                                        contentItem: Text {
+                                            text: parent.text
+                                            color: root.theme.textMuted
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                            padding: 6
+                                        }
+                                    }
+
+                                    Rectangle { Layout.fillWidth: true; height: 1; color: root.theme.border }
+                                    SectionHeader { theme: root.theme; text: "SOUND & DISPLAY" }
+                                    SliderRow {
+                                        Layout.fillWidth: true
+                                        theme: root.theme
+                                        icon: "󰕾"
+                                        value: root.quickVolume
+                                        interactive: root.quickVolumeAvailable
+                                        onMoved: value => root.runQuickSlider(
+                                            ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", String(Math.round(value) / 100)], "Volume")
+                                    }
+                                    ToggleRow {
+                                        Layout.fillWidth: true
+                                        theme: root.theme
+                                        icon: "󰝟"
+                                        label: "Mute output"
+                                        available: root.quickOutputAvailable
+                                        checked: root.quickOutputMuted
+                                        busy: quickActionProcess.running && root.quickOperation === "Output mute"
+                                        onActivated: muted => root.runQuickAction(
+                                            ["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", muted ? "1" : "0"], "Output mute")
+                                    }
+                                    ToggleRow {
+                                        Layout.fillWidth: true
+                                        theme: root.theme
+                                        icon: "󰍭"
+                                        label: "Mute microphone"
+                                        available: root.quickMicAvailable
+                                        checked: root.quickMicMuted
+                                        busy: quickActionProcess.running && root.quickOperation === "Microphone mute"
+                                        onActivated: muted => root.runQuickAction(
+                                            ["wpctl", "set-mute", "@DEFAULT_AUDIO_SOURCE@", muted ? "1" : "0"], "Microphone mute")
+                                    }
+                                    SliderRow {
+                                        Layout.fillWidth: true
+                                        theme: root.theme
+                                        icon: "󰃠"
+                                        value: root.quickBrightness
+                                        interactive: root.quickBrightnessAvailable
+                                        onMoved: value => root.runQuickSlider(
+                                            ["brightnessctl", "set", Math.round(value) + "%"], "Brightness")
+                                    }
+
+                                    Rectangle { Layout.fillWidth: true; height: 1; color: root.theme.border }
+                                    SectionHeader { theme: root.theme; text: "FOCUS & POWER" }
+                                    ToggleRow {
+                                        Layout.fillWidth: true
+                                        theme: root.theme
+                                        icon: "󰂛"
+                                        label: "Do not disturb"
+                                        available: root.quickDndAvailable
+                                        detail: root.quickDnd ? "Notifications paused" : "Notifications enabled"
+                                        checked: root.quickDnd
+                                        busy: quickActionProcess.running && root.quickOperation === "Do not disturb"
+                                        onActivated: enabled => root.runQuickAction(
+                                            ["dunstctl", "set-paused", enabled ? "true" : "false"], "Do not disturb")
+                                    }
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 6
+                                        Repeater {
+                                            model: [
+                                                { name: "power-saver", label: "Saver" },
+                                                { name: "balanced", label: "Balanced" },
+                                                { name: "performance", label: "Performance" }
+                                            ]
+                                            delegate: Button {
+                                                required property var modelData
+                                                Layout.fillWidth: true
+                                                text: modelData.label
+                                                checkable: false
+                                                checked: root.quickPowerProfile === modelData.name
+                                                enabled: root.quickPowerProfilesAvailable && !quickActionProcess.running
+                                                onClicked: root.runQuickAction(
+                                                    ["powerprofilesctl", "set", modelData.name], "Power profile")
+                                                background: Rectangle {
+                                                    radius: root.theme.radius
+                                                    color: parent.checked ? root.theme.accent
+                                                            : parent.hovered ? root.theme.surfaceRaised : root.theme.surface
+                                                    border.color: root.theme.border
+                                                }
+                                                contentItem: Text {
+                                                    text: parent.text
+                                                    color: parent.checked ? root.theme.background : root.theme.text
+                                                    font.family: root.theme.fontFamily
+                                                    font.pixelSize: root.theme.fontSizeSmall
+                                                    horizontalAlignment: Text.AlignHCenter
+                                                    verticalAlignment: Text.AlignVCenter
+                                                    padding: 6
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: !root.quickStatusAvailable
+                                                ? root.quickStatusLoading ? "Loading system status…" : "System status unavailable"
+                                                : root.quickPanelStatus.battery && root.quickPanelStatus.battery.available
+                                                ? "Battery  ·  " + (root.quickPanelStatus.battery.percentage === null
+                                                        ? "Unknown" : root.quickPanelStatus.battery.percentage + "%")
+                                                        + (root.quickPanelStatus.battery.status
+                                                                ? "  ·  " + root.quickPanelStatus.battery.status : "")
+                                                : "Desktop power"
+                                        color: root.theme.textMuted
+                                        font.family: root.theme.fontFamily
+                                        font.pixelSize: root.theme.fontSizeSmall
+                                    }
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        visible: root.quickMessage.length > 0
+                                        text: root.quickMessage
+                                        color: root.quickActionFailed ? root.theme.warning : root.theme.textMuted
+                                        font.family: root.theme.fontFamily
+                                        font.pixelSize: root.theme.fontSizeSmall
+                                        wrapMode: Text.WordWrap
+                                    }
+                                    Button {
+                                        Layout.fillWidth: true
+                                        text: "All settings  ·  Super + C"
+                                        onClicked: root.openFullControlPage("home")
+                                        background: Rectangle {
+                                            radius: root.theme.radius
+                                            color: parent.hovered ? root.theme.surfaceRaised : root.theme.surface
+                                            border.color: root.theme.border
+                                        }
+                                        contentItem: Text {
+                                            text: parent.text
+                                            color: root.theme.text
+                                            font.family: root.theme.fontFamily
+                                            font.pixelSize: root.theme.fontSizeSmall
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                            padding: 6
+                                        }
+                            }
+                            }
+                        }
+
                         // Quick controls and one-click toggles
                         ColumnLayout {
-                            visible: root.settings.controlCenterPage === "controls" || root.settings.controlCenterPage === "network" || root.settings.controlCenterPage === "audio"
+                            visible: !root.compactControls && (root.settings.controlCenterPage === "controls" || root.settings.controlCenterPage === "network" || root.settings.controlCenterPage === "audio")
                             Layout.fillWidth: true
                             spacing: root.theme.spacing
                             Text { visible: root.settings.controlCenterPage !== "controls"; text: root.settings.controlCenterPage === "network" ? "Connectivity" : "Sound and display"; color: root.theme.textMuted; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSize }
