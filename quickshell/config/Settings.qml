@@ -6,12 +6,15 @@ QtObject {
     readonly property string configRoot: Quickshell.shellDir + "/.."
     readonly property string scriptsRoot: configRoot + "/scripts"
     property bool shellEnabled: true
-    property bool launcherOpen: false
-    property bool settingsOpen: false
-    property bool dashboardOpen: false
-    property bool notificationOpen: false
+    property string activeOverlay: ""
+    readonly property bool launcherOpen: activeOverlay === "launcher"
+    readonly property bool settingsOpen: activeOverlay === "settings"
+    readonly property bool dashboardOpen: activeOverlay === "dashboard"
+    readonly property bool notificationOpen: activeOverlay === "notifications"
+    readonly property bool controlCenterOpen: activeOverlay === "controlCenter"
+    readonly property bool quickControlsOpen: activeOverlay === "quickControls"
+    readonly property bool calendarOpen: activeOverlay === "calendar"
     property bool osdOpen: false
-    property bool controlCenterOpen: false
     property string controlCenterPage: "home"
     property bool wallpaperFavoritesOnly: false
     property int osdSerial: 0
@@ -44,6 +47,35 @@ QtObject {
     property alias browserCommand: preferences.browserCommand
     property alias wallpaperFavorites: preferences.wallpaperFavorites
     property alias wallpaperHistory: preferences.wallpaperHistory
+
+    function openOverlay(name: string): void {
+        if (!["launcher", "settings", "dashboard", "notifications", "controlCenter", "quickControls", "calendar"].includes(name)) {
+            console.warn("Unknown Quickshell overlay:", name);
+            return;
+        }
+        activeOverlay = name;
+    }
+
+    function toggleOverlay(name: string): void {
+        if (activeOverlay === name)
+            activeOverlay = "";
+        else
+            openOverlay(name);
+    }
+
+    function closeOverlay(name: string): void {
+        if (activeOverlay === name)
+            activeOverlay = "";
+    }
+
+    function closeOverlays(): void {
+        activeOverlay = "";
+    }
+
+    function toggleQuickControls(): void {
+        controlCenterPage = "controls";
+        toggleOverlay("quickControls");
+    }
 
     property var settingsFile: FileView {
         path: Quickshell.statePath("settings.json")

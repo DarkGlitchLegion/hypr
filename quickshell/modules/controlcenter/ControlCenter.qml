@@ -6,13 +6,14 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../../config"
+import "../window"
 
-PopupWindow {
+OverlayPanel {
     id: root
     required property Theme theme
     required property Settings settings
     required property var hostWindow
-    required property var targetScreen
+    readonly property bool compactControls: settings.quickControlsOpen
     property string query: ""
     property var wallpapers: []
     property var clips: []
@@ -27,6 +28,19 @@ PopupWindow {
     property int clipboardIndex: 0
     property string wifiPassword: ""
     property string pendingPower: ""
+    property var networkCommand: []
+    property string networkOperation: ""
+    property string networkMessage: ""
+    property bool networkFailed: false
+    property string networkActionErrorText: ""
+    property string networkActionOutputText: ""
+    property var bluetoothCommand: []
+    property string bluetoothOperation: ""
+    property string bluetoothMessage: ""
+    property bool bluetoothFailed: false
+    property string bluetoothActionErrorText: ""
+    property string bluetoothActionOutputText: ""
+    property var pendingAudioCommand: []
 
     readonly property var pages: [
         { id: "home", label: "Overview", icon: "⌂" },
@@ -112,17 +126,39 @@ PopupWindow {
         ["Brightness", "XF86MonBrightnessUp / Down", "Change display brightness"]
     ]
 
-    anchor.window: hostWindow
-    anchor.rect.x: Math.round((hostWindow.width - Math.min(hostWindow.width - 24, 920)) / 2)
-    anchor.rect.y: Math.round(targetScreen.height * 0.08)
-    implicitWidth: Math.min(hostWindow.width - 24, 920)
-    implicitHeight: Math.min(targetScreen.height - 90, 680)
-    visible: settings.shellEnabled && settings.controlCenterOpen && targetScreen === Quickshell.screens[0]
-    grabFocus: true
-    color: "transparent"
+    anchors {
+        top: compactControls ? settings.barPosition === "top" : true
+        bottom: compactControls && settings.barPosition === "bottom"
+        left: !compactControls
+        right: compactControls
+    }
+    margins {
+        top: compactControls
+                ? (settings.barPosition === "top" ? settings.barMarginTop + settings.barHeight + theme.spacing : 0)
+                : Math.round(targetScreen.height * 0.08)
+        bottom: compactControls && settings.barPosition === "bottom"
+                ? settings.barMarginBottom + settings.barHeight + theme.spacing
+                : 0
+        left: compactControls ? 0 : Math.round((targetScreen.width - implicitWidth) / 2)
+        right: compactControls ? settings.barMarginHorizontal : 0
+    }
+    implicitWidth: compactControls
+            ? Math.min(hostWindow.width - 24, 480)
+            : Math.min(hostWindow.width - 24, 920)
+    implicitHeight: compactControls
+            ? Math.min(targetScreen.height - settings.barHeight - 36, 720)
+            : Math.min(targetScreen.height - 90, 680)
+    visible: settings.shellEnabled
+            && (settings.controlCenterOpen || settings.quickControlsOpen)
+            && targetScreen === Quickshell.screens[0]
+    wantsKeyboardFocus: visible
     onVisibleChanged: {
-        if (!visible && settings.controlCenterOpen)
-            settings.controlCenterOpen = false;
+        if (!visible) {
+            search.focus = false;
+            wifiPass.focus = false;
+            if (settings.controlCenterOpen || settings.quickControlsOpen)
+                closePanel();
+        }
         if (visible && settings.controlCenterPage === "wallpaper")
             loadWallpapers();
         if (visible && settings.controlCenterPage === "clipboard")
@@ -143,13 +179,48 @@ PopupWindow {
             if (root.settings.controlCenterPage === "network") bluetoothProcess.running = true;
             if (root.settings.controlCenterPage === "security") securityProcess.running = true;
             if (root.settings.controlCenterPage === "presets") presetProcess.running = true;
-            if (root.settings.controlCenterPage === "notifications") { root.settings.notificationOpen = true; root.settings.controlCenterOpen = false; }
+            if (root.settings.controlCenterPage === "notifications") root.settings.openOverlay("notifications");
             if (["keys", "clipboard", "wallpaper", "presets"].includes(root.settings.controlCenterPage)) Qt.callLater(() => search.forceActiveFocus());
         }
     }
 
-    function open(page) { settings.controlCenterPage = page; settings.controlCenterOpen = true; }
+    function closePanel() {
+        settings.closeOverlay(compactControls ? "quickControls" : "controlCenter");
+    }
+
+    function currentPageTitle(): string {
+        const page = pages.find(item => item.id === settings.controlCenterPage);
+        return page ? page.label : "Control Center";
+    }
+
+    function open(page) { settings.controlCenterPage = page; settings.openOverlay("controlCenter"); }
     function run(args) { Quickshell.execDetached(args); }
+    function runNetworkAction(args, label) {
+        if (networkActionProcess.running) {
+            networkMessage = networkOperation + " is still in progress.";
+            return;
+        }
+        networkCommand = args;
+        networkOperation = label;
+        networkMessage = label + "…";
+        networkFailed = false;
+        networkActionErrorText = "";
+        networkActionOutputText = "";
+        networkActionProcess.running = true;
+    }
+    function runBluetoothAction(args, label) {
+        if (bluetoothActionProcess.running) {
+            bluetoothMessage = bluetoothOperation + " is still in progress.";
+            return;
+        }
+        bluetoothCommand = args;
+        bluetoothOperation = label;
+        bluetoothMessage = label + "…";
+        bluetoothFailed = false;
+        bluetoothActionErrorText = "";
+        bluetoothActionOutputText = "";
+        bluetoothActionProcess.running = true;
+    }
     function loadWallpapers() { wallpaperProcess.running = true; }
     function loadClipboard() { clipboardProcess.running = true; }
     function applyWallpaper(path) {
@@ -175,7 +246,45 @@ PopupWindow {
         const items = filteredClips();
         if (index < 0 || index >= items.length) return;
         run(["python3", settings.scriptsRoot + "/clipboard/qml-clipboard.py", "copy", String(items[index].id)]);
-        settings.controlCenterOpen = false;
+        closePanel();
+    }
+
+    Process {
+        id: networkActionProcess
+        command: root.networkCommand
+        stderr: StdioCollector {
+            onStreamFinished: root.networkActionErrorText = text.trim()
+        }
+        stdout: StdioCollector {
+            onStreamFinished: root.networkActionOutputText = text.trim()
+        }
+        onExited: function (exitCode) {
+            root.networkFailed = exitCode !== 0;
+            root.networkMessage = exitCode === 0
+                    ? root.networkOperation + " complete."
+                    : root.networkActionErrorText || root.networkActionOutputText
+                            || root.networkOperation + " failed (exit " + exitCode + ").";
+            wifiProcess.running = true;
+        }
+    }
+
+    Process {
+        id: bluetoothActionProcess
+        command: root.bluetoothCommand
+        stderr: StdioCollector {
+            onStreamFinished: root.bluetoothActionErrorText = text.trim()
+        }
+        stdout: StdioCollector {
+            onStreamFinished: root.bluetoothActionOutputText = text.trim()
+        }
+        onExited: function (exitCode) {
+            root.bluetoothFailed = exitCode !== 0;
+            root.bluetoothMessage = exitCode === 0
+                    ? root.bluetoothOperation + " complete."
+                    : root.bluetoothActionErrorText || root.bluetoothActionOutputText
+                            || root.bluetoothOperation + " failed (exit " + exitCode + ").";
+            bluetoothProcess.running = true;
+        }
     }
 
     Process {
@@ -226,6 +335,11 @@ PopupWindow {
         onExited: function(code) { if (code !== 0) root.wifiNetworks = []; }
     }
     Timer { id: audioRefreshTimer; interval: 900; onTriggered: audioProcess.running = true }
+    Timer {
+        id: audioApplyTimer
+        interval: 120
+        onTriggered: Quickshell.execDetached(root.pendingAudioCommand)
+    }
     Process {
         id: bluetoothProcess
         command: ["python3", root.settings.scriptsRoot + "/hardware/qml-bluetooth.py", "list"]
@@ -248,8 +362,8 @@ PopupWindow {
     }
 
     Rectangle {
-        focus: true
-        Keys.onEscapePressed: root.settings.controlCenterOpen = false
+        focus: root.visible
+        Keys.onEscapePressed: root.closePanel()
         anchors.fill: parent
         color: root.theme.background
         radius: root.theme.radiusLarge
@@ -262,6 +376,7 @@ PopupWindow {
             spacing: root.theme.spacingLarge
 
             ColumnLayout {
+                visible: !root.compactControls
                 Layout.preferredWidth: 190
                 Layout.minimumWidth: 180
                 Layout.maximumWidth: 200
@@ -269,14 +384,6 @@ PopupWindow {
                 Layout.fillHeight: true
                 spacing: root.theme.spacing
 
-                Text {
-                    text: "HYPR  /  SHELL"
-                    color: root.theme.accent
-                    font.family: root.theme.fontFamily
-                    font.pixelSize: root.theme.fontSizeLarge
-                    font.bold: true
-                    Layout.margins: root.theme.spacing
-                }
                 Flickable {
                     id: navFlick
                     Layout.fillWidth: true
@@ -309,10 +416,9 @@ PopupWindow {
                         }
                     }
                 }
-                Text { text: "Quickshell · QML"; color: root.theme.textMuted; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSizeSmall; Layout.margins: root.theme.spacing }
             }
 
-            Rectangle { Layout.fillHeight: true; implicitWidth: 1; color: root.theme.border }
+            Rectangle { visible: !root.compactControls; Layout.fillHeight: true; implicitWidth: 1; color: root.theme.border }
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -323,16 +429,12 @@ PopupWindow {
                     Layout.fillWidth: true
                     Text {
                         Layout.fillWidth: true
-                        text: {
-                            const page = root.pages.find(p => p.id === root.settings.controlCenterPage);
-                            return page ? page.label : "Control Center";
-                        }
+                        text: root.compactControls ? "Quick Controls" : root.currentPageTitle()
                         color: root.theme.text
                         font.family: root.theme.fontFamily
                         font.pixelSize: 20
                         font.bold: true
                     }
-                    Text { text: "×"; color: root.theme.textMuted; font.pixelSize: 24; MouseArea { anchors.fill: parent; onClicked: root.settings.controlCenterOpen = false } }
                 }
 
                 TextField {
@@ -356,7 +458,7 @@ PopupWindow {
                         root.clipboardIndex = 0;
                         if (root.settings.controlCenterPage === "presets") root.presetName = text;
                     }
-                    Keys.onEscapePressed: root.settings.controlCenterOpen = false
+                    Keys.onEscapePressed: root.closePanel()
                     Keys.onDownPressed: function(event) {
                         if (root.settings.controlCenterPage === "clipboard") {
                             root.clipboardIndex = Math.min(root.filteredClips().length - 1, root.clipboardIndex + 1);
@@ -436,8 +538,7 @@ PopupWindow {
                                     hoverEnabled: true
                                     onClicked: {
                                         if (homeCard.modelData.page === "dashboard") {
-                                            root.settings.dashboardOpen = true;
-                                            root.settings.controlCenterOpen = false;
+                                            root.settings.openOverlay("dashboard");
                                         } else root.open(homeCard.modelData.page);
                                     }
                                 }
@@ -477,20 +578,53 @@ PopupWindow {
                                             Text { text: controlCard.modelData.title; color: root.theme.text; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSizeLarge }
                                             Text { text: controlCard.modelData.detail; color: root.theme.textMuted; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSizeSmall }
                                         }
-                                        MouseArea { id: controlMouse; anchors.fill: parent; hoverEnabled: true; onClicked: root.run(controlCard.modelData.cmd) }
+                                        MouseArea {
+                                            id: controlMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            enabled: controlCard.modelData.cmd[0] === "nmcli"
+                                                    ? !networkActionProcess.running
+                                                    : !bluetoothActionProcess.running
+                                            onClicked: {
+                                                if (controlCard.modelData.cmd[0] === "nmcli")
+                                                    root.runNetworkAction(controlCard.modelData.cmd, controlCard.modelData.title);
+                                                else
+                                                    root.runBluetoothAction(controlCard.modelData.cmd, controlCard.modelData.title);
+                                            }
+                                        }
                                     }
                                 }
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                visible: root.networkMessage.length > 0
+                                text: root.networkMessage
+                                color: root.networkFailed ? root.theme.error : root.theme.textMuted
+                                font.family: root.theme.fontFamily
+                                font.pixelSize: root.theme.fontSizeSmall
+                                wrapMode: Text.WordWrap
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                visible: root.bluetoothMessage.length > 0
+                                text: root.bluetoothMessage
+                                color: root.bluetoothFailed ? root.theme.error : root.theme.textMuted
+                                font.family: root.theme.fontFamily
+                                font.pixelSize: root.theme.fontSizeSmall
+                                wrapMode: Text.WordWrap
                             }
                             ColumnLayout {
                                 visible: root.settings.controlCenterPage === "network"
                                 Layout.fillWidth: true
-                                Timer { id: wifiRefreshTimer; interval: 1800; onTriggered: wifiProcess.running = true }
                                 RowLayout {
                                     Layout.fillWidth: true
                                     Text { Layout.fillWidth: true; text: "Nearby Wi-Fi networks"; color: root.theme.textMuted; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSize }
                                     HubButton {
                                     theme: root.theme
-                                    text: "Rescan"; onClicked: { root.run(["nmcli", "device", "wifi", "rescan"]); wifiRefreshTimer.start() } }
+                                    text: "Rescan"
+                                    enabled: !networkActionProcess.running
+                                    onClicked: root.runNetworkAction(["nmcli", "device", "wifi", "rescan"], "Wi-Fi rescan")
+                                    }
                                 }
                                 TextField { id: wifiPass; Layout.fillWidth: true; placeholderText: "Wi-Fi password (only needed for a new secured network)"; echoMode: TextInput.Password; onTextChanged: root.wifiPassword = text }
                                 Repeater {
@@ -505,7 +639,17 @@ PopupWindow {
                                             Text { Layout.fillWidth: true; text: (wifiRow.modelData.active ? "●  " : "") + wifiRow.modelData.ssid + "  ·  " + wifiRow.modelData.signal + "%  ·  " + wifiRow.modelData.security; color: root.theme.text; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSize; elide: Text.ElideRight }
                                             Text { text: wifiRow.modelData.active ? "Connected" : "Connect"; color: root.theme.accent; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSize }
                                         }
-                                    MouseArea { id: wifiMouse; anchors.fill: parent; hoverEnabled: true; onClicked: { root.run(["python3", root.settings.scriptsRoot + "/hardware/qml-network.py", "connect", wifiRow.modelData.ssid].concat(root.wifiPassword ? [root.wifiPassword] : [])); wifiRefreshTimer.start() } }
+                                    MouseArea {
+                                        id: wifiMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        enabled: !networkActionProcess.running
+                                        onClicked: root.runNetworkAction(
+                                            ["python3", root.settings.scriptsRoot + "/hardware/qml-network.py", "connect", wifiRow.modelData.ssid]
+                                                    .concat(root.wifiPassword ? [root.wifiPassword] : []),
+                                            "Connecting to " + wifiRow.modelData.ssid
+                                        )
+                                    }
                                     }
                                 }
                                 Text { visible: root.wifiNetworks.length === 0; text: "No networks returned. Enable Wi-Fi and rescan."; color: root.theme.textMuted; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSizeSmall }
@@ -515,12 +659,17 @@ PopupWindow {
                                     Text { Layout.fillWidth: true; text: "Bluetooth devices"; color: root.theme.textMuted; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSize }
                                     HubButton {
                                     theme: root.theme
-                                    text: "Scan"; onClicked: { root.run(["bluetoothctl", "scan", "on"]); bluetoothRefreshTimer.start() } }
+                                    text: "Scan"
+                                    enabled: !bluetoothActionProcess.running
+                                    onClicked: root.runBluetoothAction(["bluetoothctl", "scan", "on"], "Bluetooth scan")
+                                    }
                                     HubButton {
                                     theme: root.theme
-                                    text: "Refresh"; onClicked: bluetoothProcess.running = true }
+                                    text: "Refresh"
+                                    enabled: !bluetoothActionProcess.running
+                                    onClicked: bluetoothProcess.running = true
+                                    }
                                 }
-                                Timer { id: bluetoothRefreshTimer; interval: 2500; onTriggered: bluetoothProcess.running = true }
                                 Repeater {
                                     model: root.bluetoothDevices
                                     delegate: Rectangle {
@@ -536,13 +685,25 @@ PopupWindow {
                                             }
                                             HubButton {
                                     theme: root.theme
-                                    visible: !btRow.modelData.paired; text: "Pair"; onClicked: { root.run(["python3", root.settings.scriptsRoot + "/hardware/qml-bluetooth.py", "pair", btRow.modelData.mac]); bluetoothRefreshTimer.start() } }
+                                    visible: !btRow.modelData.paired
+                                    enabled: !bluetoothActionProcess.running
+                                    text: "Pair"
+                                    onClicked: root.runBluetoothAction(["python3", root.settings.scriptsRoot + "/hardware/qml-bluetooth.py", "pair", btRow.modelData.mac], "Pairing " + btRow.modelData.name)
+                                    }
                                             HubButton {
                                     theme: root.theme
-                                    visible: btRow.modelData.paired && !btRow.modelData.connected; text: "Connect"; onClicked: { root.run(["python3", root.settings.scriptsRoot + "/hardware/qml-bluetooth.py", "connect", btRow.modelData.mac]); bluetoothRefreshTimer.start() } }
+                                    visible: btRow.modelData.paired && !btRow.modelData.connected
+                                    enabled: !bluetoothActionProcess.running
+                                    text: "Connect"
+                                    onClicked: root.runBluetoothAction(["python3", root.settings.scriptsRoot + "/hardware/qml-bluetooth.py", "connect", btRow.modelData.mac], "Connecting to " + btRow.modelData.name)
+                                    }
                                             HubButton {
                                     theme: root.theme
-                                    visible: btRow.modelData.connected; text: "Disconnect"; onClicked: { root.run(["python3", root.settings.scriptsRoot + "/hardware/qml-bluetooth.py", "disconnect", btRow.modelData.mac]); bluetoothRefreshTimer.start() } }
+                                    visible: btRow.modelData.connected
+                                    enabled: !bluetoothActionProcess.running
+                                    text: "Disconnect"
+                                    onClicked: root.runBluetoothAction(["python3", root.settings.scriptsRoot + "/hardware/qml-bluetooth.py", "disconnect", btRow.modelData.mac], "Disconnecting from " + btRow.modelData.name)
+                                    }
                                         }
                                     }
                                 }
@@ -594,7 +755,15 @@ PopupWindow {
                                             id: audioSlider
                                             Layout.fillWidth: true
                                             from: 0; to: 150; value: Number(activeAudioLevel.modelData.volume)
-                                            onMoved: root.run(["wpctl", "set-volume", activeAudioLevel.modelData.type === "output" ? "@DEFAULT_AUDIO_SINK@" : "@DEFAULT_AUDIO_SOURCE@", (value / 100).toFixed(2)])
+                                            onMoved: {
+                                                root.pendingAudioCommand = [
+                                                    "wpctl",
+                                                    "set-volume",
+                                                    activeAudioLevel.modelData.type === "output" ? "@DEFAULT_AUDIO_SINK@" : "@DEFAULT_AUDIO_SOURCE@",
+                                                    (value / 100).toFixed(2)
+                                                ];
+                                                audioApplyTimer.restart();
+                                            }
                                         }
                                         Text { text: Math.round(audioSlider.value) + "%"; color: root.theme.textMuted; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSizeSmall }
                                     }
@@ -725,7 +894,7 @@ PopupWindow {
                                             else if (action === "logout") root.run(["hyprctl", "dispatch", "exit"]);
                                             else if (action === "reload") root.run([root.settings.scriptsRoot + "/desktop/restart-bar.sh"]);
                                             root.pendingPower = "";
-                                            root.settings.controlCenterOpen = false;
+                                            root.closePanel();
                                         }
                                     }
                                 }
@@ -815,7 +984,7 @@ PopupWindow {
                                     RowLayout {
                                         visible: !displayOutput.modelData.internal && root.displayOutputs.some(item => item.internal)
                                         Layout.fillWidth: true
-                                        TextField { id: extWorkspace; Layout.fillWidth: true; text: root.displayWorkspace; placeholderText: "External display workspace"; color: root.theme.text; onTextChanged: root.displayWorkspace = text }
+                                        TextField { id: extWorkspace; Layout.fillWidth: true; text: root.displayWorkspace; placeholderText: "External display workspace"; color: root.theme.text; onTextChanged: root.displayWorkspace = text; onVisibleChanged: if (!visible) focus = false }
                                         HubButton { theme: root.theme; text: "Extend"; onClicked: root.run(["python3", root.settings.scriptsRoot + "/hardware/display-manager.py", "--preset", "extend", displayOutput.modelData.name, root.displayWorkspace, "right"]) }
                                         HubButton { theme: root.theme; text: "Mirror"; onClicked: root.run(["python3", root.settings.scriptsRoot + "/hardware/display-manager.py", "--preset", "mirror", displayOutput.modelData.name]) }
                                     }
@@ -864,7 +1033,7 @@ PopupWindow {
                                     text: modelData.label
                                     onClicked: {
                                         root.run([root.settings.scriptsRoot + "/session/screenshot.sh", modelData.mode]);
-                                        root.settings.controlCenterOpen = false;
+                                        root.closePanel();
                                     }
                                 }
                             }
@@ -934,7 +1103,7 @@ PopupWindow {
                                     Layout.fillWidth: true
                                     text: modelData.label
                                     onClicked: {
-                                        if (modelData.label === "Application launcher") root.settings.launcherOpen = true;
+                                        if (modelData.label === "Application launcher") root.settings.openOverlay("launcher");
                                         else root.run(modelData.args);
                                     }
                                 }
@@ -1047,7 +1216,7 @@ PopupWindow {
                             Text { text: "Shell settings are available in the native settings panel."; color: root.theme.textMuted; font.family: root.theme.fontFamily; font.pixelSize: root.theme.fontSize; wrapMode: Text.WordWrap }
                             HubButton {
                                     theme: root.theme
-                                    text: "Open shell settings"; onClicked: { root.settings.controlCenterOpen = false; root.settings.settingsOpen = true } }
+                                    text: "Open shell settings"; onClicked: root.settings.openOverlay("settings") }
                         }
                     }
                 }

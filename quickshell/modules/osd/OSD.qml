@@ -2,23 +2,29 @@ import Quickshell
 import QtQuick
 import QtQuick.Layouts
 import "../../config"
+import "../window"
 
-PopupWindow {
+OverlayPanel {
     id: root
 
     required property Theme theme
     required property Settings settings
     required property var hostWindow
-    required property var targetScreen
     property int shownSerial: 0
 
-    anchor.window: hostWindow
-    anchor.rect.x: Math.round((hostWindow.width - 300) / 2)
-    anchor.rect.y: settings.barPosition === "top" ? settings.barHeight + 20 : -104
     implicitWidth: 300
     implicitHeight: 82
     visible: settings.shellEnabled && settings.osdOpen && targetScreen === Quickshell.screens[0]
-    color: "transparent"
+    anchors {
+        top: true
+        left: true
+    }
+    margins {
+        top: settings.barPosition === "top"
+                ? settings.barMarginTop + settings.barHeight + 20
+                : Math.round(targetScreen.height * 0.1)
+        left: Math.round((targetScreen.width - implicitWidth) / 2)
+    }
 
     Timer {
         id: dismissTimer

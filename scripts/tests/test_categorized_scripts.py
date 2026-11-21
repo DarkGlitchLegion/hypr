@@ -78,6 +78,61 @@ class CategorizedScriptTests(unittest.TestCase):
         self.assertIn("--no-duplicate", launcher)
         self.assertTrue(rollback.is_file())
 
+    def test_quickshell_overlays_use_exclusive_wayland_focus(self) -> None:
+        settings = (ROOT / "quickshell" / "config" / "Settings.qml").read_text(encoding="utf-8")
+        overlay = (ROOT / "quickshell" / "modules" / "window" / "OverlayPanel.qml").read_text(encoding="utf-8")
+        self.assertIn('readonly property bool launcherOpen: activeOverlay === "launcher"', settings)
+        self.assertIn('function openOverlay(name: string)', settings)
+        self.assertIn("activeOverlay = name", settings)
+        self.assertIn("WlrKeyboardFocus.OnDemand", overlay)
+        self.assertIn("WlrKeyboardFocus.None", overlay)
+        for path in (ROOT / "quickshell" / "modules").rglob("*.qml"):
+            with self.subTest(path=path.relative_to(ROOT)):
+                source = path.read_text(encoding="utf-8")
+                self.assertNotIn("PopupWindow {", source)
+                self.assertNotIn("grabFocus: true", source)
+
+    def test_quickshell_device_actions_refresh_on_completion(self) -> None:
+        control_center = (
+            ROOT / "quickshell" / "modules" / "controlcenter" / "ControlCenter.qml"
+        ).read_text(encoding="utf-8")
+        self.assertIn("function runNetworkAction(args, label)", control_center)
+        self.assertIn("function runBluetoothAction(args, label)", control_center)
+        self.assertIn("wifiProcess.running = true;", control_center)
+        self.assertIn("bluetoothProcess.running = true;", control_center)
+        self.assertNotIn("wifiRefreshTimer", control_center)
+        self.assertNotIn("bluetoothRefreshTimer", control_center)
+        self.assertIn("audioApplyTimer.restart()", control_center)
+
+    def test_quickshell_quick_controls_are_separate_from_the_control_center(self) -> None:
+        settings = (ROOT / "quickshell" / "config" / "Settings.qml").read_text(encoding="utf-8")
+        shell = (ROOT / "quickshell" / "shell.qml").read_text(encoding="utf-8")
+        controls = (
+            ROOT / "quickshell" / "modules" / "controlcenter" / "ControlCenter.qml"
+        ).read_text(encoding="utf-8")
+        status = (ROOT / "quickshell" / "modules" / "bar" / "StatusIndicators.qml").read_text(encoding="utf-8")
+        quick_settings = (SCRIPTS / "desktop" / "quick-settings.py").read_text(encoding="utf-8")
+        control_center = (SCRIPTS / "desktop" / "control-center.sh").read_text(encoding="utf-8")
+        close_overlay = (SCRIPTS / "desktop" / "close-focused-or-overlay.sh").read_text(encoding="utf-8")
+        keybinds = (ROOT / "lua" / "keybinds.lua").read_text(encoding="utf-8")
+
+        self.assertIn('activeOverlay === "quickControls"', settings)
+        self.assertIn('toggleOverlay("quickControls")', settings)
+        self.assertIn("function toggleQuickControls()", shell)
+        self.assertIn("function closeFocusedOrOverlay()", shell)
+        self.assertIn("closeOverlays()", shell)
+        self.assertIn("root.settings.toggleQuickControls()", status)
+        self.assertIn('"toggleQuickControls"', quick_settings)
+        self.assertIn("call hyprshell toggleHub", control_center)
+        self.assertIn("call hyprshell closeFocusedOrOverlay", close_overlay)
+        self.assertIn('hl.bind(mainMod .. " + W"', keybinds)
+        self.assertIn('hl.bind(mainMod .. " + Q"', keybinds)
+        self.assertIn("closeFocusedOrOverlay", keybinds)
+        self.assertIn('hl.bind(mainMod .. " + C"', keybinds)
+        self.assertIn("settings.quickControlsOpen", controls)
+        self.assertNotIn("HYPR  /  SHELL", controls)
+        self.assertNotIn('text: "×"', controls)
+
     def test_bar_launcher_defaults_to_quickshell_and_honors_waybar_rollback(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

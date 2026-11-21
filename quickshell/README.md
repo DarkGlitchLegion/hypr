@@ -35,11 +35,15 @@ Quickshell. `Super+Shift+R` reloads the selected bar and Hyprland.
 - `modules/dashboard/`, `modules/settings/`, and `modules/osd/`: system
   metrics, shell preferences, and hardware feedback.
 
-The Control Center is opened with `Super+C` or `Super+Alt+Space`. The status
-cluster opens Quick Controls. Existing menu entry scripts such as
+`Super+C` and `Super+Alt+Space` toggle the full Control Center. Clicking the
+bar's status cluster toggles a separate, compact Quick Controls panel aligned
+with the bar; clicking the cluster again or pressing Escape closes it. Neither
+panel uses an in-panel close button. Existing menu entry scripts such as
 `control-center.sh`, `keybindings-menu.sh`, `wallpaper-selector.sh`,
 `clipboard-menu.sh`, and `power-menu.sh` now open the corresponding QML page.
 Other shortcuts are documented in the searchable Keybindings page (`Super+K`).
+`Super+W` and `Super+Q` close the active shell overlay first, and close the
+focused application window when no overlay is open.
 
 The wallpaper and clipboard pages use the established wallpaper setter,
 clipboard daemon, and clipboard-clear operation. Audio, network, Bluetooth,
@@ -52,6 +56,9 @@ Settings, wallpaper favorites, and recent wallpaper choices are written to
 Quickshell state. Paths are derived from the deployed config directory. Missing
 hardware tools produce empty device lists or normal command failures rather
 than blocking shell startup.
+Wi-Fi and Bluetooth actions now report pending/completed/failure state and
+refresh their device lists when each command exits; audio slider updates are
+coalesced while dragging to avoid spawning a process for every pointer event.
 
 ## Validation and development
 
@@ -61,6 +68,10 @@ The code targets the installed Quickshell 0.3.2 API. `qmllint` can report
 unresolved Quickshell-specific types because its standalone metadata does not
 include all compositor types; verify actual loading with Quickshell as well.
 
-The bar creates one panel per screen. Popup pages use the primary screen and
+The bar creates one panel per screen. Overlay panels use the primary screen and
 remain independent of monitor-specific window management. Wallpaper and
 clipboard backends keep their existing persistence and privacy behavior.
+
+Interactive overlays use on-demand Wayland layer-shell keyboard focus, and
+only one modal overlay is active at a time. This avoids competing popup grabs
+when opening the launcher or Control Center from Hyprland keybindings.

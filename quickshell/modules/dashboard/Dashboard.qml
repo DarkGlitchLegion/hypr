@@ -5,30 +5,36 @@ import Quickshell.Io
 import QtQuick
 import QtQuick.Layouts
 import "../../config"
+import "../window"
 
-PopupWindow {
+OverlayPanel {
     id: root
 
     required property Theme theme
     required property Settings settings
     required property var hostWindow
-    required property var targetScreen
     property var metrics: []
     readonly property string statsCommand: "import json,psutil; m=psutil.virtual_memory(); d=psutil.disk_usage('/'); b=psutil.sensors_battery(); print(json.dumps([{'label':'Processor','value':psutil.cpu_percent(interval=0.15),'detail':str(psutil.cpu_count(logical=True))+' logical cores'},{'label':'Memory','value':m.percent,'detail':f'{m.used/1073741824:.1f} / {m.total/1073741824:.1f} GiB'},{'label':'Storage','value':d.percent,'detail':f'{d.used/1000000000000:.2f} / {d.total/1000000000000:.2f} TB'},{'label':'Battery','value':b.percent if b else -1,'detail':('Charging' if b.power_plugged else 'On battery') if b else 'No battery detected'}]))"
 
-    anchor.window: hostWindow
-    anchor.rect.x: Math.round((hostWindow.width - 560) / 2)
-    anchor.rect.y: settings.barPosition === "top" ? Math.round(targetScreen.height * 0.1) : Math.round(settings.barHeight + settings.barMarginBottom - targetScreen.height * 0.9)
     implicitWidth: 560
     implicitHeight: 430
     visible: settings.shellEnabled && settings.dashboardOpen && targetScreen === Quickshell.screens[0]
-    grabFocus: true
-    color: "transparent"
+    wantsKeyboardFocus: visible
+    anchors {
+        top: true
+        left: true
+    }
+    margins {
+        top: settings.barPosition === "top"
+                ? Math.round(targetScreen.height * 0.1)
+                : Math.round(settings.barHeight + settings.barMarginBottom - targetScreen.height * 0.9)
+        left: Math.round((targetScreen.width - implicitWidth) / 2)
+    }
     onVisibleChanged: {
         if (visible)
             refreshStats();
         else if (settings.dashboardOpen)
-            settings.dashboardOpen = false;
+            settings.closeOverlay("dashboard");
     }
 
     function refreshStats() {
@@ -97,7 +103,7 @@ PopupWindow {
                     font.pixelSize: 22
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: root.settings.dashboardOpen = false
+                        onClicked: root.settings.closeOverlay("dashboard")
                     }
                 }
             }

@@ -5,32 +5,40 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import "../../config"
+import "../window"
 
-PopupWindow {
+OverlayPanel {
     id: root
 
     required property Theme theme
     required property Settings settings
     required property var hostWindow
-    required property var targetScreen
     property string query: ""
     property int selectedIndex: 0
 
-    anchor.window: hostWindow
-    anchor.rect.x: Math.round((hostWindow.width - settings.overlayWidth) / 2)
-    anchor.rect.y: settings.barPosition === "top" ? Math.round(targetScreen.height * 0.16) : Math.round(settings.barHeight + settings.barMarginBottom - targetScreen.height * 0.84)
     implicitWidth: settings.overlayWidth
     implicitHeight: Math.min(settings.overlayMaxHeight, Math.max(180, appList.implicitHeight + 126))
     visible: settings.shellEnabled && settings.launcherOpen && targetScreen === Quickshell.screens[0]
-    grabFocus: true
-    color: "transparent"
+    wantsKeyboardFocus: visible
+    anchors {
+        top: true
+        left: true
+    }
+    margins {
+        top: settings.barPosition === "top"
+                ? Math.round(targetScreen.height * 0.16)
+                : Math.round(settings.barHeight + settings.barMarginBottom - targetScreen.height * 0.84)
+        left: Math.round((targetScreen.width - implicitWidth) / 2)
+    }
     onVisibleChanged: {
         if (visible) {
             query = "";
             selectedIndex = 0;
             search.forceActiveFocus();
-        } else if (settings.launcherOpen) {
-            settings.launcherOpen = false;
+        } else {
+            search.focus = false;
+            if (settings.launcherOpen)
+                settings.closeOverlay("launcher");
         }
     }
 
@@ -100,17 +108,17 @@ PopupWindow {
     function runQuickAction(action) {
         const pages = { control: "controls", clipboard: "clipboard", wallpaper: "wallpaper", power: "power", keys: "keys" };
         if (action === "settings")
-            settings.settingsOpen = true;
+            settings.openOverlay("settings");
         else if (action === "dashboard")
-            settings.dashboardOpen = true;
+            settings.openOverlay("dashboard");
         else if (pages[action]) {
             settings.controlCenterPage = pages[action];
-            settings.controlCenterOpen = true;
+            settings.openOverlay("controlCenter");
         }
         else
             return false;
         recordSearch();
-        settings.launcherOpen = false;
+        settings.closeOverlay("launcher");
         return true;
     }
 
@@ -191,20 +199,20 @@ PopupWindow {
             if (result.length > 0 && result !== "Invalid expression")
                 Quickshell.execDetached(["wl-copy", result]);
             recordSearch();
-            settings.launcherOpen = false;
+            settings.closeOverlay("launcher");
             return;
         }
         if (term.startsWith("?") && term.slice(1).trim().length > 0) {
             Quickshell.execDetached([settings.browserCommand, "https://duckduckgo.com/?q=" + encodeURIComponent(term.slice(1).trim())]);
             recordSearch();
-            settings.launcherOpen = false;
+            settings.closeOverlay("launcher");
             return;
         }
         const items = matchingApps();
         if (items.length > 0 && selectedIndex >= 0 && selectedIndex < items.length) {
             recordSearch();
             items[selectedIndex].execute();
-            settings.launcherOpen = false;
+            settings.closeOverlay("launcher");
         }
     }
 
@@ -238,7 +246,7 @@ PopupWindow {
                     root.query = text;
                     root.selectedIndex = 0;
                 }
-                Keys.onEscapePressed: root.settings.launcherOpen = false
+                Keys.onEscapePressed: root.settings.closeOverlay("launcher")
                 Keys.onReturnPressed: root.executeSelected()
                 Keys.onDownPressed: root.selectedIndex = Math.min(root.matchingApps().length - 1, root.selectedIndex + 1)
                 Keys.onUpPressed: root.selectedIndex = Math.max(0, root.selectedIndex - 1)
@@ -305,13 +313,13 @@ PopupWindow {
                             onClicked: {
                                 if (["wallpaper", "clipboard", "controls", "power", "keys"].includes(actionCard.modelData.script)) {
                                     root.settings.controlCenterPage = actionCard.modelData.script;
-                                    root.settings.controlCenterOpen = true;
+                                    root.settings.openOverlay("controlCenter");
                                 } else if (actionCard.modelData.script === "dashboard") {
-                                    root.settings.dashboardOpen = true;
+                                    root.settings.openOverlay("dashboard");
                                 } else {
-                                    root.settings.settingsOpen = true;
+                                    root.settings.openOverlay("settings");
                                 }
-                                root.settings.launcherOpen = false;
+                                root.settings.closeOverlay("launcher");
                             }
                         }
                     }
@@ -339,7 +347,7 @@ PopupWindow {
                         onEntered: root.selectedIndex = appRow.index
                         onClicked: {
                             appRow.modelData.execute();
-                            root.settings.launcherOpen = false;
+                            root.settings.closeOverlay("launcher");
                         }
                     }
                     RowLayout {

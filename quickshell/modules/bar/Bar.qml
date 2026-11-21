@@ -125,7 +125,7 @@ PanelWindow {
                         hoverEnabled: true
                         onClicked: {
                             panel.settings.controlCenterPage = "power";
-                            panel.settings.controlCenterOpen = true;
+                            panel.settings.openOverlay("controlCenter");
                         }
                     }
                 }
