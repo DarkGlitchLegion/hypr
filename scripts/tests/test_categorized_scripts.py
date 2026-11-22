@@ -45,6 +45,15 @@ class CategorizedScriptTests(unittest.TestCase):
             with self.subTest(path=path.relative_to(ROOT)):
                 ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
 
+    def test_office_thumbnail_renderer_is_configured(self) -> None:
+        renderer = SCRIPTS / "desktop" / "office-thumbnailer.sh"
+        plugin = Path.home() / ".local" / "share" / "thumbnailers" / "libreoffice.thumbnailer"
+        self.assertTrue(renderer.is_file())
+        self.assertIn("soffice", renderer.read_text(encoding="utf-8"))
+        self.assertIn("pdftoppm", renderer.read_text(encoding="utf-8"))
+        self.assertTrue(plugin.is_file())
+        self.assertIn("spreadsheetml.sheet", plugin.read_text(encoding="utf-8"))
+
     def test_categorized_paths_used_by_active_keybindings_exist(self) -> None:
         keybinds = (ROOT / "lua" / "keybinds.lua").read_text(encoding="utf-8")
         expected = (
