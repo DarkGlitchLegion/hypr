@@ -1,6 +1,6 @@
 # Arch Linux Hyprland Rice — Minimal Dark Ecosystem
 
-A developer-focused personal workstation environment built on **Arch Linux**, **Hyprland 0.57.2+ (native Lua engine)**, **Quickshell/QML**, **Rofi Wayland**, and **Dunst**. Waybar is retained as a fallback shell.
+A developer-focused personal workstation environment built on **Arch Linux**, **Hyprland 0.57.2+ (native Lua engine)**, **Waybar**, **Rofi Wayland**, and **Dunst**. Quickshell/QML configuration is retained but inactive.
 
 Designed around the **Minimal Dark Charcoal palette** (`#0C0D10` background, `#17191F` surface, `#202126` card hover, `#AAAAAA` accent), this ecosystem emphasizes keyboard-driven workflows, zero bloat, and fast hardware integration.
 
@@ -80,15 +80,15 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │       └── windowrules.conf
 ├── lua/                      # Modular Lua configuration subsystem
 │   ├── monitors.lua          # 1:1 native display setup (prevents fractional scaling)
-│   ├── autostart.lua         # Background daemons, Polkit, Quickshell, Dunst, etc.
+│   ├── autostart.lua         # Background daemons, Polkit, Waybar, Dunst, etc.
 │   ├── env.lua               # Wayland environment variables & cursor synchronization
 │   ├── appearance.lua        # Compositor layout, borders, rounding, shadows & blur
 │   ├── animations.lua        # Custom quintic & cubic Bezier animation curves
 │   ├── rules.lua             # Window rules, dialog centering & layer blur rules
 │   ├── app-placement.lua     # Optional app-specific workspace placement rules
 │   └── keybinds.lua          # Keyboard shortcuts & window dispatchers
-├── quickshell/               # Primary modular Quickshell/QML bar
-├── waybar/                   # Retained Waybar fallback
+├── quickshell/               # Retained, inactive Quickshell/QML configuration
+├── waybar/                   # Active Waybar configuration
 │   ├── config.jsonc          # Modular widgets, PipeWire, power profiles, battery
 │   └── style.css             # Minimalist charcoal stylesheet with hover transitions
 ├── rofi/                     # Rofi Wayland application & control menus
@@ -117,7 +117,7 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │   ├── bluetooth-status.py   # Bluetooth power/connection status helper
 │   ├── bluetooth-agent.py    # D-Bus pairing & authentication agent
 │   ├── quick-settings.py     # GTK quick-settings popup and live system controls
-│   ├── quick-settings-status.py # Shared Quickshell/Waybar connectivity/audio/battery status
+│   ├── quick-settings-status.py # Waybar connectivity/audio/battery status
 │   ├── hyprsec-box.sh        # Rootless Kali container and workspace manager
 │   ├── hyprsec-install.sh    # Idempotent HyprSec setup
 │   ├── hyprsec-uninstall.sh  # Confirmed container removal; preserves user data
@@ -130,9 +130,9 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │   ├── brightness.sh         # Display backlight controller (brightnessctl)
 │   ├── notification-toggle.sh# Do Not Disturb toggle
 │   ├── apply-gtk-theme.sh    # GTK3/4 Adwaita-dark theme synchronizer
-│   ├── start-bar.sh          # Quickshell primary, selectable Waybar fallback
-│   ├── restart-bar.sh        # Restart the currently selected shell
-│   └── rollback-to-waybar.sh # Switch current/future sessions to Waybar
+│   ├── start-bar.sh          # Start Waybar and persist Waybar selection
+│   ├── restart-bar.sh        # Restart Waybar
+│   └── rollback-to-waybar.sh # Select Waybar for current/future sessions
 ├── kitty/                    # Kitty terminal emulator configuration
 ├── dunst/                    # Dunst notification daemon configuration
 ├── hyprlock/                 # Hyprlock minimalist lockscreen
@@ -155,18 +155,14 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 ### Locating and debugging configuration
 * **Hyprland startup**: `hyprland.conf` loads `hyprland.lua`, which loads the active modules in `lua/`.
 * **Active behavior**: Edit `lua/keybinds.lua`, `lua/appearance.lua`, `lua/animations.lua`, `lua/monitors.lua`, `lua/rules.lua`, or `lua/autostart.lua` for their respective settings. The similarly named files in `hyprland/legacy/` are retained static configs, not the active Lua modules.
-* **Bar and menus**: Quickshell modules are in `quickshell/`; Waybar is retained in `waybar/` for recovery; Rofi themes are in `rofi/`.
+* **Bar and menus**: Waybar configuration is in `waybar/`; GTK Quick Controls and Rofi menus are launched from `scripts/`; inactive Quickshell modules are retained in `quickshell/`.
 * **Persisted settings**: Display profiles/preferences, idle settings, session presets, and the saved wallpaper path are in `state/`. Root-level compatibility symlinks keep older references working.
 * **Validation**: Run `scripts/rice validate` for config references and syntax checks, or `scripts/rice doctor --full` for broader diagnostics.
 
-### Quickshell/QML shell
-Quickshell is the primary Hyprland shell. The native QML UI includes the bar, app launcher, dashboard, settings, notification history, OSD, and a Control Center with network, Bluetooth, audio, displays, idle, screenshots, session presets, clipboard, wallpaper, power, maintenance, and HyprSec pages. <kbd>Super</kbd> + <kbd>C</kbd> or <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>Space</kbd> opens the Control Center; <kbd>Super</kbd> + <kbd>K</kbd> opens its searchable keybindings list. Existing scripts continue to perform system operations behind these QML views. Waybar remains an explicit recovery fallback.
+### Waybar and Quick Controls
+Waybar is the active Hyprland bar and is the enforced default for new sessions. Clicking its status cluster opens the GTK layer-shell Quick Controls panel, with interactive Wi-Fi, Bluetooth, audio, brightness, DND, power-profile, battery, system-monitor, and HyprSec controls. <kbd>Super</kbd> + <kbd>C</kbd> or <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>Space</kbd> opens the Rofi command center; <kbd>Super</kbd> + <kbd>K</kbd> opens the Rofi keybindings menu; <kbd>Super</kbd> + <kbd>Space</kbd> opens the Rofi application launcher. Network, audio, display, idle, wallpaper, clipboard, notification, and power utilities use their native Waybar/Rofi integrations. Quickshell/QML files are preserved but not launched by the active startup or keybinding workflows.
 
-<kbd>Super</kbd> + <kbd>Space</kbd> opens the Quickshell application launcher with fuzzy app search, favorites, recent queries, safe browser search (`? words`), arithmetic (`= 2 * (3 + 4)`), and QML Control Center shortcuts. Its dashboard reports CPU, memory, storage, and battery metrics; shell preferences save automatically in Quickshell state. See [quickshell/README.md](./quickshell/README.md) for the QML modules, startup, recovery, and development workflow.
-
-Volume, microphone, and brightness hotkeys show a short Quickshell OSD while its IPC endpoint is available, with Dunst notifications as fallback.
-
-Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Quickshell and switch the current and future sessions to Waybar. `Super+Shift+R` still reloads the bar and Hyprland configuration; it now reloads whichever shell is selected. Review [quickshell/README.md](./quickshell/README.md) for deployment, startup, and recovery details.
+Volume, microphone, and brightness hotkeys show Dunst notifications and refresh Waybar status.
 
 ---
 
@@ -198,7 +194,7 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
   * **Open**: Control Center → **Maintenance Center**. The Rice Diagnostics view is also reachable from System & Performance.
   * **CLI**: Run `~/.config/hypr/scripts/rice doctor`, `doctor --full`, `doctor --module audio`, `validate`, `dependencies --full`, `reload`, or `test`.
   * **Reports**: `rice doctor --report` writes a timestamped report under `~/.local/state/hypr-rice/reports/`; `rice doctor --report PATH` chooses a destination.
-  * **Safe repairs**: `rice doctor --fix` offers only a confirmed status refresh for the retained Waybar fallback. It does not edit configs, install packages, or restart services.
+  * **Safe repairs**: `rice doctor --fix` offers only a confirmed status refresh for Waybar. It does not edit configs, install packages, or restart services.
   * **Snapshots**: `rice snapshot create`, `list`, `diff ID`, `compare ID OTHER`, `restore ID`, `delete ID`, and `retention N`. Restore previews affected paths, requires confirmation, snapshots the current config first, validates the restored config, and rolls back on validation failure. It can recover from an already-invalid config. Restore is additive: it does not delete files absent from a snapshot. Backups are stored under `~/.local/share/hypr-rice/snapshots/`, with default retention of 10. Display, audio, session-preset, and snapshot-setting changes automatically snapshot their previous saved preferences.
   * **Safe reload**: `rice reload` validates Hyprland and Lua syntax before reloading, then checks Hyprland's reported config errors. Use <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> to reload the selected bar.
   * **Activity**: `rice logs` supports `--module`, `--severity`, `--search`, `--since YYYY-MM-DD`, `--export PATH`, and confirmed `--clear`. JSONL logs rotate at 2 MiB with three retained generations in `~/.local/state/hypr-rice/`.
@@ -207,17 +203,14 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
 
   ---
 
-### QML Quick Controls and Control Center
-* **Open Quick Controls**: Click the status cluster on the Quickshell bar. Use the Control Center sidebar for network, Bluetooth, audio, display, idle, wallpaper, clipboard, keybinding, screenshot, session, and maintenance views.
-* **Device actions**: Wi-Fi networks and known Bluetooth devices are listed in QML. Audio outputs and inputs come from the existing PipeWire backend; select a device and adjust active levels in the Audio page.
-* **Other pages**: Display presets preserve the rollback-aware display manager; idle presets preserve the validated timeout manager; wallpaper choices call the existing setter; clipboard history calls the existing clipboard daemon and clear operation.
-* **Scripts**: `scripts/desktop/open-hub.sh`, `scripts/hardware/qml-network.py`, `scripts/hardware/qml-bluetooth.py`, and the existing hardware/session backends.
+### Quickshell/QML (inactive)
+Quickshell configuration and scripts remain in the repository but are not started by Wayland autostart, Waybar restart, keybindings, or the Quick Controls button. The active workflow is Waybar with the GTK Quick Controls panel and Rofi menus.
 
 ---
 
 ### 2. PipeWire Audio Control Center
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>A</kbd>
-* **Bar Trigger**: Click the Quickshell status cluster, then click the Speaker or Microphone row's icon/text to open the audio manager. The switches toggle mute.
+* **Bar Trigger**: Open the Waybar Quick Controls panel and select Audio, or use <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>A</kbd>.
 * **Script**: `~/.config/hypr/scripts/hardware/audio-menu.sh`
 * **What it does**:
   * Enumerates current PipeWire-Pulse outputs and inputs from JSON, including built-in speakers, HDMI/DisplayPort, Bluetooth, and headsets when exposed by PipeWire.
@@ -253,7 +246,7 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
 ---
 
 ### 3. Power Profiles & Battery Center
-* **Bar Trigger**: Open Quick Controls from the Quickshell status cluster, then use the Audio & Display page to select a power profile.
+* **Bar Trigger**: Open the Waybar Quick Controls panel and choose a power profile.
 * **Script**: `~/.config/hypr/scripts/session/power-profile-menu.sh`
 * **What it does**:
   * Interfaces with `powerprofilesctl` to switch AMD P-State CPU governor profiles:
@@ -265,28 +258,28 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
     * Battery health percentage based on `energy_full` vs `energy_full_design`.
     * Battery cycle count.
   * Includes a **Battery Diagnostic Report** button that triggers a Dunst notification with full hardware and power metrics.
-  * Power profile selection is available on the QML Audio & Display page.
+  * Power profile selection uses the existing Rofi power-profile menu.
 
 ---
 
 ### 4. Graphical Wi-Fi Manager
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd>
-* **Bar Trigger**: Click the Quickshell status cluster, then click the Wi-Fi row's icon/text to open the network manager. The switch toggles the Wi-Fi radio.
+* **Bar Trigger**: Open Quick Controls on the Waybar and use the Wi-Fi control; <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> opens the Wi-Fi manager.
 * **Script**: `~/.config/hypr/scripts/hardware/wifi-menu.sh`
 * **What it does**:
   * Scans nearby Wi-Fi networks in the background (`nmcli --rescan no`) for fast response times.
   * Displays signal strength icons, security state (WPA/WPA2/open), and active connection indicators.
-  * The QML Network page includes password entry for secured networks and a rescan control.
+  * The Rofi NetworkManager menu includes saved/nearby networks, password entry for secured networks, and rescan actions.
   * Includes options to toggle Wi-Fi radio on/off and force an access point rescan.
 
 ---
 
 ### 5. Graphical Bluetooth Manager & Pairing Agent
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd>
-* **Bar Trigger**: Click the Quickshell status cluster, then click the Bluetooth row's icon/text to open the manager. The switch toggles Bluetooth power.
+* **Bar Trigger**: Open Quick Controls on the Waybar and use the Bluetooth control; <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> opens the Bluetooth manager.
 * **Scripts**: `~/.config/hypr/scripts/hardware/bluetooth-menu.sh`, `bluetooth-status.py`, and `bluetooth-agent.py`
 * **What it does**:
-  * The Quick Settings popup shows whether Bluetooth is powered off (`󰂲`), powered on (`󰂯`), or connected (`󰂱`), and refreshes the state while open.
+  * The Quick Controls popup shows whether Bluetooth is powered off (`󰂲`), powered on (`󰂯`), or connected (`󰂱`), and refreshes the state while open.
   * Connects to BlueZ via D-Bus and `bluetoothctl`.
   * Runs a default `KeyboardDisplay` agent and asks for explicit approval on the laptop for pairing and Bluetooth service requests.
   * Approval dialogs use the matching charcoal Rofi theme; pairing mode is visible for three minutes, and agent registration/errors are logged to `~/.local/state/hypr/bluetooth-agent.log`.
@@ -313,7 +306,7 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
 * **What it does**:
   * Runs a lightweight `wl-paste` listener.
   * Uses `cliphist` when available; otherwise it uses the built-in cache and works without extra packages.
-  * Pressing <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>V</kbd> opens the searchable QML clipboard history.
+  * Pressing <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>V</kbd> opens the searchable Rofi clipboard history.
   * Selecting an entry copies it back to the active clipboard buffer ready for pasting.
 
 ---
@@ -337,7 +330,7 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
 * **Notification History**: <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>N</kbd>
 * **Pop Last Notification**: <kbd>Super</kbd> + <kbd>N</kbd>
 * **Dismiss All**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd>
-* **Quickshell indicators**: The bar shows the displayed-notification count and opens the existing notification-history viewer when clicked. DND remains available through the status cluster and existing keybinding.
+* **Waybar status**: The quick-settings tooltip reports notification count. Notification history and DND are available through their existing keybindings and Rofi menus.
 
 ---
 
@@ -401,7 +394,7 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
 | :--- | :--- | :--- |
 | <kbd>Super</kbd> + <kbd>Return</kbd> | Open Terminal | Launches Kitty with charcoal theme |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>Return</kbd> | Web Browser | Launches Firefox (Wayland native) |
-| <kbd>Super</kbd> + <kbd>Space</kbd> | App Launcher | Opens Quickshell application launcher |
+| <kbd>Super</kbd> + <kbd>Space</kbd> | App Launcher | Opens the Rofi application launcher |
 | <kbd>Super</kbd> + <kbd>C</kbd> | Rice Control Center | Opens the unified desktop super-hub |
 | <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>Space</kbd> | Rice Control Center | Alternative shortcut for Control Center |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>F</kbd> | File Manager | Opens Thunar file manager |
@@ -410,8 +403,8 @@ Run [rollback-to-waybar.sh](./scripts/desktop/rollback-to-waybar.sh) to hide Qui
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> | System Information | Displays Fastfetch in a Kitty terminal |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd> | Display Manager | Configure monitor layouts, modes, scaling, and orientation |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> | CMatrix | Matrix digital rain terminal screensaver |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Wi-Fi Manager | Opens QML Network page |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> | Bluetooth Manager | Opens QML Network page |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Wi-Fi Manager | Opens the Rofi NetworkManager menu |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>B</kbd> | Bluetooth Manager | Opens the Rofi Bluetooth menu |
 
 ### Window Management
 | Shortcut | Action | Description |
@@ -451,18 +444,18 @@ Workspace shortcuts now cover 1–10 to match the Display Manager; use <kbd>Supe
 | :--- | :--- | :--- |
 | <kbd>Super</kbd> + <kbd>Escape</kbd> | Power Menu | Opens system session menu (Lock, Suspend, Reboot, Shutdown) |
 | <kbd>Super</kbd> + <kbd>L</kbd> / <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>L</kbd> | Lock Screen | Locks desktop immediately with Hyprlock |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> | Reload Desktop | Reloads the selected bar (Quickshell by default) and Hyprland configuration |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>R</kbd> | Reload Desktop | Reloads the selected bar (Waybar by default) and Hyprland configuration |
 | <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>A</kbd> | Audio Switcher | Opens PipeWire audio sink and source switcher |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>D</kbd> | Toggle DND | Toggles notification Do Not Disturb mode |
-| <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>N</kbd> | Notification History | Opens QML notification history |
+| <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>N</kbd> | Notification History | Opens the Rofi notification history |
 | <kbd>Super</kbd> + <kbd>N</kbd> | Pop Notification | Displays the most recent notification |
 | <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>N</kbd> | Dismiss Notifications| Closes all active notification popups |
 
 ### Productivity, Capture & Cheatsheets
 | Shortcut | Action | Description |
 | :--- | :--- | :--- |
-| <kbd>Super</kbd> + <kbd>K</kbd> | Shortcuts Menu | Opens searchable QML keybindings page |
-| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>K</kbd> | Cheatsheet Window | Opens the QML keybindings page |
+| <kbd>Super</kbd> + <kbd>K</kbd> | Shortcuts Menu | Opens the searchable Rofi keybindings menu |
+| <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>K</kbd> | Cheatsheet Window | Opens the Rofi keybindings menu |
 | <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>W</kbd> | Wallpaper Selector | Visual thumbnail wallpaper browser |
 | <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>Space</kbd> | Wallpaper Selector | Alternative shortcut for wallpaper selector |
 | <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>V</kbd> | Clipboard History | Opens clipboard history manager |
@@ -489,18 +482,16 @@ Workspace shortcuts now cover 1–10 to match the Display Manager; use <kbd>Supe
 
 ---
 
-## Interactive Quickshell Bar
+## Interactive Waybar
 
-The Quickshell bar provides these mouse interactions; Waybar is retained as a fallback:
+The active Waybar provides these mouse interactions:
 
 | Module | Left-Click | Right-Click | Scroll Wheel |
 | :--- | :--- | :--- | :--- |
 | **Workspaces** | Activate workspace | — | — |
 | **Window title** | — | — | — |
-| **Status cluster** | Open the existing Control Center | — | — |
-| **Notifications** | Open Dunst notification history | — | — |
-| **Clock** | Show/hide calendar | Toggle alternate time format | Change calendar month |
-| **System tray** | Activate item | Open item menu | — |
+| **Quick Controls** | Open the GTK layer-shell panel | — | — |
+| **Clock** | Show calendar tooltip | Toggle alternate time format | Change calendar month |
 | **Power (`󰐥`)** | Open System Power Menu | — | — |
 
 ---
@@ -559,7 +550,7 @@ Always verify before reloading if you make manual changes:
 # Check Hyprland Lua configuration
 XDG_RUNTIME_DIR=/tmp Hyprland --verify-config
 
-# Check retained Waybar fallback configuration JSON
+# Check Waybar configuration JSONC
 python3 -m json.tool ~/.config/hypr/waybar/config.jsonc > /dev/null
 ```
 

@@ -13,7 +13,7 @@ hl.on("hyprland.start", function ()
     -- Polkit authentication agent
     hl.exec_cmd("/usr/lib/hyprpolkitagent/hyprpolkitagent")
 
-    -- Start the selected bar (Quickshell by default, Waybar after rollback).
+    -- Start the selected bar (Waybar by default).
     hl.exec_cmd(scripts .. "/desktop/start-bar.sh")
 
     -- Dunst notification daemon

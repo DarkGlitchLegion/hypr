@@ -425,10 +425,7 @@ def menu() -> None:
 def main(argv: list[str]) -> int:
     try:
         if not argv:
-            subprocess.run([
-                "qs", "ipc", "--path", str(CONFIG / "quickshell" / "shell.qml"),
-                "call", "hyprshell", "openHub", "presets",
-            ], check=False)
+            menu()
         elif argv == ["--json"]:
             presets = load_presets()
             print(json.dumps([

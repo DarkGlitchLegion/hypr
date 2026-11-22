@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Quick Settings Cluster Status for Quickshell and Waybar
+Quick Settings Cluster Status for Waybar
 Outputs a compact JSON status line showing: network · audio · battery · security
 """
 from __future__ import annotations

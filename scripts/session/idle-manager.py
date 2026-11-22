@@ -1005,10 +1005,7 @@ def main(argv: list[str]) -> int:
         if argv == ["--validate"]:
             return validate_command()
         if argv in (["--menu"], ["--quick"]):
-            subprocess.run([
-                "qs", "ipc", "--path", str(CONFIG / "quickshell" / "shell.qml"),
-                "call", "hyprshell", "openHub", "idle",
-            ], check=False)
+            show_menu()
             return 0
         if argv == ["--dpms-off"]:
             return dpms_off()

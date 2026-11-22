@@ -71,15 +71,17 @@ class CategorizedScriptTests(unittest.TestCase):
                 self.assertIn(suffix, keybinds)
                 self.assertTrue((SCRIPTS / suffix.lstrip("/")).exists(), suffix)
 
-    def test_quickshell_is_the_primary_autostart_with_a_waybar_rollback(self) -> None:
+    def test_waybar_is_the_default_autostart(self) -> None:
         autostart = (ROOT / "lua" / "autostart.lua").read_text(encoding="utf-8")
-        launcher = (SCRIPTS / "desktop" / "start-bar.sh").read_text(encoding="utf-8")
-        rollback = SCRIPTS / "desktop" / "rollback-to-waybar.sh"
+        start_bar = (SCRIPTS / "desktop" / "start-bar.sh").read_text(encoding="utf-8")
+        launcher = (SCRIPTS / "desktop" / "launcher.sh").read_text(encoding="utf-8")
         self.assertIn("/desktop/start-bar.sh", autostart)
         self.assertNotIn("waybar -c ", autostart)
-        self.assertIn('MODE="quickshell"', launcher)
-        self.assertIn("--no-duplicate", launcher)
-        self.assertTrue(rollback.is_file())
+        self.assertIn("waybar/config.jsonc", start_bar)
+        self.assertIn("printf 'waybar\\n'", start_bar)
+        self.assertIn('exec rofi -show drun', launcher)
+        self.assertNotIn("qs ipc", start_bar)
+        self.assertNotIn("qs ipc", launcher)
 
     def test_quickshell_overlays_use_exclusive_wayland_focus(self) -> None:
         settings = (ROOT / "quickshell" / "config" / "Settings.qml").read_text(encoding="utf-8")
@@ -107,36 +109,28 @@ class CategorizedScriptTests(unittest.TestCase):
         self.assertNotIn("bluetoothRefreshTimer", control_center)
         self.assertIn("audioApplyTimer.restart()", control_center)
 
-    def test_quickshell_quick_controls_are_separate_from_the_control_center(self) -> None:
-        settings = (ROOT / "quickshell" / "config" / "Settings.qml").read_text(encoding="utf-8")
-        shell = (ROOT / "quickshell" / "shell.qml").read_text(encoding="utf-8")
-        controls = (
-            ROOT / "quickshell" / "modules" / "controlcenter" / "ControlCenter.qml"
-        ).read_text(encoding="utf-8")
-        status = (ROOT / "quickshell" / "modules" / "bar" / "StatusIndicators.qml").read_text(encoding="utf-8")
+    def test_waybar_quick_controls_and_keybindings_do_not_require_quickshell(self) -> None:
         quick_settings = (SCRIPTS / "desktop" / "quick-settings.py").read_text(encoding="utf-8")
         control_center = (SCRIPTS / "desktop" / "control-center.sh").read_text(encoding="utf-8")
-        close_overlay = (SCRIPTS / "desktop" / "close-focused-or-overlay.sh").read_text(encoding="utf-8")
         keybinds = (ROOT / "lua" / "keybinds.lua").read_text(encoding="utf-8")
+        hyprland = (ROOT / "hyprland.lua").read_text(encoding="utf-8")
 
-        self.assertIn('activeOverlay === "quickControls"', settings)
-        self.assertIn('toggleOverlay("quickControls")', settings)
-        self.assertIn("function toggleQuickControls()", shell)
-        self.assertIn("function closeFocusedOrOverlay()", shell)
-        self.assertIn("closeOverlays()", shell)
-        self.assertIn("root.settings.toggleQuickControls()", status)
-        self.assertIn('"toggleQuickControls"', quick_settings)
-        self.assertIn("call hyprshell toggleHub", control_center)
-        self.assertIn("call hyprshell closeFocusedOrOverlay", close_overlay)
+        self.assertIn("GtkLayerShell", quick_settings)
+        self.assertIn("hardware\" / \"wifi-menu.sh", quick_settings)
+        self.assertIn("hardware\" / \"bluetooth-menu.sh", quick_settings)
+        self.assertIn("hardware\" / \"audio-menu.sh", quick_settings)
+        self.assertIn("rofi", control_center)
+        self.assertNotIn("qs ipc", quick_settings)
+        self.assertNotIn("qs ipc", control_center)
         self.assertIn('hl.bind(mainMod .. " + W"', keybinds)
         self.assertIn('hl.bind(mainMod .. " + Q"', keybinds)
-        self.assertIn("closeFocusedOrOverlay", keybinds)
+        self.assertIn('hl.dsp.exec_cmd("hyprctl dispatch killactive")', keybinds)
         self.assertIn('hl.bind(mainMod .. " + C"', keybinds)
-        self.assertIn("settings.quickControlsOpen", controls)
-        self.assertNotIn("HYPR  /  SHELL", controls)
-        self.assertNotIn('text: "×"', controls)
+        self.assertIn('controlCenter = configDir .. "/scripts/desktop/control-center.sh"', hyprland)
+        self.assertNotIn("qs ipc", (SCRIPTS / "session" / "idle-manager.py").read_text(encoding="utf-8"))
+        self.assertNotIn("qs ipc", (SCRIPTS / "session" / "session-presets.py").read_text(encoding="utf-8"))
 
-    def test_bar_launcher_defaults_to_quickshell_and_honors_waybar_rollback(self) -> None:
+    def test_bar_launcher_defaults_to_waybar_without_quickshell(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fake_bin = root / "bin"
@@ -149,6 +143,9 @@ class CategorizedScriptTests(unittest.TestCase):
                     encoding="utf-8",
                 )
                 executable.chmod(0o755)
+            pgrep = fake_bin / "pgrep"
+            pgrep.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+            pgrep.chmod(0o755)
             state_root = root / "state"
             config_root = root / "config"
             environment = os.environ.copy()
@@ -163,15 +160,8 @@ class CategorizedScriptTests(unittest.TestCase):
 
             result = subprocess.run([str(launcher)], env=environment, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("--no-duplicate", output_file.read_text(encoding="utf-8"))
-            self.assertIn(str(config_root / "hypr" / "quickshell" / "shell.qml"), output_file.read_text(encoding="utf-8"))
-
-            mode_file = state_root / "hypr-rice" / "bar-mode"
-            mode_file.parent.mkdir(parents=True)
-            mode_file.write_text("waybar\n", encoding="utf-8")
-            result = subprocess.run([str(launcher)], env=environment, capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("waybar/config.jsonc", output_file.read_text(encoding="utf-8"))
+            self.assertEqual((state_root / "hypr-rice" / "bar-mode").read_text(encoding="utf-8"), "waybar\n")
 
     def test_application_launcher_uses_rofi_after_waybar_rollback(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -190,7 +180,7 @@ class CategorizedScriptTests(unittest.TestCase):
             state_root = root / "state"
             mode_file = state_root / "hypr-rice" / "bar-mode"
             mode_file.parent.mkdir(parents=True)
-            mode_file.write_text("waybar\n", encoding="utf-8")
+            mode_file.write_text("quickshell\n", encoding="utf-8")
             environment = os.environ.copy()
             environment.update({
                 "PATH": f"{fake_bin}:{environment['PATH']}",
@@ -204,14 +194,15 @@ class CategorizedScriptTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("-show drun", output_file.read_text(encoding="utf-8"))
 
-    def test_application_launcher_falls_back_when_quickshell_ipc_is_not_ready(self) -> None:
+    def test_application_launcher_ignores_quickshell_and_uses_rofi(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fake_bin = root / "bin"
             fake_bin.mkdir()
             output_file = root / "invocation.txt"
+            qs_invocations = root / "qs-invocations"
             (fake_bin / "qs").write_text(
-                "#!/bin/sh\nprintf '%s\\n' 'Not ready to accept queries yet.'\n",
+                f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{qs_invocations}'\n",
                 encoding="utf-8",
             )
             (fake_bin / "rofi").write_text(
@@ -237,42 +228,18 @@ class CategorizedScriptTests(unittest.TestCase):
             )
 
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("Not ready to accept queries yet.", result.stderr)
             self.assertIn("-show drun", output_file.read_text(encoding="utf-8"))
+            self.assertFalse(qs_invocations.exists())
 
-    def test_waybar_restart_compatibility_entrypoint_respects_quickshell_mode(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            fake_bin = root / "bin"
-            fake_bin.mkdir()
-            output_file = root / "invocation.txt"
-            for name in ("qs", "waybar"):
-                executable = fake_bin / name
-                executable.write_text(
-                    "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"$BAR_TEST_OUTPUT\"\n",
-                    encoding="utf-8",
-                )
-                executable.chmod(0o755)
-            config_root = root / "config"
-            state_root = root / "state"
-            script_target = config_root / "hypr" / "scripts" / "desktop"
-            script_target.mkdir(parents=True)
-            for name in ("restart-bar.sh", "start-bar.sh"):
-                shutil.copy2(SCRIPTS / "desktop" / name, script_target / name)
-            environment = os.environ.copy()
-            environment.update({
-                "PATH": f"{fake_bin}:{environment['PATH']}",
-                "HOME": str(root / "home"),
-                "XDG_CONFIG_HOME": str(config_root),
-                "XDG_STATE_HOME": str(state_root),
-                "BAR_TEST_OUTPUT": str(output_file),
-            })
-            script = SCRIPTS / "desktop" / "restart-waybar.sh"
-            result = subprocess.run([str(script)], env=environment, capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            invocation = output_file.read_text(encoding="utf-8")
-            self.assertIn("call hyprshell reload", invocation)
-            self.assertNotIn("waybar -c", invocation)
+    def test_bar_restart_routes_only_to_waybar(self) -> None:
+        restart = (SCRIPTS / "desktop" / "restart-bar.sh").read_text(encoding="utf-8")
+        restart_waybar = (SCRIPTS / "desktop" / "restart-waybar.sh").read_text(encoding="utf-8")
+        rollback = (SCRIPTS / "desktop" / "rollback-to-waybar.sh").read_text(encoding="utf-8")
+        self.assertIn("restart-waybar.sh", restart)
+        self.assertIn('waybar/config.jsonc', restart_waybar)
+        self.assertNotIn("qs ipc", restart)
+        self.assertNotIn("qs ipc", restart_waybar)
+        self.assertNotIn("qs ipc", rollback)
 
     def test_quick_settings_status_is_valid_json(self) -> None:
         result = subprocess.run(

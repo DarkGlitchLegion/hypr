@@ -1,22 +1,17 @@
 #!/usr/bin/env bash
 # =====================================================================
-# Restart the selected bar, keeping this compatibility entrypoint safe.
+# Restart Waybar without launching a second bar implementation.
 # =====================================================================
 
 CONFIG_ROOT="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
 STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/hypr-rice"
 CONFIG="${CONFIG_ROOT}/waybar/config.jsonc"
 STYLE="${CONFIG_ROOT}/waybar/style.css"
-MODE_FILE="${STATE_ROOT}/bar-mode"
-MODE="quickshell"
 
-if [[ -f "${MODE_FILE}" ]]; then
-    IFS= read -r MODE < "${MODE_FILE}"
-fi
-
-if [[ "${MODE}" != "waybar" ]]; then
-    exec "${CONFIG_ROOT}/scripts/desktop/restart-bar.sh"
-fi
+mkdir -p "${STATE_ROOT}"
+temporary_mode="$(mktemp "${STATE_ROOT}/.bar-mode.XXXXXX")"
+printf 'waybar\n' > "${temporary_mode}"
+mv -f -- "${temporary_mode}" "${STATE_ROOT}/bar-mode"
 
 while IFS= read -r pid; do
     [[ "${pid}" =~ ^[0-9]+$ ]] || continue
@@ -32,7 +27,6 @@ if pgrep -u "${UID}" -x waybar >/dev/null 2>&1; then
     exit 1
 fi
 
-mkdir -p "${STATE_ROOT}"
 waybar -c "${CONFIG}" -s "${STYLE}" >> "${STATE_ROOT}/waybar.log" 2>&1 &
 waybar_pid=$!
 for attempt in {1..30}; do

@@ -170,7 +170,7 @@ def build_diagnostics(*, full: bool = False, module: str | None = None) -> list[
     checks: list[Check] = []
     bar_state_root = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local" / "state")))
     bar_mode_file = bar_state_root / "hypr-rice" / "bar-mode"
-    bar_mode = "quickshell"
+    bar_mode = "waybar"
     bar_mode_error = ""
     try:
         if bar_mode_file.is_file():
@@ -258,11 +258,11 @@ def build_diagnostics(*, full: bool = False, module: str | None = None) -> list[
         add("waybar", "Waybar stylesheet", "Healthy" if style_path.is_file() else "Failed",
             "Present." if style_path.is_file() else "Stylesheet missing.")
         pids = process_pids("waybar")
-        fallback_inactive = not pids and bar_mode == "quickshell"
-        add("waybar", "Waybar runtime", "Not Applicable" if fallback_inactive else "Healthy" if pids else "Warning",
-            "Inactive fallback while Quickshell is selected." if fallback_inactive
+        waybar_inactive = not pids and bar_mode == "quickshell"
+        add("waybar", "Waybar runtime", "Not Applicable" if waybar_inactive else "Healthy" if pids else "Warning",
+            "Inactive while Quickshell is selected." if waybar_inactive
             else f"Running process(es): {', '.join(pids)}" if pids else "Waybar is not running.",
-            "" if pids or fallback_inactive else "Run scripts/desktop/rollback-to-waybar.sh to select the fallback.")
+            "" if pids or waybar_inactive else "Run scripts/desktop/start-bar.sh to start Waybar.")
         for binary in REQUIRED_BINARIES["waybar"]:
             add("waybar", f"Dependency: {binary}", "Healthy" if shutil.which(binary) else "Not Installed",
                 "Available." if shutil.which(binary) else "Waybar package is not installed.")

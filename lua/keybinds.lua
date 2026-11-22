@@ -9,7 +9,6 @@ local scripts       = Desktop.scripts
 local terminal      = Desktop.terminal
 local fileManager   = Desktop.fileManager
 local controlCenter = Desktop.controlCenter
-local closeFocusedOrOverlay = scripts .. "/desktop/close-focused-or-overlay.sh"
 local lockscreen    = Desktop.lockscreen
 local hyprsecKeybind = "SUPER + SHIFT + H"
 local hyprsecKeybindFile = io.open(Desktop.home .. "/.config/hyprsec/keybind", "r")
@@ -52,8 +51,8 @@ hl.bind(mainMod .. " + ALT + M",   hl.dsp.exec_cmd(genie_bin .. "/genie-restore"
 -- -----------------------------------------------------
 -- 2. Window Management
 -- -----------------------------------------------------
-hl.bind(mainMod .. " + W",       hl.dsp.exec_cmd(closeFocusedOrOverlay))
-hl.bind(mainMod .. " + Q",       hl.dsp.exec_cmd(closeFocusedOrOverlay))
+hl.bind(mainMod .. " + W",       hl.dsp.exec_cmd("hyprctl dispatch killactive"))
+hl.bind(mainMod .. " + Q",       hl.dsp.exec_cmd("hyprctl dispatch killactive"))
 hl.bind(mainMod .. " + T",       hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + V",       hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + F",       hl.dsp.window.fullscreen(0))

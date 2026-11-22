@@ -50,13 +50,25 @@ case "$1" in
             dunstify -a "Screenshot" -u normal "Screenshot Failed" "No active window detected."
         fi
         ;;
-    delayed)
-        dunstify -a "Screenshot" -t 5000 "Capturing in 5 seconds..."
-        sleep 5
-        "$0" full
-        ;;
     menu|"")
-        exec qs ipc --path "${HOME}/.config/hypr/quickshell/shell.qml" call hyprshell openHub capture
+        OPTIONS="󰒅  Region Selection\n󰹑  Fullscreen\n󰖲  Active Window\n󰕧  5s Delayed Fullscreen"
+        CHOSEN=$(echo -e "${OPTIONS}" | rofi -dmenu -config "${HOME}/.config/hypr/rofi/config.rasi" -p "Capture")
+        case "${CHOSEN}" in
+            *"Region"*)
+                "$0" region
+                ;;
+            *"Fullscreen"*)
+                "$0" full
+                ;;
+            *"Active Window"*)
+                "$0" window
+                ;;
+            *"5s Delayed"*)
+                dunstify -a "Screenshot" -t 5000 "Capturing in 5 seconds..."
+                sleep 5
+                "$0" full
+                ;;
+        esac
         ;;
     *)
         echo "Usage: $0 {region|full|window|menu}"

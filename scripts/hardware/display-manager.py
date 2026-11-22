@@ -2071,8 +2071,7 @@ def main() -> int:
                 layout.append(selected)
             transaction(f"{name} set as primary display", layout)
         else:
-            config = CONFIG / "quickshell" / "shell.qml"
-            subprocess.run(["qs", "ipc", "--path", str(config), "call", "hyprshell", "openHub", "display"], check=False)
+            display_manager()
     except DisplayError as exc:
         notify("Display Manager error", str(exc), "critical")
         return 1
