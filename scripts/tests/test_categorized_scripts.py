@@ -124,7 +124,7 @@ class CategorizedScriptTests(unittest.TestCase):
         self.assertNotIn("qs ipc", control_center)
         self.assertIn('hl.bind(mainMod .. " + W"', keybinds)
         self.assertIn('hl.bind(mainMod .. " + Q"', keybinds)
-        self.assertIn('hl.dsp.exec_cmd("hyprctl dispatch killactive")', keybinds)
+        self.assertIn('hl.dsp.window.close()', keybinds)
         self.assertIn('hl.bind(mainMod .. " + C"', keybinds)
         self.assertIn('controlCenter = configDir .. "/scripts/desktop/control-center.sh"', hyprland)
         self.assertNotIn("qs ipc", (SCRIPTS / "session" / "idle-manager.py").read_text(encoding="utf-8"))

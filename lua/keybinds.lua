@@ -51,8 +51,8 @@ hl.bind(mainMod .. " + ALT + M",   hl.dsp.exec_cmd(genie_bin .. "/genie-restore"
 -- -----------------------------------------------------
 -- 2. Window Management
 -- -----------------------------------------------------
-hl.bind(mainMod .. " + W",       hl.dsp.exec_cmd("hyprctl dispatch killactive"))
-hl.bind(mainMod .. " + Q",       hl.dsp.exec_cmd("hyprctl dispatch killactive"))
+hl.bind(mainMod .. " + W",       hl.dsp.window.close())
+hl.bind(mainMod .. " + Q",       hl.dsp.window.close())
 hl.bind(mainMod .. " + T",       hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + V",       hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + F",       hl.dsp.window.fullscreen(0))
