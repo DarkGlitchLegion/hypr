@@ -52,17 +52,6 @@ class PackageManagerTests(unittest.TestCase):
         self.assertIn("waybar", packages)
         self.assertIn("unknown-token", unsupported)
 
-    def test_quickshell_is_mapped_only_where_a_package_is_supported(self) -> None:
-        packages, unsupported = package_module.map_packages(["quickshell"], "pacman")
-        self.assertEqual(packages, ["quickshell"])
-        self.assertEqual(unsupported, [])
-
-        for manager in ("apt", "dnf"):
-            packages, unsupported = package_module.map_packages(["quickshell"], manager)
-            self.assertEqual(packages, [])
-            self.assertEqual(unsupported, ["quickshell"])
-
-
 class BackupTests(unittest.TestCase):
     def test_timestamped_backup_and_restore(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -122,41 +111,6 @@ class BackupTests(unittest.TestCase):
 
 
 class ConfigDeployerTests(unittest.TestCase):
-    def test_quickshell_configuration_is_deployed_without_replacing_waybar(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            repository = root / "repo"
-            home = root / "home"
-            (repository / "quickshell").mkdir(parents=True)
-            (repository / "quickshell" / "shell.qml").write_text("ShellRoot { property bool fresh: true }\n", encoding="utf-8")
-            (repository / "waybar").mkdir()
-            (repository / "waybar" / "config.jsonc").write_text("{}\n", encoding="utf-8")
-            existing_quickshell = home / ".config" / "hypr" / "quickshell"
-            existing_quickshell.mkdir(parents=True)
-            (existing_quickshell / "shell.qml").write_text("ShellRoot { property bool old: true }\n", encoding="utf-8")
-            (existing_quickshell / "user-local.qml").write_text("QtObject {}\n", encoding="utf-8")
-            backup = backup_module.BackupManager(home)
-            deployer = deploy_module.ConfigDeployer(repository, home, backup)
-
-            components = {name: destination for name, _, destination in deployer.components("standard")}
-            self.assertEqual(components["quickshell"], home / ".config" / "hypr" / "quickshell")
-            self.assertEqual(components["waybar"], home / ".config" / "hypr" / "waybar")
-            ok, _, backup_directory = deployer.deploy("standard")
-            self.assertTrue(ok)
-            self.assertEqual(
-                (existing_quickshell / "shell.qml").read_text(encoding="utf-8"),
-                "ShellRoot { property bool fresh: true }\n",
-            )
-            self.assertTrue((existing_quickshell / "user-local.qml").is_file())
-            self.assertIsNotNone(backup_directory)
-            self.assertEqual(
-                (backup_directory / "data" / "quickshell" / "shell.qml").read_text(encoding="utf-8"),
-                "ShellRoot { property bool old: true }\n",
-            )
-
-    def test_quickshell_is_in_the_minimal_package_profile(self) -> None:
-        self.assertIn("quickshell", package_module.profile_tokens(ROOT, "minimal"))
-
     def test_copy_deployment_personalizes_absolute_paths_and_preserves_state(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory) / "home"
@@ -197,16 +151,6 @@ class ValidationTests(unittest.TestCase):
             self.assertTrue(any("Python syntax" in item for item in result.passed))
             self.assertTrue(any("Shell syntax" in item for item in result.passed))
 
-    def test_validation_checks_quickshell_qml_syntax_when_qmllint_exists(self) -> None:
-        if shutil.which("qmllint") is None and not Path("/usr/lib/qt6/bin/qmllint").is_file():
-            self.skipTest("qmllint is not installed")
-        with tempfile.TemporaryDirectory() as directory:
-            target = Path(directory)
-            quickshell = target / "quickshell"
-            quickshell.mkdir()
-            (quickshell / "shell.qml").write_text("import QtQuick\nItem {}\n", encoding="utf-8")
-            result = validation_module.validate(target)
-            self.assertIn("QML syntax: 1 file(s)", result.passed)
 
 
 if __name__ == "__main__":

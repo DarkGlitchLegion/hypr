@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Quick Settings Cluster Status for Waybar
-Outputs a compact JSON status line showing: network · audio · battery · security
+Outputs a compact JSON status line showing: network · audio · battery
 """
 from __future__ import annotations
 
@@ -131,14 +131,6 @@ def battery_status() -> dict[str, object]:
     }
 
 
-# ── Security ─────────────────────────────────────────────────────────────────
-def sec_class() -> str:
-    out = run([str(SCRIPTS / "security" / "hyprsec-box.sh"), "waybar-status"], timeout=5)
-    try:
-        return json.loads(out).get("class", "unavailable")
-    except Exception:
-        return "unavailable"
-
 
 # ── DND ──────────────────────────────────────────────────────────────────────
 def dnd_icon() -> str:
@@ -163,20 +155,10 @@ b_pct = battery_pct()
 battery = battery_status()
 d_icon = dnd_icon()
 n_count = displayed_notification_count()
-s_cls = sec_class()
-
-# Security indicator dot
-sec_dot = ""  # green dot
-if s_cls == "running":
-    sec_dot = " 󰒃"
-elif s_cls == "unavailable":
-    sec_dot = ""  # don't show if podman not available
 
 parts = [n_icon, a_icon, m_icon, f"{b_icon} {b_pct}".strip()]
 if d_icon:
     parts.append(d_icon)
-if sec_dot:
-    parts.append(sec_dot)
 
 text = "  ".join(parts)
 
@@ -193,15 +175,14 @@ tooltip_parts = [
     "Quick Settings",
     bat_tooltip,
     f"Notifications: {n_count} displayed",
-    f"Security: {s_cls}",
 ]
 tooltip = "\n".join(p for p in tooltip_parts if p)
 
 print(json.dumps({
     "text": text,
     "tooltip": tooltip,
-    "class": f"cluster sec-{s_cls}",
-    "alt": s_cls,
+    "class": "cluster",
+    "alt": "quick-settings",
     "notifications": n_count,
     "battery": battery,
 }))

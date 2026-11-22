@@ -10,16 +10,6 @@ local terminal      = Desktop.terminal
 local fileManager   = Desktop.fileManager
 local controlCenter = Desktop.controlCenter
 local lockscreen    = Desktop.lockscreen
-local hyprsecKeybind = "SUPER + SHIFT + H"
-local hyprsecKeybindFile = io.open(Desktop.home .. "/.config/hyprsec/keybind", "r")
-if hyprsecKeybindFile then
-    local configuredKeybind = hyprsecKeybindFile:read("*l")
-    hyprsecKeybindFile:close()
-    if configuredKeybind and configuredKeybind:match("^[A-Z0-9%s+]+$") then
-        hyprsecKeybind = configuredKeybind
-    end
-end
-
 -- -----------------------------------------------------
 -- 1. Application Launchers & Control Center
 -- -----------------------------------------------------
@@ -36,7 +26,6 @@ hl.bind(mainMod .. " + SHIFT + M",      hl.dsp.exec_cmd(scripts .. "/hardware/di
 hl.bind(mainMod .. " + SHIFT + C",      hl.dsp.exec_cmd(scripts .. "/desktop/cmatrix.sh"))
 hl.bind(mainMod .. " + SHIFT + S",      hl.dsp.exec_cmd(scripts .. "/hardware/wifi-menu.sh"))
 hl.bind(mainMod .. " + SHIFT + B",      hl.dsp.exec_cmd(scripts .. "/hardware/bluetooth-menu.sh"))
-hl.bind(hyprsecKeybind,                 hl.dsp.exec_cmd(scripts .. "/security/hyprsec-box.sh menu"))
 
 -- -----------------------------------------------------
 -- 1b. Genie Effect — Minimize / Restore

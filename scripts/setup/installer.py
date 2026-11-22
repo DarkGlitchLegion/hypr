@@ -121,7 +121,7 @@ def main(argv: list[str] | None = None) -> int:
         log_install(home, ["restore", message])
         return 0 if ok else 1
 
-    required = ("python3", "Hyprland", "qs", "waybar", "dunst", "rofi", "kitty", "hyprpaper", "hyprlock", "hypridle")
+    required = ("python3", "Hyprland", "waybar", "dunst", "rofi", "kitty", "hyprpaper", "hyprlock", "hypridle")
     info = detect_system(home, required)
     print(f"Distribution: {info.distro_name} ({info.distro_id})")
     print(f"Architecture: {info.architecture}")

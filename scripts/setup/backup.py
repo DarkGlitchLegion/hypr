@@ -97,7 +97,6 @@ class BackupManager:
     def _allowed_roots(self) -> list[Path]:
         return [
             (self.home / ".config" / "hypr").resolve(),
-            (self.home / ".config" / "hyprsec").resolve(),
             (self.home / ".local" / "share" / "hypr-rice").resolve(),
             (self.home / ".local" / "state" / "hypr-rice").resolve(),
         ]

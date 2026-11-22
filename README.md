@@ -1,6 +1,6 @@
 # Arch Linux Hyprland Rice — Minimal Dark Ecosystem
 
-A developer-focused personal workstation environment built on **Arch Linux**, **Hyprland 0.57.2+ (native Lua engine)**, **Waybar**, **Rofi Wayland**, and **Dunst**. Quickshell/QML configuration is retained but inactive.
+A developer-focused personal workstation environment built on **Arch Linux**, **Hyprland 0.57.2+ (native Lua engine)**, **Waybar**, **Rofi Wayland**, and **Dunst**.
 
 Designed around the **Minimal Dark Charcoal palette** (`#0C0D10` background, `#17191F` surface, `#202126` card hover, `#AAAAAA` accent), this ecosystem emphasizes keyboard-driven workflows, zero bloat, and fast hardware integration.
 
@@ -39,7 +39,6 @@ Package installation is displayed before execution. Unsupported package managers
 ### Security behavior
 
 - Bluetooth pairing and service authorization require an on-screen Rofi approval from the laptop user. The adapter is pairable/discoverable only for a bounded 120-second window.
-- HyprSec container configuration requires an immutable `@sha256:<digest>` image reference. Tag-only references such as `:latest` are rejected.
 - Installer restore operations validate backup manifests and destinations, reject symlinks and paths outside rice-owned configuration roots, and display a restore preview before applying changes.
 
 ### Updating
@@ -87,7 +86,6 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │   ├── rules.lua             # Window rules, dialog centering & layer blur rules
 │   ├── app-placement.lua     # Optional app-specific workspace placement rules
 │   └── keybinds.lua          # Keyboard shortcuts & window dispatchers
-├── quickshell/               # Retained, inactive Quickshell/QML configuration
 ├── waybar/                   # Active Waybar configuration
 │   ├── config.jsonc          # Modular widgets, PipeWire, power profiles, battery
 │   └── style.css             # Minimalist charcoal stylesheet with hover transitions
@@ -118,9 +116,6 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │   ├── bluetooth-agent.py    # D-Bus pairing & authentication agent
 │   ├── quick-settings.py     # GTK quick-settings popup and live system controls
 │   ├── quick-settings-status.py # Waybar connectivity/audio/battery status
-│   ├── hyprsec-box.sh        # Rootless Kali container and workspace manager
-│   ├── hyprsec-install.sh    # Idempotent HyprSec setup
-│   ├── hyprsec-uninstall.sh  # Confirmed container removal; preserves user data
 │   ├── wallpaper-selector.sh # Rofi wallpaper thumbnail chooser
 │   ├── set-wallpaper.sh      # Hyprpaper IPC reload & Hyprlock persistence
 │   ├── clipboard-menu.sh     # Cliphist history browser
@@ -140,7 +135,6 @@ Hyprland 0.57.2+ runs natively with a modular Lua architecture under `~/.config/
 │   └── hyprpaper.conf
 ├── hyprclock/                # Hyprclock configuration
 │   └── hyprclock.conf
-├── hyprsec/                  # HyprSec defaults, tool catalog, and guide
 ├── state/                    # Persistent display, idle, session, and wallpaper state
 │   ├── current_wallpaper
 │   ├── display-preferences.json
@@ -155,26 +149,18 @@ Root-level compatibility symlinks preserve established paths for legacy configs,
 ### Locating and debugging configuration
 * **Hyprland startup**: `hyprland.conf` loads `hyprland.lua`, which loads the active modules in `lua/`.
 * **Active behavior**: Edit `lua/keybinds.lua`, `lua/appearance.lua`, `lua/animations.lua`, `lua/monitors.lua`, `lua/rules.lua`, or `lua/autostart.lua` for their respective settings. The similarly named files in `hyprland/legacy/` are retained static configs, not the active Lua modules.
-* **Bar and menus**: Waybar configuration is in `waybar/`; GTK Quick Controls and Rofi menus are launched from `scripts/`; inactive Quickshell modules are retained in `quickshell/`.
+* **Bar and menus**: Waybar configuration is in `waybar/`; GTK Quick Controls and Rofi menus are launched from `scripts/`.
 * **Persisted settings**: Display profiles/preferences, idle settings, session presets, and the saved wallpaper path are in `state/`. Root-level compatibility symlinks keep older references working.
 * **Validation**: Run `scripts/rice validate` for config references and syntax checks, or `scripts/rice doctor --full` for broader diagnostics.
 
 ### Waybar and Quick Controls
-Waybar is the active Hyprland bar and is the enforced default for new sessions. Clicking its status cluster opens the GTK layer-shell Quick Controls panel, with interactive Wi-Fi, Bluetooth, audio, brightness, DND, power-profile, battery, system-monitor, and HyprSec controls. <kbd>Super</kbd> + <kbd>C</kbd> or <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>Space</kbd> opens the Rofi command center; <kbd>Super</kbd> + <kbd>K</kbd> opens the Rofi keybindings menu; <kbd>Super</kbd> + <kbd>Space</kbd> opens the Rofi application launcher. Network, audio, display, idle, wallpaper, clipboard, notification, and power utilities use their native Waybar/Rofi integrations. Quickshell/QML files are preserved but not launched by the active startup or keybinding workflows.
+Waybar is the active Hyprland bar and is the enforced default for new sessions. Clicking its status cluster opens the GTK layer-shell Quick Controls panel, with interactive Wi-Fi, Bluetooth, audio, brightness, DND, power-profile, battery, and system-monitor controls. <kbd>Super</kbd> + <kbd>C</kbd> or <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>Space</kbd> opens the Rofi command center; <kbd>Super</kbd> + <kbd>K</kbd> opens the Rofi keybindings menu; <kbd>Super</kbd> + <kbd>Space</kbd> opens the Rofi application launcher. Network, audio, display, idle, wallpaper, clipboard, notification, and power utilities use their native Waybar/Rofi integrations.
 
 Volume, microphone, and brightness hotkeys show Dunst notifications and refresh Waybar status.
 
 ---
 
 ## Core Features & How to Use Them
-
-### HyprSec Box — Rootless Security Workspace
-* **Open**: <kbd>Super</kbd> + <kbd>Shift</kbd> + <kbd>H</kbd>, or Control Center → HyprSec Box. Change the key in `~/.config/hyprsec/keybind`, then reload Hyprland.
-* **Install**: Run `~/.config/hypr/scripts/hyprsec-install.sh` as your regular user. It asks before installing Podman or pulling the Kali Rolling image and preserves existing HyprSec configuration.
-* **Isolation**: Rootless Podman, no privileged mode, no host-wide mounts, dropped capabilities, and an internal-only network by default. Only `~/HyprSec/workspace` subdirectories are mounted.
-* **Network**: Enable the named rootless bridge explicitly from the menu when package downloads are needed; it requires confirmation. Disable it afterward. The bar's status cluster includes the existing container state indicator; manage the container from Control Center, where network changes require confirmation.
-* **Tools and projects**: Manage the curated APT catalog in `~/.config/hyprsec/tools.conf`; package actions happen inside Kali. Create projects under `~/HyprSec/workspace/projects/`. Cleanup is project-scoped and interactive; removing the container preserves workspace files.
-* **Configuration and full guide**: See [hyprsec/README.md](./hyprsec/README.md). The default catalog is limited to diagnostics, analysis, development, and reporting tools.
 
 ### 1. Rice Control Center (Unified Super-Hub)
 * **Hotkey**: <kbd>Super</kbd> + <kbd>C</kbd> or <kbd>Super</kbd> + <kbd>Alt</kbd> + <kbd>Space</kbd>
@@ -185,7 +171,7 @@ Volume, microphone, and brightness hotkeys show Dunst notifications and refresh 
     * `󰒓 System & Performance`: Rice health diagnostics, process monitor (`btop`), power center, disk usage, desktop/bar reload.
     * `󰤨 Hardware & Connectivity`: Wi-Fi, Bluetooth, PipeWire audio switcher, battery diagnostics.
     * `󰍹 Display & Personalization`: Wallpaper selector, GTK theme synchronization, display info.
-    * `󰲋 Developer & Workstation`: VS Code, Kitty, Lazygit, HyprSec Box, tools folder, CMatrix.
+    * `󰲋 Developer & Workstation`: VS Code, Kitty, Lazygit, tools folder, CMatrix.
     * `󰅇 Productivity & Capture`: Clipboard history, screenshot suite, shortcuts cheatsheet.
     * `󰐥 Session & Power`: Lock screen (Hyprlock), suspend, reboot, poweroff, logout.
   * **Direct Fuzzy Search**: You don't need to navigate submenus—simply type keywords like `wifi`, `audio`, `btop`, `lock`, or `screenshot` to trigger actions immediately from the first screen.
@@ -203,10 +189,6 @@ Volume, microphone, and brightness hotkeys show Dunst notifications and refresh 
 
   ---
 
-### Quickshell/QML (inactive)
-Quickshell configuration and scripts remain in the repository but are not started by Wayland autostart, Waybar restart, keybindings, or the Quick Controls button. The active workflow is Waybar with the GTK Quick Controls panel and Rofi menus.
-
----
 
 ### 2. PipeWire Audio Control Center
 * **Hotkey**: <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>A</kbd>

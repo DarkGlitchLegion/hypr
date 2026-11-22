@@ -47,7 +47,6 @@ def validate(target: Path) -> ValidationResult:
         target / "hyprland.conf",
         target / "hyprland.lua",
         target / "lua",
-        target / "quickshell",
         target / "waybar",
         target / "rofi",
         target / "scripts",
@@ -59,36 +58,6 @@ def validate(target: Path) -> ValidationResult:
             result.passed.append(f"Expected component: {path.relative_to(target)}")
         else:
             result.warnings.append(f"Missing expected component: {path.relative_to(target)}")
-    quickshell = target / "quickshell"
-    qml_files = sorted(quickshell.rglob("*.qml")) if quickshell.is_dir() else []
-    if qml_files:
-        qmllint = shutil.which("qmllint")
-        if qmllint is None:
-            qt_qmllint = Path("/usr/lib/qt6/bin/qmllint")
-            qmllint = str(qt_qmllint) if qt_qmllint.is_file() else None
-        if qmllint is None:
-            result.warnings.append("QML syntax was not checked: qmllint is unavailable")
-        else:
-            env = os.environ.copy()
-            import_paths = ["/usr/lib/qt6/qml"]
-            if env.get("QML_IMPORT_PATH"):
-                import_paths.insert(0, env["QML_IMPORT_PATH"])
-            env["QML_IMPORT_PATH"] = os.pathsep.join(path for path in import_paths if Path(path).is_dir())
-            try:
-                check = subprocess.run(
-                    [qmllint, "-E", "--max-warnings", "-1", *map(str, qml_files)],
-                    capture_output=True,
-                    text=True,
-                    timeout=20,
-                    env=env,
-                )
-            except subprocess.TimeoutExpired:
-                result.failures.append("QML syntax verification timed out")
-            else:
-                if check.returncode:
-                    result.failures.append("QML syntax verification failed")
-                else:
-                    result.passed.append(f"QML syntax: {len(qml_files)} file(s)")
     if shutil.which("Hyprland"):
         hyprland = shutil.which("Hyprland")
         check = subprocess.run(
@@ -103,7 +72,7 @@ def validate(target: Path) -> ValidationResult:
             result.passed.append("Hyprland configuration verification passed")
     else:
         result.warnings.append("Hyprland is not installed or not in PATH")
-    for utility in ("qs", "waybar", "dunst", "rofi", "kitty", "hyprpaper", "hyprlock", "hypridle"):
+    for utility in ("waybar", "dunst", "rofi", "kitty", "hyprpaper", "hyprlock", "hypridle"):
         if shutil.which(utility) is None:
             result.warnings.append(f"Utility not found in PATH: {utility}")
     return result

@@ -17,7 +17,7 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
-CATEGORIES = ("core", "desktop", "hardware", "session", "clipboard", "wallpaper", "security")
+CATEGORIES = ("core", "desktop", "hardware", "session", "clipboard", "wallpaper")
 
 
 class CategorizedScriptTests(unittest.TestCase):
@@ -60,7 +60,6 @@ class CategorizedScriptTests(unittest.TestCase):
             "/hardware/display-manager.py",
             "/hardware/wifi-menu.sh",
             "/hardware/bluetooth-menu.sh",
-            "/security/hyprsec-box.sh",
             "/session/power-menu.sh",
             "/desktop/restart-bar.sh",
             "/hardware/audio-menu.sh",
@@ -89,36 +88,8 @@ class CategorizedScriptTests(unittest.TestCase):
         self.assertIn("waybar/config.jsonc", start_bar)
         self.assertIn("printf 'waybar\\n'", start_bar)
         self.assertIn('exec rofi -show drun', launcher)
-        self.assertNotIn("qs ipc", start_bar)
-        self.assertNotIn("qs ipc", launcher)
 
-    def test_quickshell_overlays_use_exclusive_wayland_focus(self) -> None:
-        settings = (ROOT / "quickshell" / "config" / "Settings.qml").read_text(encoding="utf-8")
-        overlay = (ROOT / "quickshell" / "modules" / "window" / "OverlayPanel.qml").read_text(encoding="utf-8")
-        self.assertIn('readonly property bool launcherOpen: activeOverlay === "launcher"', settings)
-        self.assertIn('function openOverlay(name: string)', settings)
-        self.assertIn("activeOverlay = name", settings)
-        self.assertIn("WlrKeyboardFocus.OnDemand", overlay)
-        self.assertIn("WlrKeyboardFocus.None", overlay)
-        for path in (ROOT / "quickshell" / "modules").rglob("*.qml"):
-            with self.subTest(path=path.relative_to(ROOT)):
-                source = path.read_text(encoding="utf-8")
-                self.assertNotIn("PopupWindow {", source)
-                self.assertNotIn("grabFocus: true", source)
-
-    def test_quickshell_device_actions_refresh_on_completion(self) -> None:
-        control_center = (
-            ROOT / "quickshell" / "modules" / "controlcenter" / "ControlCenter.qml"
-        ).read_text(encoding="utf-8")
-        self.assertIn("function runNetworkAction(args, label)", control_center)
-        self.assertIn("function runBluetoothAction(args, label)", control_center)
-        self.assertIn("wifiProcess.running = true;", control_center)
-        self.assertIn("bluetoothProcess.running = true;", control_center)
-        self.assertNotIn("wifiRefreshTimer", control_center)
-        self.assertNotIn("bluetoothRefreshTimer", control_center)
-        self.assertIn("audioApplyTimer.restart()", control_center)
-
-    def test_waybar_quick_controls_and_keybindings_do_not_require_quickshell(self) -> None:
+    def test_waybar_quick_controls_and_keybindings_use_native_routes(self) -> None:
         quick_settings = (SCRIPTS / "desktop" / "quick-settings.py").read_text(encoding="utf-8")
         control_center = (SCRIPTS / "desktop" / "control-center.sh").read_text(encoding="utf-8")
         keybinds = (ROOT / "lua" / "keybinds.lua").read_text(encoding="utf-8")
@@ -129,23 +100,19 @@ class CategorizedScriptTests(unittest.TestCase):
         self.assertIn("hardware\" / \"bluetooth-menu.sh", quick_settings)
         self.assertIn("hardware\" / \"audio-menu.sh", quick_settings)
         self.assertIn("rofi", control_center)
-        self.assertNotIn("qs ipc", quick_settings)
-        self.assertNotIn("qs ipc", control_center)
         self.assertIn('hl.bind(mainMod .. " + W"', keybinds)
         self.assertIn('hl.bind(mainMod .. " + Q"', keybinds)
         self.assertIn('hl.dsp.window.close()', keybinds)
         self.assertIn('hl.bind(mainMod .. " + C"', keybinds)
         self.assertIn('controlCenter = configDir .. "/scripts/desktop/control-center.sh"', hyprland)
-        self.assertNotIn("qs ipc", (SCRIPTS / "session" / "idle-manager.py").read_text(encoding="utf-8"))
-        self.assertNotIn("qs ipc", (SCRIPTS / "session" / "session-presets.py").read_text(encoding="utf-8"))
 
-    def test_bar_launcher_defaults_to_waybar_without_quickshell(self) -> None:
+    def test_bar_launcher_defaults_to_waybar(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fake_bin = root / "bin"
             fake_bin.mkdir()
             output_file = root / "invocation.txt"
-            for name in ("qs", "waybar"):
+            for name in ("waybar",):
                 executable = fake_bin / name
                 executable.write_text(
                     "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"$BAR_TEST_OUTPUT\"\n",
@@ -178,7 +145,7 @@ class CategorizedScriptTests(unittest.TestCase):
             fake_bin = root / "bin"
             fake_bin.mkdir()
             output_file = root / "invocation.txt"
-            for name in ("qs", "rofi"):
+            for name in ("rofi",):
                 executable = fake_bin / name
                 executable.write_text(
                     "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"$LAUNCHER_TEST_OUTPUT\"\n",
@@ -189,7 +156,7 @@ class CategorizedScriptTests(unittest.TestCase):
             state_root = root / "state"
             mode_file = state_root / "hypr-rice" / "bar-mode"
             mode_file.parent.mkdir(parents=True)
-            mode_file.write_text("quickshell\n", encoding="utf-8")
+            mode_file.write_text("waybar\n", encoding="utf-8")
             environment = os.environ.copy()
             environment.update({
                 "PATH": f"{fake_bin}:{environment['PATH']}",
@@ -203,52 +170,12 @@ class CategorizedScriptTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("-show drun", output_file.read_text(encoding="utf-8"))
 
-    def test_application_launcher_ignores_quickshell_and_uses_rofi(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            fake_bin = root / "bin"
-            fake_bin.mkdir()
-            output_file = root / "invocation.txt"
-            qs_invocations = root / "qs-invocations"
-            (fake_bin / "qs").write_text(
-                f"#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{qs_invocations}'\n",
-                encoding="utf-8",
-            )
-            (fake_bin / "rofi").write_text(
-                "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"$LAUNCHER_TEST_OUTPUT\"\n",
-                encoding="utf-8",
-            )
-            for executable in fake_bin.iterdir():
-                executable.chmod(0o755)
-            environment = os.environ.copy()
-            environment.update({
-                "PATH": f"{fake_bin}:{environment['PATH']}",
-                "HOME": str(root / "home"),
-                "XDG_CONFIG_HOME": str(root / "config"),
-                "XDG_STATE_HOME": str(root / "state"),
-                "LAUNCHER_TEST_OUTPUT": str(output_file),
-            })
-
-            result = subprocess.run(
-                [str(SCRIPTS / "desktop" / "launcher.sh")],
-                env=environment,
-                capture_output=True,
-                text=True,
-            )
-
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("-show drun", output_file.read_text(encoding="utf-8"))
-            self.assertFalse(qs_invocations.exists())
-
     def test_bar_restart_routes_only_to_waybar(self) -> None:
         restart = (SCRIPTS / "desktop" / "restart-bar.sh").read_text(encoding="utf-8")
         restart_waybar = (SCRIPTS / "desktop" / "restart-waybar.sh").read_text(encoding="utf-8")
         rollback = (SCRIPTS / "desktop" / "rollback-to-waybar.sh").read_text(encoding="utf-8")
         self.assertIn("restart-waybar.sh", restart)
         self.assertIn('waybar/config.jsonc', restart_waybar)
-        self.assertNotIn("qs ipc", restart)
-        self.assertNotIn("qs ipc", restart_waybar)
-        self.assertNotIn("qs ipc", rollback)
 
     def test_quick_settings_status_is_valid_json(self) -> None:
         result = subprocess.run(
@@ -273,49 +200,6 @@ class CategorizedScriptTests(unittest.TestCase):
                 data["battery"]["percentage"] is None
                 or isinstance(data["battery"]["percentage"], int)
             )
-
-    def test_quick_settings_metrics_emits_valid_resource_data(self) -> None:
-        result = subprocess.run(
-            [sys.executable, str(SCRIPTS / "desktop" / "quick-settings-metrics.py")],
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        data = json.loads(result.stdout)
-        self.assertIn("available", data)
-        if data["available"]:
-            self.assertGreaterEqual(data["cpuPercent"], 0)
-            self.assertLessEqual(data["cpuPercent"], 100)
-            self.assertGreaterEqual(data["memoryPercent"], 0)
-            self.assertLessEqual(data["memoryPercent"], 100)
-            self.assertIn("temperatures", data)
-            self.assertIn("network", data)
-
-    def test_network_helper_decodes_escaped_status_fields(self) -> None:
-        script = SCRIPTS / "hardware" / "qml-network.py"
-        spec = importlib.util.spec_from_file_location("qml_network_test", script)
-        self.assertIsNotNone(spec)
-        self.assertIsNotNone(spec.loader)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        responses = [
-            subprocess.CompletedProcess([], 0, "wlan0:wifi:connected:Home\\: Office\n", ""),
-            subprocess.CompletedProcess([], 0, "192.168.1.10/24\n", ""),
-        ]
-        output = io.StringIO()
-        with (
-            mock.patch.object(module.shutil, "which", return_value="/usr/bin/nmcli"),
-            mock.patch.object(module, "run", side_effect=responses),
-            mock.patch.object(sys, "argv", [str(script), "status"]),
-            contextlib.redirect_stdout(output),
-        ):
-            self.assertEqual(module.main(), 0)
-        data = json.loads(output.getvalue())
-        self.assertEqual(data["interface"], "wlan0")
-        self.assertEqual(data["type"], "Wi-Fi")
-        self.assertEqual(data["connection"], "Home: Office")
-        self.assertEqual(data["ip"], "192.168.1.10/24")
 
     def test_idle_manager_status_and_validation(self) -> None:
         script = SCRIPTS / "session" / "idle-manager.py"
@@ -429,13 +313,6 @@ class CategorizedScriptTests(unittest.TestCase):
         ):
             self.assertFalse(agent.ask_user("Pairing request", "Phone"))
 
-    def test_hyprsec_rejects_mutable_images(self) -> None:
-        source = (SCRIPTS / "security" / "hyprsec-box.sh").read_text(encoding="utf-8")
-        example = (ROOT / "hyprsec" / "config.example.sh").read_text(encoding="utf-8")
-        self.assertNotIn("kali-rolling:latest", source)
-        self.assertNotIn("kali-rolling:latest", example)
-        self.assertIn("@sha256:", source)
-        self.assertIn("tag-only or latest images are rejected", source)
 
 
 if __name__ == "__main__":

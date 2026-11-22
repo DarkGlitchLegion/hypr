@@ -269,17 +269,6 @@ def get_power_profile() -> str:
     return run_out(["powerprofilesctl", "get"]) or "balanced"
 
 
-def get_hyprsec() -> dict:
-    out = run_out(
-        [str(SCRIPTS / "security" / "hyprsec-box.sh"), "waybar-status"], timeout=5
-    )
-    try:
-        d = json.loads(out)
-        return d
-    except Exception:
-        return {"text": "󰒃 Sec: unavailable", "class": "unavailable", "tooltip": ""}
-
-
 # ── Quick Settings Window ─────────────────────────────────────────────────────
 
 class QuickSettings(Gtk.Window):
@@ -412,7 +401,7 @@ class QuickSettings(Gtk.Window):
         self._build_power(root, data["battery"], data["profile"])
         self._add_divider(root)
         self._build_system(root, data["cpu"], data["ram"], data["cpu_temp"],
-                           data["gpu_temp"], data["security"])
+                           data["gpu_temp"])
         self.show_all()
         self._refresh_id = GLib.timeout_add_seconds(1, self._refresh_panel)
         self._stats_refresh_id = GLib.timeout_add_seconds(3, self._refresh_stats)
@@ -822,8 +811,7 @@ class QuickSettings(Gtk.Window):
 
     def _build_system(self, parent: Gtk.Box, cpu: int,
                       ram: tuple[int, float, float],
-                      cpu_t: Optional[float], gpu_t: Optional[float],
-                      sec: dict) -> None:
+                      cpu_t: Optional[float], gpu_t: Optional[float]) -> None:
         parent.pack_start(self._section_label("SYSTEM"), False, False, 0)
 
         grid = Gtk.FlowBox()
@@ -880,25 +868,6 @@ class QuickSettings(Gtk.Window):
 
         parent.pack_start(grid, False, False, 0)
 
-        # Security row
-        sec_text = sec.get("text", "󰒃 Sec")
-        sec_class = sec.get("class", "unavailable")
-        sec_tip = sec.get("tooltip", "")
-
-        sec_row = Gtk.EventBox()
-        sec_inner = self._toggle_row("󰒃", "HyprSec Container",
-                                      sec_text.replace("󰒃 ", "").strip(),
-                                      False, on_toggle=None)
-        sec_row.add(sec_inner)
-        sec_row.set_tooltip_text(sec_tip or sec_text)
-        sec_row.connect("button-press-event",
-                        lambda w, e: self._launch(str(SCRIPTS / "security" / "hyprsec-box.sh"), "menu")
-                        if e.button == 1 else None)
-        # Colour the sublabel based on class
-        # (the label is the 3rd child: icon_lbl, text_box, [switch])
-        # We style it after build
-        parent.pack_start(sec_row, False, False, 0)
-
     def _open_btop(self) -> None:
         self._launch("kitty", "--class", "btop", "--title", "btop",
                      "--config", str(HOME / ".config/hypr/kitty/kitty.conf"),
@@ -921,7 +890,6 @@ class QuickSettings(Gtk.Window):
             "ram": get_ram_usage,
             "cpu_temp": get_cpu_temp,
             "gpu_temp": get_gpu_temp,
-            "security": get_hyprsec,
         }
         with ThreadPoolExecutor(max_workers=len(getters)) as executor:
             tasks = {name: executor.submit(getter) for name, getter in getters.items()}
