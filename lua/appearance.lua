@@ -20,6 +20,20 @@ hl.config({
         allow_tearing = false,
     },
 
+    -- Keep grouped-window tabs dark with readable labels. Hyprland's default
+    -- groupbar uses a light active-tab fill with a light title, which makes
+    -- some window titles and icons difficult to see.
+    group = {
+        groupbar = {
+            col = {
+                active = "rgba(333340ff)",
+                inactive = "rgba(17191fff)",
+            },
+            text_color = "rgba(d5d5d5ff)",
+            text_color_inactive = "rgba(aaaaaaff)",
+        },
+    },
+
     decoration = {
         rounding         = 10,       -- slightly rounder, closer to macOS 11+ window corners
         active_opacity   = 0.98,

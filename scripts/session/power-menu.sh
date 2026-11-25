@@ -24,7 +24,7 @@ case "${CHOSEN}" in
         systemctl poweroff
         ;;
     *"Logout"*)
-        hyprctl dispatch exit
+        hyprctl dispatch exit || loginctl terminate-session "${XDG_SESSION_ID}"
         ;;
     *"Reload Desktop"*)
         "${HOME}/.config/hypr/scripts/desktop/restart-waybar.sh" >/dev/null 2>&1

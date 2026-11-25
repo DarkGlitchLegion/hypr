@@ -355,7 +355,7 @@ handle_action() {
             systemctl suspend &
             ;;
         *"Log Out"*)
-            hyprctl dispatch exit &
+            hyprctl dispatch exit || loginctl terminate-session "${XDG_SESSION_ID}"
             ;;
         *"Reboot System"*)
             systemctl reboot &
