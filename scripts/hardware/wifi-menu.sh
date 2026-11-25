@@ -8,16 +8,21 @@
 ROFI_THEME="${HOME}/.config/hypr/rofi/wifi.rasi"
 CACHE_FILE="/tmp/hypr_wifi_cache.json"
 PIDFILE="/tmp/hypr_wifi_menu.pid"
+STATE_ROOT="${XDG_STATE_HOME:-${HOME}/.local/state}/hypr-rice"
+WIFI_DEVICE_FILE="${STATE_ROOT}/wifi-device"
+WIFI_DEVICE="auto"
 
-# Prevent duplicate menu instances
-if [ -f "${PIDFILE}" ]; then
-    OLD_PID=$(cat "${PIDFILE}" 2>/dev/null)
-    if [ -n "${OLD_PID}" ] && kill -0 "${OLD_PID}" 2>/dev/null; then
-        exit 0
+acquire_menu_lock() {
+    if [ -f "${PIDFILE}" ]; then
+        local old_pid
+        old_pid=$(cat "${PIDFILE}" 2>/dev/null)
+        if [ -n "${old_pid}" ] && kill -0 "${old_pid}" 2>/dev/null; then
+            exit 0
+        fi
     fi
-fi
-echo "$$" > "${PIDFILE}"
-trap 'rm -f "${PIDFILE}"' EXIT
+    echo "$$" > "${PIDFILE}"
+    trap 'rm -f "${PIDFILE}"' EXIT
+}
 
 notify() {
     local urgency="${1:-low}"
@@ -47,16 +52,104 @@ toggle_wifi() {
 
 rescan_networks() {
     notify "low" "network-wireless" "Scanning Networks" "Refreshing nearby wireless access points..."
-    nmcli device wifi rescan >/dev/null 2>&1 || true
+    if [[ "${WIFI_DEVICE}" == "auto" ]]; then
+        nmcli device wifi rescan >/dev/null 2>&1 || true
+    else
+        nmcli device wifi rescan ifname "${WIFI_DEVICE}" >/dev/null 2>&1 || true
+    fi
     sleep 1.0
+}
+
+get_wifi_devices() {
+    nmcli -t -f DEVICE,TYPE device status 2>/dev/null \
+        | awk -F: '$2 == "wifi" && $1 !~ /^p2p-/ { print $1 }'
+}
+
+get_default_wifi_device() {
+    local device
+    device="$(nmcli -t -f DEVICE,TYPE,STATE device status 2>/dev/null \
+        | awk -F: '$2 == "wifi" && $3 ~ /^connected/ && $1 !~ /^p2p-/ { print $1; exit }')"
+    if [[ -n "${device}" ]]; then
+        printf '%s\n' "${device}"
+    else
+        printf 'auto\n'
+    fi
+}
+
+load_wifi_device() {
+    mkdir -p -- "${STATE_ROOT}"
+    if [[ -f "${WIFI_DEVICE_FILE}" ]]; then
+        WIFI_DEVICE="$(<"${WIFI_DEVICE_FILE}")"
+    else
+        WIFI_DEVICE="$(get_default_wifi_device)"
+    fi
+    [[ -n "${WIFI_DEVICE}" ]] || WIFI_DEVICE="auto"
+
+    if [[ "${WIFI_DEVICE}" != "auto" ]] \
+        && ! get_wifi_devices | grep -Fxq -- "${WIFI_DEVICE}"; then
+        WIFI_DEVICE="$(get_default_wifi_device)"
+    fi
+}
+
+select_wifi_device() {
+    local devices device state product bus display selection selected
+    devices="$(get_wifi_devices)"
+    if [[ -z "${devices}" ]]; then
+        notify "critical" "network-wireless-offline" "No Wi-Fi adapters" "NetworkManager does not report any Wi-Fi devices."
+        return 1
+    fi
+
+    local -a options
+    auto_label="󰤨  [auto] Automatic (NetworkManager chooses)"
+    [[ "${WIFI_DEVICE}" == "auto" ]] && auto_label+=" — Selected"
+    options=("${auto_label}")
+    while IFS= read -r device; do
+        [[ -n "${device}" ]] || continue
+        state="$(nmcli -g GENERAL.STATE device show "${device}" 2>/dev/null | head -n 1)"
+        product="$(nmcli -g GENERAL.PRODUCT device show "${device}" 2>/dev/null | head -n 1)"
+        bus="Wi-Fi"
+        if [[ -e "/sys/class/net/${device}/device" ]]; then
+            case "$(readlink -f "/sys/class/net/${device}/device")" in
+                *usb*) bus="USB Wi-Fi" ;;
+                *pci*) bus="PCIe / built-in Wi-Fi" ;;
+            esac
+        fi
+        display="${bus}  [${device}]"
+        [[ -n "${product}" && "${product}" != "--" ]] && display+=" — ${product}"
+        [[ -n "${state}" ]] && display+=" (${state})"
+        [[ "${WIFI_DEVICE}" == "${device}" ]] && display+=" — Selected"
+        options+=("󰤨  ${display}")
+    done <<< "${devices}"
+
+    selection="$(printf '%s\n' "${options[@]}" \
+        | rofi -dmenu -i -no-custom -config "${ROFI_THEME}" \
+            -p "󰤨 Wi-Fi Adapter" \
+            -mesg "Choose which adapter to scan and use for network connections:")" || return 0
+    [[ -n "${selection}" ]] || return 0
+
+    selected="$(sed -nE 's/.*\[([[:alnum:]_.-]+)\].*/\1/p' <<< "${selection}")"
+    [[ -n "${selected}" ]] || return 0
+
+    mkdir -p -- "${STATE_ROOT}"
+    printf '%s\n' "${selected}" > "${WIFI_DEVICE_FILE}"
+    WIFI_DEVICE="${selected}"
+    pkill -RTMIN+8 waybar 2>/dev/null || true
+    if [[ "${WIFI_DEVICE}" == "auto" ]]; then
+        notify "low" "network-wireless" "Wi-Fi Adapter" "NetworkManager will choose an adapter automatically."
+    else
+        notify "low" "network-wireless" "Wi-Fi Adapter Selected" "Using ${WIFI_DEVICE} for scans and connections."
+    fi
 }
 
 # Scan, sort, and cache wireless networks with precise Pango formatting
 generate_network_menu() {
-    python3 - << 'EOF'
+    local selected_device="${1:-auto}"
+    python3 - "${selected_device}" << 'EOF'
 import subprocess, re, html, json
+import sys
 
 CACHE_FILE = "/tmp/hypr_wifi_cache.json"
+selected_device = sys.argv[1] if len(sys.argv) > 1 else "auto"
 
 try:
     # 1. Fetch saved connections
@@ -66,20 +159,23 @@ try:
     ).decode("utf-8", errors="ignore")
     saved_nets = {line.split(":")[0] for line in raw_saved.splitlines() if ":802-11-wireless" in line}
 
-    # 2. Fetch live access points (use cached scan for instantaneous UI response, fallback to active scan if cache empty)
+    # 2. Fetch access points from the selected adapter, if one is selected.
+    wifi_command = ["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list"]
+    if selected_device != "auto":
+        wifi_command.extend(["ifname", selected_device])
     try:
         raw_scan = subprocess.check_output(
-            ["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "no"],
+            wifi_command + ["--rescan", "no"],
             stderr=subprocess.DEVNULL
         ).decode("utf-8", errors="ignore")
         if not raw_scan.strip():
             raw_scan = subprocess.check_output(
-                ["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list"],
+                wifi_command,
                 stderr=subprocess.DEVNULL
             ).decode("utf-8", errors="ignore")
     except Exception:
         raw_scan = subprocess.check_output(
-            ["nmcli", "-t", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list"],
+            wifi_command,
             stderr=subprocess.DEVNULL
         ).decode("utf-8", errors="ignore")
 
@@ -112,6 +208,8 @@ try:
                     seen[ssid]["security"] = security
 
     # Output control buttons
+    current_device = "Automatic" if selected_device == "auto" else selected_device
+    print(f"󰤨  Wi-Fi Adapter: {current_device} — Select Adapter...")
     print("󰤮  Turn Wi-Fi OFF")
     print("󰑓  Rescan / Refresh Networks")
     print("󰈉  Connect to Hidden Network...")
@@ -171,10 +269,24 @@ except Exception as e:
 EOF
 }
 
+bind_saved_profile() {
+    local profile="$1"
+    local interface="${WIFI_DEVICE}"
+    [[ "${interface}" == "auto" ]] && interface=""
+    if ! nmcli connection modify id "${profile}" connection.interface-name "${interface}" >/dev/null 2>&1; then
+        notify "critical" "network-wireless-offline" "Adapter Selection Failed" \
+            "Could not assign saved profile '${profile}' to ${WIFI_DEVICE}."
+        return 1
+    fi
+}
+
 connect_saved() {
     local ssid="$1"
     notify "low" "network-wireless" "Connecting..." "Connecting to saved network: ${ssid}"
-    if nmcli connection up id "${ssid}" >/dev/null 2>&1; then
+    bind_saved_profile "${ssid}" || return 1
+    local -a command=(nmcli connection up id "${ssid}")
+    [[ "${WIFI_DEVICE}" == "auto" ]] || command+=(ifname "${WIFI_DEVICE}")
+    if "${command[@]}" >/dev/null 2>&1; then
         notify "low" "network-wireless-connected" "Connected" "Successfully connected to ${ssid}."
         pkill -RTMIN+8 waybar 2>/dev/null || true
     else
@@ -185,7 +297,9 @@ connect_saved() {
 connect_open() {
     local ssid="$1"
     notify "low" "network-wireless" "Connecting..." "Connecting to open network: ${ssid}"
-    if nmcli device wifi connect "${ssid}" >/dev/null 2>&1; then
+    local -a command=(nmcli device wifi connect "${ssid}")
+    [[ "${WIFI_DEVICE}" == "auto" ]] || command+=(ifname "${WIFI_DEVICE}")
+    if "${command[@]}" >/dev/null 2>&1; then
         notify "low" "network-wireless-connected" "Connected" "Successfully connected to ${ssid}."
         pkill -RTMIN+8 waybar 2>/dev/null || true
     else
@@ -200,7 +314,9 @@ connect_secured_prompt() {
     [ -z "${pass}" ] && return 0
 
     notify "low" "network-wireless" "Authenticating..." "Connecting to ${ssid}..."
-    if nmcli device wifi connect "${ssid}" password "${pass}" >/dev/null 2>&1; then
+    local -a command=(nmcli device wifi connect "${ssid}" password "${pass}")
+    [[ "${WIFI_DEVICE}" == "auto" ]] || command+=(ifname "${WIFI_DEVICE}")
+    if "${command[@]}" >/dev/null 2>&1; then
         notify "low" "network-wireless-connected" "Connected" "Successfully connected to ${ssid}."
         pkill -RTMIN+8 waybar 2>/dev/null || true
     else
@@ -223,7 +339,11 @@ connected_network_actions() {
             ;;
         *"Reconnect"*)
             notify "low" "network-wireless" "Reconnecting..." "Re-establishing connection to ${ssid}..."
-            nmcli connection up id "${ssid}" >/dev/null 2>&1
+            if bind_saved_profile "${ssid}"; then
+                local -a command=(nmcli connection up id "${ssid}")
+                [[ "${WIFI_DEVICE}" == "auto" ]] || command+=(ifname "${WIFI_DEVICE}")
+                "${command[@]}" >/dev/null 2>&1
+            fi
             pkill -RTMIN+8 waybar 2>/dev/null || true
             ;;
         *"Forget"*)
@@ -291,7 +411,9 @@ connect_hidden_network() {
 
     if [[ "${sec_choice}" == *"Open"* ]]; then
         notify "low" "network-wireless" "Connecting..." "Connecting to hidden open network: ${h_ssid}"
-        if nmcli device wifi connect "${h_ssid}" hidden yes >/dev/null 2>&1; then
+        local -a command=(nmcli device wifi connect "${h_ssid}" hidden yes)
+        [[ "${WIFI_DEVICE}" == "auto" ]] || command+=(ifname "${WIFI_DEVICE}")
+        if "${command[@]}" >/dev/null 2>&1; then
             notify "low" "network-wireless-connected" "Connected" "Successfully connected to ${h_ssid}."
             pkill -RTMIN+8 waybar 2>/dev/null || true
         else
@@ -303,7 +425,9 @@ connect_hidden_network() {
         [ -z "${h_pass}" ] && return 0
 
         notify "low" "network-wireless" "Authenticating..." "Connecting to hidden network: ${h_ssid}..."
-        if nmcli device wifi connect "${h_ssid}" password "${h_pass}" hidden yes >/dev/null 2>&1; then
+        local -a command=(nmcli device wifi connect "${h_ssid}" password "${h_pass}" hidden yes)
+        [[ "${WIFI_DEVICE}" == "auto" ]] || command+=(ifname "${WIFI_DEVICE}")
+        if "${command[@]}" >/dev/null 2>&1; then
             notify "low" "network-wireless-connected" "Connected" "Successfully connected to ${h_ssid}."
             pkill -RTMIN+8 waybar 2>/dev/null || true
         else
@@ -313,6 +437,8 @@ connect_hidden_network() {
 }
 
 main() {
+    acquire_menu_lock
+    load_wifi_device
     while true; do
         local status
         status=$(get_wifi_status)
@@ -331,9 +457,13 @@ main() {
 
         # Generate menu entries
         local selection
-        selection=$(generate_network_menu | rofi -dmenu -markup-rows -config "${ROFI_THEME}" -p "󰤨 Wi-Fi" -mesg "Select a network or action:")
+        selection=$(generate_network_menu "${WIFI_DEVICE}" | rofi -dmenu -markup-rows -config "${ROFI_THEME}" -p "󰤨 Wi-Fi" -mesg "Select a network or action:")
         [ -z "${selection}" ] && exit 0
 
+        if [[ "${selection}" == *"Select Adapter"* ]]; then
+            select_wifi_device || true
+            continue
+        fi
         # Action: Turn Wi-Fi Off
         if [[ "${selection}" == *"Turn Wi-Fi OFF"* ]]; then
             toggle_wifi

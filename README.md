@@ -252,6 +252,7 @@ Volume, microphone, and brightness hotkeys show Dunst notifications and refresh 
   * Scans nearby Wi-Fi networks in the background (`nmcli --rescan no`) for fast response times.
   * Displays signal strength icons, security state (WPA/WPA2/open), and active connection indicators.
   * The Rofi NetworkManager menu includes saved/nearby networks, password entry for secured networks, and rescan actions.
+  * Choose a specific Wi-Fi adapter from the first menu row; PCIe/built-in and USB adapters are labeled separately. Scans and new connections use the selected adapter, and saved profiles are rebound to it when connected. The selection is stored in `~/.local/state/hypr-rice/wifi-device`; choose Automatic to let NetworkManager decide.
   * Includes options to toggle Wi-Fi radio on/off and force an access point rescan.
 
 ---

@@ -79,6 +79,81 @@ class CategorizedScriptTests(unittest.TestCase):
                 self.assertIn(suffix, keybinds)
                 self.assertTrue((SCRIPTS / suffix.lstrip("/")).exists(), suffix)
 
+    def test_wifi_menu_selects_adapter_and_binds_connection_commands(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fake_bin = root / "bin"
+            fake_bin.mkdir()
+            nmcli_log = root / "nmcli.log"
+            nmcli = fake_bin / "nmcli"
+            nmcli.write_text(
+                """#!/usr/bin/env bash
+printf '%s\\n' "$*" >> "$NMCLI_LOG"
+case "$*" in
+    "-t -f DEVICE,TYPE device status")
+        printf 'wlo1:wifi\\nwlp3s0f3u2:wifi\\np2p-dev-wlo1:wifi-p2p\\n'
+        ;;
+    "-g GENERAL.STATE device show wlo1") printf '30 (disconnected)\\n' ;;
+    "-g GENERAL.PRODUCT device show wlo1") printf 'PCIe adapter\\n' ;;
+    "-g GENERAL.STATE device show wlp3s0f3u2") printf '100 (connected)\\n' ;;
+    "-g GENERAL.PRODUCT device show wlp3s0f3u2") printf 'USB adapter\\n' ;;
+    "-t -f NAME,TYPE connection show") printf 'Home:802-11-wireless\\n' ;;
+esac
+""",
+                encoding="utf-8",
+            )
+            rofi = fake_bin / "rofi"
+            rofi.write_text("#!/usr/bin/env bash\nprintf '%s' \"$ROFI_OUTPUT\"\n", encoding="utf-8")
+            for name in ("dunstify", "pkill"):
+                executable = fake_bin / name
+                executable.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            for executable in fake_bin.iterdir():
+                executable.chmod(0o755)
+
+            environment = os.environ.copy()
+            environment.update({
+                "PATH": f"{fake_bin}:{environment['PATH']}",
+                "HOME": str(root / "home"),
+                "XDG_STATE_HOME": str(root / "state"),
+                "NMCLI_LOG": str(nmcli_log),
+                "ROFI_OUTPUT": "󰤨  PCIe / built-in Wi-Fi  [wlo1] — PCIe adapter (30 disconnected)",
+            })
+            script = r"""
+set -e
+source "$WIFI_MENU"
+select_wifi_device
+[[ "$WIFI_DEVICE" == "wlo1" ]]
+connect_saved "Home"
+connect_open "OpenNet"
+ROFI_OUTPUT="test-pass"
+connect_secured_prompt "SecureNet"
+ROFI_OUTPUT="󰤨  USB Wi-Fi  [wlp3s0f3u2] — USB adapter (100 connected)"
+select_wifi_device
+[[ "$WIFI_DEVICE" == "wlp3s0f3u2" ]]
+"""
+            environment["WIFI_MENU"] = str(SCRIPTS / "hardware" / "wifi-menu.sh")
+            result = subprocess.run(
+                ["bash", "-c", script],
+                env=environment,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                (root / "state" / "hypr-rice" / "wifi-device").read_text(encoding="utf-8"),
+                "wlp3s0f3u2\n",
+            )
+            commands = nmcli_log.read_text(encoding="utf-8")
+            self.assertIn("connection modify id Home connection.interface-name wlo1", commands)
+            self.assertIn("connection up id Home ifname wlo1", commands)
+            self.assertIn("device wifi connect OpenNet ifname wlo1", commands)
+            self.assertIn(
+                "device wifi connect SecureNet password test-pass ifname wlo1",
+                commands,
+            )
+
     def test_waybar_is_the_default_autostart(self) -> None:
         autostart = (ROOT / "lua" / "autostart.lua").read_text(encoding="utf-8")
         start_bar = (SCRIPTS / "desktop" / "start-bar.sh").read_text(encoding="utf-8")
