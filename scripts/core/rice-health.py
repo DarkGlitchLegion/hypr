@@ -18,7 +18,7 @@ ROFI_THEME = CONFIG / "rofi" / "command-center.rasi"
 REQUIRED_TOOLS = ("hyprctl", "rofi")
 FEATURE_TOOLS = {
     "Display / session": ("qs", "waybar", "dunst", "dunstify", "hypridle", "hyprlock", "brightnessctl", "systemctl"),
-    "Clipboard / capture": ("wl-paste", "wl-copy", "cliphist", "grim", "slurp"),
+    "Clipboard / capture": ("wl-paste", "wl-copy", "cliphist", "grim", "slurp", "swappy"),
     "Network / audio": ("nmcli", "bluetoothctl", "wpctl", "powerprofilesctl", "pavucontrol"),
     "Applications": ("kitty", "fastfetch", "btop", "thunar", "firefox", "code", "lazygit", "cmatrix"),
     "Desktop integration": ("gsettings", "hyprpaper", "playerctl", "dunstctl", "notify-send"),

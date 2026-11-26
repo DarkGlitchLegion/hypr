@@ -300,7 +300,7 @@ Volume, microphone, and brightness hotkeys show Dunst notifications and refresh 
 * **Capture Menu**: Press <kbd>Super</kbd> + <kbd>Ctrl</kbd> + <kbd>C</kbd>
 * **Script**: `~/.config/hypr/scripts/session/screenshot.sh`
 * **What it does**:
-  * Uses `grim` and `slurp` for Wayland capture.
+  * Uses `grim` and `slurp` for Wayland capture, then opens region captures in `swappy` for annotation before saving.
   * Captured images are automatically saved to `~/Pictures/Screenshots/` with timestamped filenames.
   * Images are simultaneously copied to the Wayland clipboard (`wl-copy`).
   * Triggers a Dunst notification with an interactive thumbnail preview.

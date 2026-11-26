@@ -2,7 +2,7 @@
 # =====================================================
 # Omarchy-Style Screenshot Utility for Hyprland
 # Save directory: ~/Pictures/Screenshots
-# Tools: grim, slurp, wl-copy, dunstify
+# Tools: grim, slurp, swappy, wl-copy, dunstify
 # =====================================================
 
 SAVE_DIR="${HOME}/Pictures/Screenshots"
@@ -24,9 +24,18 @@ case "$1" in
     region)
         GEOM=$(slurp 2>/dev/null)
         if [ -n "${GEOM}" ]; then
-            grim -g "${GEOM}" "${FILE_PATH}"
-            wl-copy < "${FILE_PATH}"
-            notify_success "Region"
+            if ! command -v swappy >/dev/null 2>&1; then
+                dunstify -a "Screenshot" -u normal "Screenshot Editor Missing" "Install swappy to annotate region screenshots."
+                exit 1
+            fi
+            TMP_FILE=$(mktemp --suffix=.png)
+            trap 'rm -f "${TMP_FILE}"' EXIT
+            if grim -g "${GEOM}" "${TMP_FILE}" && swappy -f "${TMP_FILE}" -o "${FILE_PATH}"; then
+                if [ -s "${FILE_PATH}" ]; then
+                    wl-copy < "${FILE_PATH}"
+                    notify_success "Region"
+                fi
+            fi
         fi
         ;;
     full)

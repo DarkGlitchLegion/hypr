@@ -25,6 +25,7 @@ PACKAGE_MAP: dict[str, dict[str, list[str]]] = {
     "wl-clipboard": {"pacman": ["wl-clipboard"], "apt": ["wl-clipboard"], "dnf": ["wl-clipboard"]},
     "grim": {"pacman": ["grim"], "apt": ["grim"], "dnf": ["grim"]},
     "slurp": {"pacman": ["slurp"], "apt": ["slurp"], "dnf": ["slurp"]},
+    "swappy": {"pacman": ["swappy"], "apt": ["swappy"], "dnf": ["swappy"]},
     "brightnessctl": {"pacman": ["brightnessctl"], "apt": ["brightnessctl"], "dnf": ["brightnessctl"]},
     "cliphist": {"pacman": ["cliphist"], "apt": [], "dnf": []},
     "bluez": {"pacman": ["bluez", "bluez-utils"], "apt": ["bluez"], "dnf": ["bluez"]},
