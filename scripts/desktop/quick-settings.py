@@ -317,10 +317,6 @@ class QuickSettings(Gtk.Window):
         self.add(root)
 
         self._build_header(root)
-        self._loading_label = Gtk.Label(label="Loading quick settings…")
-        self._loading_label.set_margin_top(18)
-        self._loading_label.set_margin_bottom(18)
-        root.pack_start(self._loading_label, False, False, 0)
         self._status_widgets = {}
         self._updating_status = False
         self._refreshing = False
@@ -381,7 +377,7 @@ class QuickSettings(Gtk.Window):
 
     def _show_load_error(self, message: str) -> bool:
         if not self._closing:
-            self._loading_label.set_text(f"Unable to load quick settings: {message}")
+            print(f"Unable to load quick settings: {message}", file=sys.stderr)
         return False
 
     def _populate_panel(self, data: dict) -> bool:
@@ -389,7 +385,6 @@ class QuickSettings(Gtk.Window):
             return False
 
         root = self.get_child()
-        root.remove(self._loading_label)
         self._add_divider(root)
         self._build_connectivity(root, data["network"], data["bluetooth"])
         self._add_divider(root)
